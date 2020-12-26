@@ -1,2 +1,2 @@
-# idris2-lsp
+# [WIP] idris2-lsp
 Language Server for Idris2
