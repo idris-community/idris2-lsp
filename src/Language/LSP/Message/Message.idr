@@ -118,74 +118,74 @@ MessageParams Progress                            = WorkDoneProgressBegin .+. Wo
 
 -- Hacky, but avoids having to carry a FromJSON (MessageParams method) inside sigma types
 findImpl : (method : Method from type) -> FromJSON (MessageParams method)
-findImpl Initialize = %search
-findImpl Initialized = %search
-findImpl Shutdown = %search
-findImpl Exit = %search
-findImpl SetTrace = %search
-findImpl WindowWorkDoneProgressCancel = %search
-findImpl WorkspaceDidChangeWorkspaceFolders = %search
-findImpl WorkspaceDidChangeConfiguration = %search
-findImpl WorkspaceDidChangeWatchedFiles = %search
-findImpl WorkspaceSymbol = %search
-findImpl WorkspaceExecuteCommand = %search
-findImpl WorkspaceWillCreateFiles = %search
-findImpl TextDocumentDidOpen = %search
-findImpl TextDocumentDidChange = %search
-findImpl TextDocumentWillSave = %search
-findImpl TextDocumentWillSaveWaitUntil = %search
-findImpl TextDocumentDidSave = %search
-findImpl TextDocumentDidClose = %search
-findImpl CompletionItemResolve = %search
-findImpl TextDocumentHover = %search
-findImpl TextDocumentSignatureHelp = %search
-findImpl TextDocumentDeclaration = %search
-findImpl TextDocumentDefinition = %search
-findImpl TextDocumentTypeDefinition = %search
-findImpl TextDocumentImplementation = %search
-findImpl TextDocumentReferences = %search
-findImpl TextDocumentDocumentHighlight = %search
-findImpl TextDocumentDocumentSymbol = %search
-findImpl TextDocumentCodeAction = %search
-findImpl CodeActionResolve = %search
-findImpl TextDocumentCodeLens = %search
-findImpl CodeLensResolve = %search
-findImpl TextDocumentDocumentLink = %search
-findImpl DocumentLinkResolve = %search
-findImpl TextDocumentDocumentColor = %search
-findImpl TextDocumentFormatting = %search
-findImpl TextDocumentRangeFormatting = %search
-findImpl TextDocumentOnTypeFormatting = %search
-findImpl TextDocumentRename = %search
-findImpl TextDocumentPrepareRename = %search
-findImpl TextDocumentFoldingRange = %search
-findImpl TextDocumentSelectionRange = %search
-findImpl TextDocumentPrepareCallHierarchy = %search
-findImpl CallHierarchyIncomingCalls = %search
-findImpl CallHierarchyOutgoingCalls = %search
-findImpl TextDocumentSemanticTokensFull = %search
+findImpl Initialize                          = %search
+findImpl Initialized                         = %search
+findImpl Shutdown                            = %search
+findImpl Exit                                = %search
+findImpl SetTrace                            = %search
+findImpl WindowWorkDoneProgressCancel        = %search
+findImpl WorkspaceDidChangeWorkspaceFolders  = %search
+findImpl WorkspaceDidChangeConfiguration     = %search
+findImpl WorkspaceDidChangeWatchedFiles      = %search
+findImpl WorkspaceSymbol                     = %search
+findImpl WorkspaceExecuteCommand             = %search
+findImpl WorkspaceWillCreateFiles            = %search
+findImpl TextDocumentDidOpen                 = %search
+findImpl TextDocumentDidChange               = %search
+findImpl TextDocumentWillSave                = %search
+findImpl TextDocumentWillSaveWaitUntil       = %search
+findImpl TextDocumentDidSave                 = %search
+findImpl TextDocumentDidClose                = %search
+findImpl CompletionItemResolve               = %search
+findImpl TextDocumentHover                   = %search
+findImpl TextDocumentSignatureHelp           = %search
+findImpl TextDocumentDeclaration             = %search
+findImpl TextDocumentDefinition              = %search
+findImpl TextDocumentTypeDefinition          = %search
+findImpl TextDocumentImplementation          = %search
+findImpl TextDocumentReferences              = %search
+findImpl TextDocumentDocumentHighlight       = %search
+findImpl TextDocumentDocumentSymbol          = %search
+findImpl TextDocumentCodeAction              = %search
+findImpl CodeActionResolve                   = %search
+findImpl TextDocumentCodeLens                = %search
+findImpl CodeLensResolve                     = %search
+findImpl TextDocumentDocumentLink            = %search
+findImpl DocumentLinkResolve                 = %search
+findImpl TextDocumentDocumentColor           = %search
+findImpl TextDocumentFormatting              = %search
+findImpl TextDocumentRangeFormatting         = %search
+findImpl TextDocumentOnTypeFormatting        = %search
+findImpl TextDocumentRename                  = %search
+findImpl TextDocumentPrepareRename           = %search
+findImpl TextDocumentFoldingRange            = %search
+findImpl TextDocumentSelectionRange          = %search
+findImpl TextDocumentPrepareCallHierarchy    = %search
+findImpl CallHierarchyIncomingCalls          = %search
+findImpl CallHierarchyOutgoingCalls          = %search
+findImpl TextDocumentSemanticTokensFull      = %search
 findImpl TextDocumentSemanticTokensFullDelta = %search
-findImpl TextDocumentSemanticTokensRange = %search
-findImpl WorkspaceSemanticTokensRefresh = %search
-findImpl TextDocumentLinkedEditingRange = %search
-findImpl TextDocumentMoniker = %search
-findImpl LogTrace = %search
-findImpl WindowShowMessage = %search
-findImpl WindowShowMessageRequest = %search
-findImpl WindowShowDocument = %search
-findImpl WindowLogMessage = %search
-findImpl WindowWorkDoneProgressCreate = %search
-findImpl TelemetryEvent = %search
-findImpl ClientRegisterCapability = %search
-findImpl ClientUnregisterCapability = %search
-findImpl WorkspaceWorkspaceFolders = %search
-findImpl WorkspaceConfiguration = %search
-findImpl WorkspaceApplyEdit = %search
-findImpl TextDocumentPublishDiagnostics = %search
-findImpl TextDocumentCompletion = %search
-findImpl WorkspaceCodeLensRefresh = %search
-findImpl CancelRequest = %search
-findImpl Progress = %search
+findImpl TextDocumentSemanticTokensRange     = %search
+findImpl WorkspaceSemanticTokensRefresh      = %search
+findImpl TextDocumentLinkedEditingRange      = %search
+findImpl TextDocumentMoniker                 = %search
+findImpl LogTrace                            = %search
+findImpl WindowShowMessage                   = %search
+findImpl WindowShowMessageRequest            = %search
+findImpl WindowShowDocument                  = %search
+findImpl WindowLogMessage                    = %search
+findImpl WindowWorkDoneProgressCreate        = %search
+findImpl TelemetryEvent                      = %search
+findImpl ClientRegisterCapability            = %search
+findImpl ClientUnregisterCapability          = %search
+findImpl WorkspaceWorkspaceFolders           = %search
+findImpl WorkspaceConfiguration              = %search
+findImpl WorkspaceApplyEdit                  = %search
+findImpl TextDocumentPublishDiagnostics      = %search
+findImpl TextDocumentCompletion              = %search
+findImpl WorkspaceCodeLensRefresh            = %search
+findImpl CancelRequest                       = %search
+findImpl Progress                            = %search
 
 ||| Maps the response associated to each type of method.
 public export
@@ -249,8 +249,8 @@ data NotificationMessage : Method from Notification -> Type where
 
 export
 ToJSON (MessageParams method) => ToJSON (NotificationMessage method) where
-  toJSON (MkNotificationMessage m p) =
-    JObject [("jsonrpc", JString "2.0"), ("method", toJSON m), ("params", toJSON p)]
+  toJSON (MkNotificationMessage method params) =
+    JObject [("jsonrpc", JString "2.0"), ("method", toJSON method), ("params", toJSON params)]
 
 export
 FromJSON (from ** method : Method from Notification ** NotificationMessage method) where
@@ -267,7 +267,7 @@ namespace NotificationMessage
   method (MkNotificationMessage m _) = m
 
   export
-  params : {0 m : Method from Notification} -> NotificationMessage m -> MessageParams m
+  params : {0 method : Method from Notification} -> NotificationMessage method -> MessageParams method
   params (MkNotificationMessage _ p) = p
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#requestMessage
@@ -280,30 +280,30 @@ data RequestMessage : Method from Request -> Type where
 
 export
 ToJSON (MessageParams method) => ToJSON (RequestMessage method) where
-  toJSON (MkRequestMessage i m p) =
-    JObject [("jsonrpc", JString "2.0"), ("id", toJSON i), ("method", toJSON m), ("params", toJSON p)]
+  toJSON (MkRequestMessage id method params) =
+    JObject [("jsonrpc", JString "2.0"), ("id", toJSON id), ("method", toJSON method), ("params", toJSON params)]
 
 export
 FromJSON (from ** method : Method from Request ** RequestMessage method) where
   fromJSON (JObject arg) = do
     lookup "jsonrpc" arg >>= (guard . (== JString "2.0"))
-    id_ <- lookup "id" arg >>= fromJSON
-    (from ** meth) <- lookup "method" arg >>= fromJSON {a = (from ** Method from Request)}
-    par <- lookup "params" arg >>= (fromJSON @{findImpl meth})
-    pure (from ** meth ** MkRequestMessage id_ meth par)
+    id <- lookup "id" arg >>= fromJSON
+    (from ** method) <- lookup "method" arg >>= fromJSON {a = (from ** Method from Request)}
+    params <- lookup "params" arg >>= (fromJSON @{findImpl method})
+    pure (from ** method ** MkRequestMessage id method params)
   fromJSON _ = neutral
 
 namespace RequestMessage
   export
   id : RequestMessage m -> Int .+. String
-  id (MkRequestMessage id_ _ _) = id_
+  id (MkRequestMessage i _ _) = i
 
   export
   method : {0 m : Method from Request} -> RequestMessage m -> Method from Request
   method (MkRequestMessage _ m _) = m
 
   export
-  params : {0 m : Method from Request} -> RequestMessage m -> MessageParams m
+  params : {0 method : Method from Request} -> RequestMessage method -> MessageParams method
   params (MkRequestMessage _ _ p) = p
 
 ||| Maps the message payload to each type of method.
@@ -317,3 +317,91 @@ FromJSON (from ** type ** method : Method from type ** Message type method) wher
   fromJSON arg =
     (fromJSON arg >>= \(f ** m ** msg) : (from ** method : Method from Notification ** NotificationMessage method) => pure (f ** _ ** m ** msg))
       <|> (fromJSON arg >>= \(f ** m ** msg) : (from ** method : Method from Request ** RequestMessage method) => pure (f ** _ ** m ** msg))
+
+||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#responseMessage
+namespace ErrorCodes
+  public export
+  data ErrorCodes
+    = ParseError
+    | InvalidRequest
+    | MethodNotFound
+    | InvalidParams
+    | InternalError
+    | ServerNotInitialized
+    | UnknownErrorCode
+    | ContentModified
+    | RequestCancelled
+    | JSONRPCReserved Int
+    | LSPReserved Int
+    | Custom Int
+
+export
+ToJSON ErrorCodes where
+  toJSON ParseError             = JNumber (-32700)
+  toJSON InvalidRequest         = JNumber (-32600)
+  toJSON MethodNotFound         = JNumber (-32601)
+  toJSON InvalidParams          = JNumber (-32602)
+  toJSON InternalError          = JNumber (-32603)
+  toJSON ServerNotInitialized   = JNumber (-32002)
+  toJSON UnknownErrorCode       = JNumber (-32001)
+  toJSON ContentModified        = JNumber (-32801)
+  toJSON RequestCancelled       = JNumber (-32800)
+  toJSON (JSONRPCReserved code) = JNumber (cast code)
+  toJSON (LSPReserved code)     = JNumber (cast code)
+  toJSON (Custom code)          = JNumber (cast code)
+
+export
+FromJSON ErrorCodes where
+  -- TODO: Can't match on negative numbers :(, temporary fix until compiler PR.
+  fromJSON (JNumber code) =
+    if code == (-32700) then pure ParseError
+    else if code == (-32600) then pure InvalidRequest
+    else if code == (-32601) then pure MethodNotFound
+    else if code == (-32602) then pure InvalidParams
+    else if code == (-32603) then pure InternalError
+    else if code == (-32002) then pure ServerNotInitialized
+    else if code == (-32001) then pure UnknownErrorCode
+    else if code == (-32801) then pure ContentModified
+    else if code == (-32800) then pure RequestCancelled
+    else if (-32099) <= code && code <= (-32000) then pure (JSONRPCReserved $ cast code)
+    else if (-32899) <= code && code <= (-32800) then pure (LSPReserved $ cast code)
+    else pure (Custom $ cast code)
+  fromJSON _ = neutral
+
+||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#responseMessage
+public export
+record ResponseError where
+  constructor MkResponseError
+  code : ErrorCodes
+  message : String
+  data_ : JSON
+%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{{ResponseError}}
+
+||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#responseMessage
+public export
+data ResponseMessage : Method from type -> Type where
+  Success : (id : Int .+. String .+. Null) -> (result : ResponseResult method) -> ResponseMessage method
+  Failure : (id : Int .+. String .+. Null) -> (error : ResponseError) -> ResponseMessage method
+
+export
+ToJSON (ResponseResult method) => ToJSON (ResponseMessage method) where
+  toJSON (Success id result) =
+    JObject [("jsonrpc", JString "2.0"), ("id", toJSON id), ("result", toJSON result)]
+  toJSON (Failure id error) =
+    JObject [("jsonrpc", JString "2.0"), ("id", toJSON id), ("error", toJSON error)]
+
+export
+FromJSON (ResponseResult method) => FromJSON (ResponseMessage method) where
+  fromJSON (JObject arg) = do
+    lookup "jsonrpc" arg >>= (guard . (== JString "2.0"))
+    id <- lookup "id" arg >>= fromJSON
+    case lookup "result" arg of
+         Just v => Success id <$> fromJSON v
+         Nothing => Failure id <$> (lookup "error" arg >>= fromJSON)
+  fromJSON _ = neutral
+
+namespace ResponseMessage
+  export
+  id : ResponseMessage method -> Int .+. String .+. Null
+  id (Success i _) = i
+  id (Failure i _) = i
