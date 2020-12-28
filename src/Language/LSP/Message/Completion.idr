@@ -28,7 +28,7 @@ namespace CompletionItemKind
     | Interface
     | Module
     | Property
-    | Unit
+    | Unit_
     | Value
     | Enum
     | Keyword
@@ -56,7 +56,7 @@ ToJSON CompletionItemKind where
   toJSON Interface     = JNumber 8
   toJSON Module        = JNumber 9
   toJSON Property      = JNumber 10
-  toJSON Unit          = JNumber 11
+  toJSON Unit_         = JNumber 11
   toJSON Value         = JNumber 12
   toJSON Enum          = JNumber 13
   toJSON Keyword       = JNumber 14
@@ -84,7 +84,7 @@ FromJSON CompletionItemKind where
   fromJSON (JNumber 8)  = pure Interface
   fromJSON (JNumber 9)  = pure Module
   fromJSON (JNumber 10) = pure Property
-  fromJSON (JNumber 11) = pure Unit
+  fromJSON (JNumber 11) = pure Unit_
   fromJSON (JNumber 12) = pure Value
   fromJSON (JNumber 13) = pure Enum
   fromJSON (JNumber 14) = pure Keyword

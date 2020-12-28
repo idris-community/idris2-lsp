@@ -2,4 +2,4 @@ package lsp
 
 sourcedir = "src"
 
-depends = contrib
+depends = contrib, idris2

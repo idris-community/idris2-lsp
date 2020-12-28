@@ -65,6 +65,11 @@ export
   showPrec p (Left x)  = showCon p "Left" $ showArg x
   showPrec p (Right y) = showCon p "Right" $ showArg y
 
+export
+Bifunctor UntaggedEither where
+  bimap f g (Left x) = Left (f x)
+  bimap f g (Right x) = Right (g x)
+
 infixr 0 .+.
 ||| Operator synonym for `UntaggedEither`.
 public export

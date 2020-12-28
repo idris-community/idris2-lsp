@@ -180,9 +180,9 @@ record DocumentSymbol where
   selectionRange : Range
   children       : Maybe (List (Inf DocumentSymbol))
 
-export covering -- FIXME?: Can I Avoid covering? Try indexing it with the depth
+export -- FIXME?: Can I Avoid assert_total? Try indexing it with the depth
 ToJSON DocumentSymbol where
-  toJSON (MkDocumentSymbol name detail kind tags deprecated range selectionRange children) =
+  toJSON (MkDocumentSymbol name detail kind tags deprecated range selectionRange children) = assert_total $
     JObject (catMaybes [ Just ("name", toJSON name)
                        , (MkPair "detail" . toJSON) <$> detail
                        , Just ("kind", toJSON kind)

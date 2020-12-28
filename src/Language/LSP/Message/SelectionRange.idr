@@ -51,9 +51,9 @@ record SelectionRange where
   range  : Range
   parent : Maybe (Inf SelectionRange)
 
-export covering -- FIXME: Can I Avoid covering? Maybe indexing by the depth of the structure?
+export -- FIXME: Can I avoid asser_total? Maybe indexing by the depth of the structure?
 ToJSON SelectionRange where
-  toJSON (MkSelectionRange range parent) =
+  toJSON (MkSelectionRange range parent) = assert_total $
     JObject (catMaybes [ Just ("range", toJSON range)
                        , (MkPair "parent" . toJSON) <$> parent
                        ])

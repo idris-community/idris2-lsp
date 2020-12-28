@@ -26,16 +26,16 @@ namespace InitializeParams
 public export
 record InitializeParams where
   constructor MkInitializeParams
-  processId          : Maybe Integer
-  clientInfo         : ClientInfo
-  locale             : Maybe String
-  rootPath           : Maybe String
-  rootUri            : Maybe URI
-  initializeOptions  : Maybe JSON
-  clientCapabilities : ClientCapabilities
-  trace              : Maybe Trace
-  workspaceFolders   : Maybe (List WorkspaceFolder)
-  workDoneToken      : Maybe ProgressToken
+  processId         : Integer .+. Null
+  clientInfo        : Maybe ClientInfo
+  locale            : Maybe String
+  rootPath          : Maybe (String .+. Null)
+  rootUri           : URI .+. Null
+  initializeOptions : Maybe JSON
+  capabilities      : ClientCapabilities
+  trace             : Maybe Trace
+  workspaceFolders  : Maybe (List WorkspaceFolder .+. Null)
+  workDoneToken     : Maybe ProgressToken
 %runElab deriveJSON defaultOpts `{{InitializeParams}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
