@@ -199,7 +199,7 @@ public export
 record TextDocumentSyncOptions where
   constructor MkTextDocumentSyncOptions
   openClose         : Maybe Bool
-  change            : TextDocumentSyncKind
+  change            : Maybe TextDocumentSyncKind
   willSave          : Maybe Bool
   willSaveWaitUntil : Maybe Bool
   save              : Maybe (Bool .+. SaveOptions)

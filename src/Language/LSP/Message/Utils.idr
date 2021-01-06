@@ -1,9 +1,10 @@
 ||| Common types and instances for JSON interoperability.
 |||
-||| (C) The Idris Community, 2020
+||| (C) The Idris Community, 2021
 module Language.LSP.Message.Utils
 
 import Language.JSON
+import Language.JSON.Interfaces
 import Language.LSP.Message.Derive
 
 %default total
@@ -17,6 +18,16 @@ Foldable (Pair a) where
 public export
 Traversable (Pair a) where
   traverse f (x, y) = (x,) <$> f y
+
+public export
+Eq JSON where
+  JNull        == JNull        = True
+  (JBoolean x) == (JBoolean y) = x == y
+  (JNumber x)  == (JNumber y)  = x == y
+  (JString x)  == (JString y)  = x == y
+  (JArray xs)  == (JArray ys)  = assert_total $ xs == ys
+  (JObject xs) == (JObject ys) = assert_total $ xs == ys
+  _ == _ = False
 
 ||| Singleton type that models `null` in JSON.
 public export
@@ -87,6 +98,16 @@ public export
 fromEither : Either a b -> UntaggedEither a b
 fromEither (Left x)  = Left x
 fromEither (Right x) = Right x
+
+public export
+toMaybe : UntaggedEither a Null -> Maybe a
+toMaybe (Left x) = Just x
+toMaybe (Right MkNull) = Nothing
+
+public export
+fromMaybe : Maybe a -> UntaggedEither a Null
+fromMaybe (Just x) = Left x
+fromMaybe Nothing = Right MkNull
 
 export
 (ToJSON a, ToJSON b) => ToJSON (UntaggedEither a b) where

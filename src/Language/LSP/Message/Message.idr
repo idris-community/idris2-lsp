@@ -1,6 +1,6 @@
 ||| Definitions of messages and associated payloads and responses.
 |||
-||| (C) The Idris Community, 2020
+||| (C) The Idris Community, 2021
 module Language.LSP.Message.Message
 
 import Language.JSON
@@ -240,6 +240,27 @@ ResponseResult WorkspaceApplyEdit                  = ApplyWorkspaceEditResponse
 ResponseResult TextDocumentCompletion              = List CompletionItem .+. CompletionList .+. Null
 ResponseResult WorkspaceCodeLensRefresh            = Null
 
+findNotificationImpl : (method : Method from Notification) -> ToJSON (MessageParams method)
+findNotificationImpl Initialized = %search
+findNotificationImpl Exit = %search
+findNotificationImpl SetTrace = %search
+findNotificationImpl WindowWorkDoneProgressCancel = %search
+findNotificationImpl WorkspaceDidChangeWorkspaceFolders = %search
+findNotificationImpl WorkspaceDidChangeConfiguration = %search
+findNotificationImpl WorkspaceDidChangeWatchedFiles = %search
+findNotificationImpl TextDocumentDidOpen = %search
+findNotificationImpl TextDocumentDidChange = %search
+findNotificationImpl TextDocumentWillSave = %search
+findNotificationImpl TextDocumentDidSave = %search
+findNotificationImpl TextDocumentDidClose = %search
+findNotificationImpl LogTrace = %search
+findNotificationImpl WindowShowMessage = %search
+findNotificationImpl WindowLogMessage = %search
+findNotificationImpl TelemetryEvent = %search
+findNotificationImpl TextDocumentPublishDiagnostics = %search
+findNotificationImpl CancelRequest = %search
+findNotificationImpl Progress = %search
+
 findResultImpl : (method : Method from Request) -> ToJSON (ResponseResult method)
 findResultImpl Initialize = %search
 findResultImpl Shutdown = %search
@@ -299,9 +320,9 @@ data NotificationMessage : Method from Notification -> Type where
                        -> NotificationMessage method
 
 export
-ToJSON (MessageParams method) => ToJSON (NotificationMessage method) where
+{method : Method from Notification} -> ToJSON (NotificationMessage method) where
   toJSON (MkNotificationMessage method params) =
-    JObject [("jsonrpc", JString "2.0"), ("method", toJSON method), ("params", toJSON params)]
+    JObject ([("jsonrpc", JString "2.0"), ("method", toJSON method), ("params", toJSON @{findNotificationImpl method} params)])
 
 export
 FromJSON (from ** method : Method from Notification ** NotificationMessage method) where
@@ -332,7 +353,7 @@ data RequestMessage : Method from Request -> Type where
 export
 ToJSON (MessageParams method) => ToJSON (RequestMessage method) where
   toJSON (MkRequestMessage id method params) =
-    JObject [("jsonrpc", JString "2.0"), ("id", toJSON id), ("method", toJSON method), ("params", toJSON params)]
+    JObject ([("jsonrpc", JString "2.0"), ("id", toJSON id), ("method", toJSON method), ("params", toJSON params)])
 
 export
 FromJSON (from ** method : Method from Request ** RequestMessage method) where
@@ -437,9 +458,9 @@ data ResponseMessage : Method from type -> Type where
 export
 {method : Method from Request} -> ToJSON (ResponseMessage method) where
   toJSON (Success id result) =
-    JObject [("jsonrpc", JString "2.0"), ("id", toJSON id), ("result", toJSON @{findResultImpl method} result)]
+    JObject ([("jsonrpc", JString "2.0"), ("id", toJSON id), ("result", toJSON @{findResultImpl method} result)])
   toJSON (Failure id error) =
-    JObject [("jsonrpc", JString "2.0"), ("id", toJSON id), ("error", toJSON error)]
+    JObject ([("jsonrpc", JString "2.0"), ("id", toJSON id), ("error", toJSON error)])
 
 export
 FromJSON (ResponseResult method) => FromJSON (ResponseMessage method) where
@@ -456,3 +477,7 @@ namespace ResponseMessage
   id : ResponseMessage method -> Int .+. String .+. Null
   id (Success i _) = i
   id (Failure i _) = i
+
+  export
+  getResponseId : RequestMessage method -> Int .+. String .+. Null
+  getResponseId = mapSnd Left . id

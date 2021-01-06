@@ -47,6 +47,7 @@ record HoverParams where
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
 record Hover where
+  constructor MkHover
   contents : MarkedString .+. List MarkedString .+. MarkupContent
   range : Maybe Range
 %runElab deriveJSON defaultOpts `{{Hover}}

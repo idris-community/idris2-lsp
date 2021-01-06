@@ -62,7 +62,7 @@ FromJSON FormattingOptions where
                                <*> (pure $ lookup "trimTrailingWhitespace" arg >>= fromJSON)
                                <*> (pure $ lookup "insertFinalNewline" arg >>= fromJSON)
                                <*> (pure $ lookup "trimFinalNewlines" arg >>= fromJSON)
-                               <*> (pure $ catMaybes $ map sequence $ map (mapSnd fromJSON) $ filter (\(k, _) => not $ k `elem` fields) arg)
+                               <*> (pure $ catMaybes $ map sequence $ map (mapSnd fromJSON) $ filter (\(k, _) => not $ k `elem` fields) $ toList arg)
     where
       fields : List String
       fields = ["tabSize", "insertSpaces", "trimTrailingWhitespace", "insertFinalNewline", "trimFinalNewlines"]

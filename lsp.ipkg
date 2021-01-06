@@ -1,5 +1,8 @@
 package lsp
 
+depends = idris2, contrib
+
 sourcedir = "src"
 
-depends = contrib, idris2
+main = Server.Main
+executable = idris2-lsp

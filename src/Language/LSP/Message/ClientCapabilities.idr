@@ -1,6 +1,5 @@
 module Language.LSP.Message.ClientCapabilities
 
-import Data.SortedMap
 import Language.JSON
 import Language.LSP.Message.CallHierarchy
 import Language.LSP.Message.Cancel

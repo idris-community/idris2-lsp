@@ -1,5 +1,6 @@
 module Language.LSP.Message.Location
 
+import Data.URI
 import Language.JSON
 import Language.LSP.Message.Derive
 import Language.LSP.Message.URI

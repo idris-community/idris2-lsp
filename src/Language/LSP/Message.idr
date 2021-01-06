@@ -1,3 +1,9 @@
+||| Module for the parsing and encoding LSP messages, updated to version 3.16.
+|||
+||| References:
+|||   [1] https://microsoft.github.io/language-server-protocol/specifications/specification-3-16/
+|||
+||| (C) The Idris Community, 2021
 module Language.LSP.Message
 
 import public Language.LSP.Message.CallHierarchy

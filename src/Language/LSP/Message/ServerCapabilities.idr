@@ -66,6 +66,7 @@ record WorkspaceServerCapabilities where
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
 record ServerCapabilities where
+  constructor MkServerCapabilities
   textDocumentSync                 : Maybe (TextDocumentSyncOptions .+. TextDocumentSyncKind)
   completionProvider               : Maybe CompletionOptions
   hoverProvider                    : Maybe (Bool .+. HoverOptions)
