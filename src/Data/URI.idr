@@ -92,7 +92,7 @@ pctEncoded = do
   y <- satisfy isHexDigit
   let Just d = fromHexChars [y, x]
     | Nothing => fail $ "Cannot convert " ++ show (the (List Char) [x, y]) ++ " to a hex number"
-  pure (chr d)
+  pure (chr (fromInteger d))
 
 ||| Parser for a URI scheme.
 |||
