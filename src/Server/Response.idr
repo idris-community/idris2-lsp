@@ -62,11 +62,13 @@ sendNotificationMessage : Ref LSPConf LSPConfiguration
                        -> NotificationMessage method
                        -> Core ()
 sendNotificationMessage method msg = do
-  let body = format 2 (toJSON msg)
+  let body = stringify (toJSON msg)
   let header = header (cast $ length body)
   outputHandle <- gets LSPConf outputHandle
-  coreLift $ fPutStrLn outputHandle (header ++ body)
-  logString Info ("Sent notification message for method " ++ show (toJSON method))
+  coreLift_ $ fPutStrLn outputHandle (header ++ body)
+  coreLift_ $ fflush outputHandle
+  logString Info ("Sent notification message for method " ++ stringify (toJSON method))
+  logString Debug (stringify (toJSON msg))
 
 ||| Sends a response message to a request received from the client.
 export
@@ -75,21 +77,24 @@ sendResponseMessage : Ref LSPConf LSPConfiguration
                    -> ResponseMessage method
                    -> Core ()
 sendResponseMessage method msg = do
-  let body = format 2 (toJSON msg)
+  let body = stringify (toJSON msg)
   let header = header (cast $ length body)
   outputHandle <- gets LSPConf outputHandle
-  coreLift $ fPutStrLn outputHandle (header ++ body)
-  logString Info ("Sent response message for method " ++ show (toJSON method))
+  coreLift_ $ fPutStrLn outputHandle (header ++ body)
+  coreLift_ $ fflush outputHandle
+  logString Info ("Sent response message for method " ++ stringify (toJSON method))
+  logString Debug (stringify (toJSON msg))
 
 ||| Sends an error response to an unknown method.
 export
 sendUnknownResponseMessage : Ref LSPConf LSPConfiguration => ResponseError -> Core ()
 sendUnknownResponseMessage err = do
   -- The method type Initialize is irrelevant since the message is unknown, can use any method, the message would be the same.
-  let body = format 2 (toJSON {a = ResponseMessage Initialize} (Failure (Right $ Right MkNull) err))
+  let body = stringify (toJSON {a = ResponseMessage Initialize} (Failure (Right $ Right MkNull) err))
   let header = header (cast $ length body)
   outputHandle <- gets LSPConf outputHandle
-  coreLift $ fPutStrLn outputHandle (header ++ body)
+  coreLift_ $ fPutStrLn outputHandle (header ++ body)
+  coreLift_ $ fflush outputHandle
   logString Info "Sent response to unknown method"
 
 Cast FilePos Position where
@@ -407,8 +412,12 @@ perror (TTCError msg)
         <++> parens (pretty "the most likely case is that the ./build directory in your current project contains files from a previous build of idris2 or the idris2 executable is from a different build than the installed .ttc files")
 perror (FileErr fname err)
     = pure $ errorDesc (reflow "File error in" <++> pretty fname <++> colon) <++> pretty (show err)
-perror (ParseFail _ err)
-    = pure $ pretty err
+perror (LitFail _)
+    = pure $ errorDesc (reflow "Can't parse literate.")
+perror (LexFail _ msg)
+    = pure $ errorDesc (pretty msg)
+perror (ParseFail _ msg toks)
+    = pure $ errorDesc (pretty msg)
 perror (ModuleNotFound fc ns)
     = pure $ errorDesc ("Module" <++> annotate FileCtxt (pretty ns) <++> reflow "not found")
 perror (CyclicImports ns)

@@ -19,6 +19,8 @@ record LSPConfiguration where
   inputHandle : File
   ||| File handle where to output LSP messages.
   outputHandle : File
+  ||| File handle where to put log messages.
+  logHandle : File
   ||| If the initialization protocol has succeded, it contains the client configuration.
   ||| @see https://microsoft.github.io/language-server-protocol/specifications/specification-3-16/#initialize
   initialized : Maybe InitializeParams
@@ -33,6 +35,7 @@ export
 defaultConfig : LSPConfiguration
 defaultConfig = MkLSPConfiguration { inputHandle = stdin
                                    , outputHandle = stdout
+                                   , logHandle = stderr
                                    , initialized = Nothing
                                    , isShutdown = False
                                    , openFile = Nothing

@@ -4,6 +4,8 @@
 module Server.Log
 
 import Core.Core
+import Server.Configuration
+import Server.Utils
 import System.File
 
 %default total
@@ -45,11 +47,13 @@ Ord Severity where
 
 ||| Logs a string with the provided severity level.
 export
-logString : Severity -> String -> Core ()
-logString severity msg = coreLift $
-  fPutStrLn stderr ("LOG " ++ show severity ++ ": " ++ msg) *> pure ()
-
+logString : Ref LSPConf LSPConfiguration => Severity -> String -> Core ()
+logString severity msg = do
+  logHandle <- gets LSPConf logHandle
+  coreLift_ $ fPutStrLn logHandle ("LOG " ++ show severity ++ ": " ++ msg)
+  coreLift_ $ fflush logHandle
+--   fPutStrLn stderr ("LOG " ++ show severity ++ ": " ++ msg) *> pure ()
 ||| Logs a showable value with the provided severity level.
 export
-logShow : Show a => Severity -> a -> Core ()
+logShow : Ref LSPConf LSPConfiguration => Show a => Severity -> a -> Core ()
 logShow severity = logString severity . show

@@ -78,6 +78,7 @@ runServer = do
     | Left err => do logShow Error (show err)
                      sendUnknownResponseMessage (internalError "Error while recovering the content part of a message")
                      runServer
+  logString Debug msg
   let Just msg = parse msg
     | Nothing => do logString Error "Error while parsing content"
                     sendUnknownResponseMessage parseError

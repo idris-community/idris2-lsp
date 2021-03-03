@@ -101,7 +101,7 @@ deriveToJSON opts n = do
                    else `(JObject $ catMaybes ~rhs)
       let lhs = `(~(var funName) ~(applyBinds (var conName) (reverse bindNames)))
       pure $ patClause lhs rhs
-    let funclaim = IClaim EmptyFC MW Export [Inline] (MkTy EmptyFC funName `(~(var name) -> JSON))
+    let funclaim = IClaim EmptyFC MW Export [Inline] (MkTy EmptyFC EmptyFC funName `(~(var name) -> JSON))
     let fundecl = IDef EmptyFC funName cons
     declare [funclaim, fundecl]
     [(ifName, _)] <- getType `{{ToJSON}}
@@ -109,7 +109,7 @@ deriveToJSON opts n = do
     [NS _ (DN _ ifCon)] <- getCons ifName
       | _ => fail "Interface constructor error"
     let retty = `(ToJSON ~(var name))
-    let objclaim = IClaim EmptyFC MW Export [Hint True, Inline] (MkTy EmptyFC objName retty)
+    let objclaim = IClaim EmptyFC MW Export [Hint True, Inline] (MkTy EmptyFC EmptyFC objName retty)
     let objrhs = `(~(var ifCon) ~(var funName))
     let objdecl = IDef EmptyFC objName [(PatClause EmptyFC (var objName) objrhs)]
     declare [objclaim, objdecl]
@@ -171,7 +171,7 @@ deriveFromJSON opts n = do
                      then (uncurry patClause <$> clauses)
                      else [patClause `(~(var funName) (JObject ~(bindvar $ show argName)))
                                      (foldl (\acc, x => `(~x <|> ~acc)) `(Nothing) (snd <$> clauses))]
-    let funClaim = IClaim EmptyFC MW Export [Inline] (MkTy EmptyFC funName `(JSON -> Maybe ~(var name)))
+    let funClaim = IClaim EmptyFC MW Export [Inline] (MkTy EmptyFC EmptyFC funName `(JSON -> Maybe ~(var name)))
     let funDecl = IDef EmptyFC funName (clauses ++ [patClause `(~(var funName) ~implicit') `(Nothing)])
     declare [funClaim, funDecl]
     [(ifName, _)] <- getType `{{FromJSON}}
@@ -179,7 +179,7 @@ deriveFromJSON opts n = do
     [NS _ (DN _ ifCon)] <- getCons ifName
       | _ => fail "Interface constructor error"
     let retty = `(FromJSON ~(var name))
-    let objClaim = IClaim EmptyFC MW Export [Hint True, Inline] (MkTy EmptyFC objName retty)
+    let objClaim = IClaim EmptyFC MW Export [Hint True, Inline] (MkTy EmptyFC EmptyFC objName retty)
     let objrhs = `(~(var ifCon) ~(var funName))
     let objDecl = IDef EmptyFC objName [(PatClause EmptyFC (var objName) objrhs)]
     declare [objClaim, objDecl]

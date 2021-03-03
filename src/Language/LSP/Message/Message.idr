@@ -49,8 +49,8 @@ public export
 MessageParams : (method : Method from type) -> Type
 MessageParams Initialize                          = InitializeParams
 MessageParams Initialized                         = InitializedParams
-MessageParams Shutdown                            = Null
-MessageParams Exit                                = Null
+MessageParams Shutdown                            = Maybe Null
+MessageParams Exit                                = Maybe Null
 MessageParams SetTrace                            = SetTraceParams
 MessageParams WindowWorkDoneProgressCancel        = WorkDoneProgressCancelParams
 MessageParams WorkspaceDidChangeWorkspaceFolders  = DidChangeWorkspaceFoldersParams
@@ -95,7 +95,7 @@ MessageParams CallHierarchyOutgoingCalls          = CallHierarchyOutgoingCallsPa
 MessageParams TextDocumentSemanticTokensFull      = SemanticTokensParams
 MessageParams TextDocumentSemanticTokensFullDelta = SemanticTokensDeltaParams
 MessageParams TextDocumentSemanticTokensRange     = SemanticTokensRangeParams
-MessageParams WorkspaceSemanticTokensRefresh      = Null
+MessageParams WorkspaceSemanticTokensRefresh      = Maybe Null
 MessageParams TextDocumentLinkedEditingRange      = LinkedEditingRangeParams
 MessageParams TextDocumentMoniker                 = MonikerParams
 MessageParams LogTrace                            = LogTraceParams
@@ -107,12 +107,12 @@ MessageParams WindowWorkDoneProgressCreate        = WorkDoneProgressCreateParams
 MessageParams TelemetryEvent                      = JSON
 MessageParams ClientRegisterCapability            = RegistrationParams
 MessageParams ClientUnregisterCapability          = UnregistrationParams
-MessageParams WorkspaceWorkspaceFolders           = Null
+MessageParams WorkspaceWorkspaceFolders           = Maybe Null
 MessageParams WorkspaceConfiguration              = ConfigurationParams
 MessageParams WorkspaceApplyEdit                  = ApplyWorkspaceEditParams
 MessageParams TextDocumentPublishDiagnostics      = PublishDiagnosticsParams
 MessageParams TextDocumentCompletion              = CompletionOptions
-MessageParams WorkspaceCodeLensRefresh            = Null
+MessageParams WorkspaceCodeLensRefresh            = Maybe Null
 MessageParams CancelRequest                       = CancelParams
 MessageParams Progress                            = WorkDoneProgressBegin .+. WorkDoneProgressReport .+. WorkDoneProgressEnd
 
@@ -191,7 +191,7 @@ findParamsImpl Progress                            = %search
 public export
 ResponseResult : (method : Method from Request) -> Type
 ResponseResult Initialize                          = InitializeResult
-ResponseResult Shutdown                            = Null
+ResponseResult Shutdown                            = Maybe Null
 ResponseResult WorkspaceSymbol                     = List SymbolInformation .+. Null
 ResponseResult WorkspaceExecuteCommand             = JSON
 ResponseResult WorkspaceWillCreateFiles            = WorkspaceEdit .+. Null
@@ -209,7 +209,7 @@ ResponseResult TextDocumentDocumentSymbol          = List DocumentSymbol .+. Sym
 ResponseResult TextDocumentCodeAction              = List (Command .+. CodeAction) .+. Null
 ResponseResult CodeActionResolve                   = CodeAction
 ResponseResult TextDocumentCodeLens                = List CodeLens .+. Null
-ResponseResult CodeLensResolve                     = Null
+ResponseResult CodeLensResolve                     = Maybe Null
 ResponseResult TextDocumentDocumentLink            = List DocumentLink .+. Null
 ResponseResult DocumentLinkResolve                 = DocumentLink
 ResponseResult TextDocumentDocumentColor           = List ColorInformation
@@ -226,19 +226,19 @@ ResponseResult CallHierarchyOutgoingCalls          = List CallHierarchyOutgoingC
 ResponseResult TextDocumentSemanticTokensFull      = SemanticTokens .+. Null
 ResponseResult TextDocumentSemanticTokensFullDelta = SemanticTokens .+. SemanticTokensDelta .+. Null
 ResponseResult TextDocumentSemanticTokensRange     = SemanticTokens .+. Null
-ResponseResult WorkspaceSemanticTokensRefresh      = Null
+ResponseResult WorkspaceSemanticTokensRefresh      = Maybe Null
 ResponseResult TextDocumentLinkedEditingRange      = LinkedEditingRanges .+. Null
 ResponseResult TextDocumentMoniker                 = List Moniker .+. Null
 ResponseResult WindowShowMessageRequest            = MessageActionItem .+. Null
 ResponseResult WindowShowDocument                  = ShowDocumentResult
-ResponseResult WindowWorkDoneProgressCreate        = Null
-ResponseResult ClientRegisterCapability            = Null
-ResponseResult ClientUnregisterCapability          = Null
+ResponseResult WindowWorkDoneProgressCreate        = Maybe Null
+ResponseResult ClientRegisterCapability            = Maybe Null
+ResponseResult ClientUnregisterCapability          = Maybe Null
 ResponseResult WorkspaceWorkspaceFolders           = List WorkspaceFolder .+. Null
 ResponseResult WorkspaceConfiguration              = List JSON
 ResponseResult WorkspaceApplyEdit                  = ApplyWorkspaceEditResponse
 ResponseResult TextDocumentCompletion              = List CompletionItem .+. CompletionList .+. Null
-ResponseResult WorkspaceCodeLensRefresh            = Null
+ResponseResult WorkspaceCodeLensRefresh            = Maybe Null
 
 findNotificationImpl : (method : Method from Notification) -> ToJSON (MessageParams method)
 findNotificationImpl Initialized = %search
@@ -329,8 +329,11 @@ FromJSON (from ** method : Method from Notification ** NotificationMessage metho
   fromJSON (JObject arg) = do
     lookup "jsonrpc" arg >>= (guard . (== JString "2.0"))
     (from ** meth) <- lookup "method" arg >>= fromJSON {a = (from ** Method from Notification)}
-    par <- lookup "params" arg >>= (fromJSON @{findParamsImpl meth})
-    pure (from ** meth ** MkNotificationMessage meth par)
+    case meth of
+      Exit => do let par = lookup "params" arg >>= (fromJSON @{findParamsImpl meth})
+                 pure (from ** meth ** MkNotificationMessage meth (join par))
+      _ => do par <- lookup "params" arg >>= (fromJSON @{findParamsImpl meth})
+              pure (from ** meth ** MkNotificationMessage meth par)
   fromJSON _ = neutral
 
 namespace NotificationMessage
@@ -361,8 +364,20 @@ FromJSON (from ** method : Method from Request ** RequestMessage method) where
     lookup "jsonrpc" arg >>= (guard . (== JString "2.0"))
     id <- lookup "id" arg >>= fromJSON
     (from ** method) <- lookup "method" arg >>= fromJSON {a = (from ** Method from Request)}
-    params <- lookup "params" arg >>= (fromJSON @{findParamsImpl method})
-    pure (from ** method ** MkRequestMessage id method params)
+    case method of
+      Shutdown => do let params = lookup "params" arg >>= (fromJSON @{findParamsImpl method})
+                     pure (from ** method ** MkRequestMessage id method (join params))
+      WorkspaceSemanticTokensRefresh =>
+        do let params = lookup "params" arg >>= (fromJSON @{findParamsImpl method})
+           pure (from ** method ** MkRequestMessage id method (join params))
+      WorkspaceWorkspaceFolders =>
+        do let params = lookup "params" arg >>= (fromJSON @{findParamsImpl method})
+           pure (from ** method ** MkRequestMessage id method (join params))
+      WorkspaceCodeLensRefresh =>
+        do let params = lookup "params" arg >>= (fromJSON @{findParamsImpl method})
+           pure (from ** method ** MkRequestMessage id method (join params))
+      _ => do params <- lookup "params" arg >>= (fromJSON @{findParamsImpl method})
+              pure (from ** method ** MkRequestMessage id method params)
   fromJSON _ = neutral
 
 namespace RequestMessage

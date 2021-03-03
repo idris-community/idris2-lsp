@@ -58,8 +58,10 @@ processMessage Initialize msg@(MkRequestMessage id Initialize params) = do
   setSourceDir (path <$> toMaybe params.rootUri)
   sendResponseMessage Initialize response
   update LSPConf (record {initialized = Just params})
-processMessage Shutdown (MkRequestMessage _ Shutdown _) =
+processMessage Shutdown msg@(MkRequestMessage _ Shutdown _) = do
   -- In a future multithreaded model, we must guarantee that all pending request are still executed.
+  let response = Success (getResponseId msg) (the (Maybe Null) Nothing)
+  sendResponseMessage Shutdown response
   update LSPConf (record {isShutdown = True})
 processMessage Exit (MkNotificationMessage Exit _) = do
   let status = if !(gets LSPConf isShutdown) then ExitSuccess else ExitFailure 1

@@ -87,12 +87,12 @@ isSubDelim c = c `Prelude.elem` ['!', '$', '&', '\'', '(', ')', '*', '+', ',', '
 ||| @see RFC 3986, section 2.1
 pctEncoded : Parser Char
 pctEncoded = do
-  char '%'
+  ignore $ char '%'
   x <- satisfy isHexDigit
   y <- satisfy isHexDigit
   let Just d = fromHexChars [y, x]
     | Nothing => fail $ "Cannot convert " ++ show (the (List Char) [x, y]) ++ " to a hex number"
-  pure (chr d)
+  pure (chr (cast d))
 
 ||| Parser for a URI scheme.
 |||
@@ -191,7 +191,7 @@ regNameParser = pack <$> many (satisfy isUnreserved <|> pctEncoded <|> satisfy i
 ||| @see RFC 3986, section 3.2
 authorityParser : Parser URIAuthority
 authorityParser = do
-  string "//"
+  ignore $ string "//"
   userInfo <- optional (userInfoParser <* char '@')
   host <- ipLiteralParser <|> ipV4AddressParser <|> regNameParser
   port <- optional (char ':' *> natural)
@@ -270,7 +270,7 @@ export
 uriParser : Parser URI
 uriParser = do
   scheme <- schemeParser
-  char ':'
+  ignore $ char ':'
   (authority, path) <- [| MkPair ((Just <$> authorityParser)) abempty |] <|> ((Nothing,) <$> (absolute <|> rootless <|> empty))
   query <- optionMap "" id (char '?' *> queryParser)
   fragment <- optionMap "" id (char '#' *> fragmentParser)
@@ -300,7 +300,7 @@ export
 uriAbsoluteParser : Parser URI
 uriAbsoluteParser = do
   scheme <- schemeParser
-  char ':'
+  ignore $ char ':'
   (authority, path) <- [| MkPair ((Just <$> authorityParser)) abempty |] <|> ((Nothing,) <$> (absolute <|> rootless <|> empty))
   query <- optionMap "" id (char '?' *> queryParser)
   pure (MkURI scheme authority path query "")
