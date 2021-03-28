@@ -412,11 +412,13 @@ perror (TTCError msg)
         <++> parens (pretty "the most likely case is that the ./build directory in your current project contains files from a previous build of idris2 or the idris2 executable is from a different build than the installed .ttc files")
 perror (FileErr fname err)
     = pure $ errorDesc (reflow "File error in" <++> pretty fname <++> colon) <++> pretty (show err)
+perror (CantFindPackage fname)
+    = pure $ errorDesc ("Can't find package" <++> pretty fname)
 perror (LitFail _)
     = pure $ errorDesc (reflow "Can't parse literate.")
 perror (LexFail _ msg)
     = pure $ errorDesc (pretty msg)
-perror (ParseFail _ msg toks)
+perror (ParseFail _ msg)
     = pure $ errorDesc (pretty msg)
 perror (ModuleNotFound fc ns)
     = pure $ errorDesc ("Module" <++> annotate FileCtxt (pretty ns) <++> reflow "not found")
@@ -432,6 +434,8 @@ perror (NoForeignCC fc) = do
                    , reflow "Some backends have additional specifier rules, refer to their documentation."
                    ]
     pure res
+perror (BadMultiline _ str)
+    = pure $ errorDesc (reflow "Invalid multiline string" <++> colon <++> line <++> pretty str)
 
 perror (InType fc n err)
     = pure $ hsep [ errorDesc (reflow "While processing type of" <++> code (pretty !(prettyName n))) <+> dot
