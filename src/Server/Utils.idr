@@ -4,6 +4,7 @@
 module Server.Utils
 
 import Core.Core
+import Data.Bits
 import Data.List
 import Data.Strings
 import Language.JSON
@@ -27,9 +28,10 @@ fGetHeader handle = do
      then pure $ Right l
      else (map (l ++)) <$> fGetHeader handle
 
+-- From Language.JSON.Data
 private
-intToHexString : Int -> String
-intToHexString n =
+b16ToHexString : Bits16 -> String
+b16ToHexString n =
   case n of
     0 => "0"
     1 => "1"
@@ -48,7 +50,8 @@ intToHexString n =
     14 => "E"
     15 => "F"
     other => assert_total $
-               intToHexString (shiftR n 4) ++ intToHexString (mod n 16)
+               b16ToHexString (n `shiftR` fromNat 4) ++
+               b16ToHexString (n .&. 15)
 
 private
 showChar : Char -> String
@@ -62,8 +65,7 @@ showChar c
          '\\' => "\\\\"
          '"'  => "\\\""
          c => if isControl c || c >= '\127'
---                 then "\\u" ++ b16ToHexString (fromInteger (cast (ord c)))
-                 then "\\u" ++ intToHexString (ord c)-- quick hack until b16ToHexString is available in idris2
+                 then "\\u" ++ b16ToHexString (cast (ord c)) -- quick hack until b16ToHexString is available in Idris2
                  else singleton c
 
 private

@@ -10,6 +10,7 @@ import Core.Metadata
 import Core.UnifyState
 import Data.List1
 import Data.Strings
+import Idris.CommandLine
 import Idris.REPLOpts
 import Idris.SetOptions
 import Idris.Syntax
@@ -103,8 +104,8 @@ main = do
               s <- newRef Syn initSyntax
               addPrimitives
               setPrefix yprefix
-              addPkgDir "prelude"
-              addPkgDir "base"
+              addPkgDir "prelude" anyBounds
+              addPkgDir "base" anyBounds
               addDataDir (prefix_dir (dirs (options defs)) </> ("idris2-" ++ showVersion False version) </> "support")
               addLibDir (prefix_dir (dirs (options defs)) </> ("idris2-" ++ showVersion False version) </> "lib")
               Just cwd <- coreLift $ currentDir
