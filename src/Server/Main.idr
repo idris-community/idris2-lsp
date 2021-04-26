@@ -11,7 +11,8 @@ import Core.UnifyState
 import Data.List1
 import Data.Strings
 import Idris.CommandLine
-import Idris.REPLOpts
+import Idris.REPL.Opts
+import Idris.Package.Types
 import Idris.SetOptions
 import Idris.Syntax
 import Idris.Version
@@ -111,7 +112,7 @@ main = do
               Just cwd <- coreLift $ currentDir
                 | Nothing => throw (InternalError "Can't get current directory")
               addLibDir cwd
-              o <- newRef ROpts (REPLOpts.defaultOpts Nothing (REPL False) [])
+              o <- newRef ROpts (Opts.defaultOpts Nothing (REPL False) [])
               u <- newRef UST initUState
               m <- newRef MD initMetadata
               runServer)

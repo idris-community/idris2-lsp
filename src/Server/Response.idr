@@ -9,7 +9,7 @@ import Core.Env
 import Core.FC
 import Data.Strings
 import Idris.Pretty
-import Idris.REPLOpts
+import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
 import Language.JSON
@@ -65,7 +65,7 @@ sendNotificationMessage method msg = do
   let body = stringify (toJSON msg)
   let header = header (cast $ length body)
   outputHandle <- gets LSPConf outputHandle
-  coreLift_ $ fPutStrLn outputHandle (header ++ body)
+  coreLift_ $ fPutStr outputHandle (header ++ body)
   coreLift_ $ fflush outputHandle
   logString Info ("Sent notification message for method " ++ stringify (toJSON method))
   logString Debug (stringify (toJSON msg))
@@ -453,6 +453,12 @@ perror (InRHS fc n err)
     = pure $ hsep [ errorDesc (reflow "While processing right hand side of" <++> code (pretty !(prettyName n))) <+> dot
                   , !(perror err)
                   ]
+perror (MaybeMisspelling err ns) = pure $ !(perror err) <+> case ns of
+  (n ::: []) => reflow "Did you mean:" <++> pretty n <+> "?"
+  _ => let (xs, x) = unsnoc ns in
+       reflow "Did you mean any of:"
+       <++> concatWith (surround (comma <+> space)) (map pretty xs)
+       <+> comma <++> reflow "or" <++> pretty x <+> "?"
 
 ||| Computes a LSP `Diagnostic` from a compiler error.
 |||

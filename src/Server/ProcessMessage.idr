@@ -12,7 +12,7 @@ import Idris.ModTree
 import Idris.Package
 import Idris.Pretty
 import Idris.REPL
-import Idris.REPLOpts
+import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
 import Language.JSON
