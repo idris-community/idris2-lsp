@@ -1,3 +1,7 @@
+.PHONY: build
+build:
+	idris2 --build lsp.ipkg
+
 testbin:
 	@${MAKE} -C tests testbin
 
@@ -5,4 +9,4 @@ testbin:
 test-only:
 	${MAKE} -C tests only=$(only)
 
-test: testbin test-only
+test: build testbin test-only
