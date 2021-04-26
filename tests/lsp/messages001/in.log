@@ -1,6 +1,6 @@
-Content-Length: 129
+Content-Length: 171
 
-{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"processId":null,"rootUri":"file:///tmp/test-lsp.idr","capabilities":{}}}Content-Length: 44
+{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"processId":null,"rootUri":"file:///tmp/test-lsp.idr","capabilities":{"workspaceFolders":[{"uri":"file:///tmp"}]}}}Content-Length: 44
 
 {"jsonrpc":"2.0","id":1,"method":"shutdown"}Content-Length: 40
 
