@@ -110,33 +110,34 @@ processMessage TextDocumentDidOpen msg@(MkNotificationMessage TextDocumentDidOpe
     resetContext
     let fpath = params.textDocument.uri.path
     fname <- fromMaybe fpath <$> findIpkg (Just fpath)
-    errs <- buildDeps params.textDocument.uri.path -- FIXME: the compiler always dumps the errors on stdout, requires
-                                                   --        a compiler change.
+    errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
+                            --        a compiler change.
+    logString Debug $ "errors : \{show errs}"
     setSource params.textDocument.text
     resetProofState
     sendDiagnostics params.textDocument.uri (Just params.textDocument.version) errs
-processMessage TextDocumentDidChange msg@(MkNotificationMessage TextDocumentDidChange params) =
+processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSave params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    update LSPConf (record {openFile = Just (params.textDocument.uri, params.textDocument.version)})
+    update LSPConf (record {openFile = Just (params.textDocument.uri, 0)})
     -- TODO: same issue of TextDocumentDidOpen
     resetContext
     let fpath = params.textDocument.uri.path
     fname <- fromMaybe fpath <$> findIpkg (Just fpath)
-    let (Left source :: _) = params.contentChanges
-      | _  => do logString Error $ "Error in textDocument/didChange expected format"
-                 sendUnknownResponseMessage (invalidParams "Expected one full TextDocumentContentChangeEvent")
-    errs <- buildDeps params.textDocument.uri.path -- FIXME: add string version to the compiler (requires upstream change, probably)
-                                                   -- FIXME: stop emitting errors on stdout (requires upstream change)
-    setSource source.text
+    let Just source = params.text
+      | _  => do logString Error $ "Error in textDocument/didSave expected format"
+                 sendUnknownResponseMessage (invalidParams "Expected full text after save")
+    errs <- buildDeps fname -- FIXME: add string version to the compiler (requires upstream change, probably)
+                            -- FIXME: stop emitting errors on stdout (requires upstream change)
+    logString Debug $ "errors : \{show errs}"
+    setSource source
     resetProofState
-    sendDiagnostics params.textDocument.uri (Just params.textDocument.version) errs
+    sendDiagnostics params.textDocument.uri Nothing errs
 processMessage TextDocumentDidClose msg@(MkNotificationMessage TextDocumentDidClose params) =
   whenNotShutdown $ whenInitialized $ \conf => do
     update LSPConf (record {openFile = Nothing})
-    logString Info $ "File " ++ params.textDocument.uri.path ++ " closed"
+    logString Info $ "File \{params.textDocument.uri.path} closed"
 processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    -- Temporary measure for examples
     let fpath = params.textDocument.uri.path
     fname <- fromMaybe fpath <$> findIpkg (Just fpath)
     res <- loadMainFile fname
@@ -145,14 +146,12 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
     meta <- get MD
 
     let name = findInTree (params.position.line, params.position.character) (nameLocMap meta)
-    logString Debug $ "in tree : \{show name}"
     -- Lookup the name globally
     globals <- maybe (pure []) (\n => lookupCtxtName n (gamma defs)) name
     globalResult <- the (Core $ Maybe $ Doc IdrisAnn) $ case globals of
       [] => pure Nothing
       ts => do tys <- traverse (displayType defs) ts
                pure $ Just (vsep tys)
-    logString Debug $ "global length : \{show $ length globals}"
     localResult <- findTypeAt $ anyAt $ within (params.position.line, params.position.character)
     line <- case (globalResult, localResult) of
       -- Give precedence to the local name, as it shadows the others

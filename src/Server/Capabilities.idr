@@ -13,7 +13,7 @@ syncOptions = MkTextDocumentSyncOptions { openClose = Just True
                                         , change = Just Full
                                         , willSave = Nothing
                                         , willSaveWaitUntil = Nothing
-                                        , save = Nothing
+                                        , save = Just (Right (MkSaveOptions (Just True)))
                                         }
 
 ||| Default server capabilities to be sent to clients during the initialization protocol.
