@@ -1,0 +1,3 @@
+# the path here seems fragile,
+# should probably come up with a better alternative
+cat in.log | ../../../build/exec/idris2-lsp

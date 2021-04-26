@@ -1,0 +1,6 @@
+Content-Length: 971
+
+{"jsonrpc":"2.0","id":0,"result":{"capabilities":{"textDocumentSync":{"openClose":true,"change":1,"save":{"includeText":true}},"completionProvider":{"triggerCharacters":[],"allCommitCharacters":[]},"hoverProvider":true,"signatureHelpProvider":{},"declarationProvider":false,"typeDefinitionProvider":false,"implementationProvider":false,"referencesProvider":false,"documentHighlightProvider":false,"documentSymbolProvider":false,"codeActionProvider":false,"codeLensProvider":{},"documentLinkProvider":{},"colorProvider":false,"documentFormattingProvider":false,"documentRangeFormattingProvider":false,"renameProvider":false,"foldingRangeProvider":false,"executeCommandProvider":{"commands":[]},"selectionRangeProvider":false,"linkedEditingRangeProvider":false,"callHierarchyProvider":false,"monikerProvider":false,"workspaceSymbolProvider":false,"workspace":{"workspaceFolders":{"supported":false},"fileOperations":{}}},"serverInfo":{"name":"idris2-lsp","version":"0.1"}}}
+Content-Length: 38
+
+{"jsonrpc":"2.0","id":1,"result":null}

@@ -1,6 +1,6 @@
 package lsp
 
-depends = idris2, contrib
+depends = idris2, prelude, contrib
 
 sourcedir = "src"
 
