@@ -17,6 +17,7 @@ import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
 import Idris.IDEMode.Holes
+import Language.LSP.CodeAction.CaseSplit
 import Language.JSON
 import Language.LSP.Message
 import Libraries.Data.PosMap
@@ -150,6 +151,10 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
       (Nothing, Nothing) => pure ""
     let response = Success (getResponseId msg) (Left $ MkHover (Right $ Right $ MkMarkupContent PlainText line) Nothing)
     sendResponseMessage TextDocumentHover response
+
+processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
+  whenNotShutdown $ whenInitialized $ \_ => caseSplit (getResponseId msg) params
+
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do
     logString Warning $ "received a not supported" ++ show (toJSON method) ++ " request"
