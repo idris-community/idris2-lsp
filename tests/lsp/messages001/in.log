@@ -1,0 +1,7 @@
+Content-Length: 129
+
+{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"processId":null,"rootUri":"file:///tmp/test-lsp.idr","capabilities":{}}}Content-Length: 44
+
+{"jsonrpc":"2.0","id":1,"method":"shutdown"}Content-Length: 40
+
+{"jsonrpc":"2.0","id":1,"method":"exit"}
