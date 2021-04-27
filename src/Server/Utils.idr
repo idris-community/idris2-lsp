@@ -105,12 +105,16 @@ stringify (JObject xs) = "{" ++ stringifyProps xs ++ "}"
                                   else "," ++ stringifyProps xs
 
 export
-findInTree : FilePos -> PosMap (NonEmptyFC, Name) -> Maybe Name
-findInTree p m = map snd $ head' $ sortBy (\x, y => cmp (measure x) (measure y)) $ searchPos p m
+findInTreeLoc : FilePos -> PosMap (NonEmptyFC, Name) -> Maybe (NonEmptyFC, Name)
+findInTreeLoc p m = head' $ sortBy (\x, y => cmp (measure x) (measure y)) $ searchPos p m
   where
     cmp : FileRange -> FileRange -> Ordering
     cmp ((sr1, sc1), (er1, ec1)) ((sr2, sc2), (er2, ec2)) =
       compare (er1 - sr1, ec1 - sc1) (er2 - sr2, ec2 - sr2)
+
+export
+findInTree : FilePos -> PosMap (NonEmptyFC, Name) -> Maybe Name
+findInTree p m = snd <$> findInTreeLoc p m
 
 export
 anyAt : (a -> Bool) -> a -> b -> Bool
