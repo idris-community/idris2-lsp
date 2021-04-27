@@ -20,6 +20,7 @@ import Idris.Syntax
 import Idris.IDEMode.Holes
 import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
+import Language.LSP.CodeAction.GenerateDef
 import Language.JSON
 import Language.LSP.Message
 import Libraries.Data.PosMap
@@ -162,9 +163,15 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
 
 processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
   whenNotShutdown $ whenInitialized $ \_ => do
-    splitAction <- caseSplit (getResponseId msg) params
     exprSearchAction <- map Just <$> exprSearch params
-    let resp = flatten (splitAction :: exprSearchAction)
+    splitAction <- caseSplit (getResponseId msg) params
+    -- The order is important here, the generate definition functionality
+    -- leave a trace in the context, which could be pixed up in other
+    -- parts which look up information from the Context. In the resp the order
+    -- is not improtant.
+    -- TODO: Figure out how to clear out the temporary results of generate-def
+    generateDefAction <- map Just <$> generateDef (getResponseId msg) params
+    let resp = flatten $ splitAction :: generateDefAction ++ exprSearchAction
     sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make resp))
     where
       flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])

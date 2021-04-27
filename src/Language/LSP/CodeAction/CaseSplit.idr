@@ -16,6 +16,7 @@ import Language.LSP.Message
 import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
 import Server.Configuration
+import Server.Log
 import Server.Response
 import Server.Utils
 import System.File
@@ -49,11 +50,13 @@ caseSplit msgId params = do
   let True = params.range.start.line == params.range.end.line
       | _ => pure Nothing
 
-  meta <- get MD
   let line = params.range.start.line
   let col = params.range.start.character
-  let Just name = findInTree (line, col) (nameLocMap meta)
-    | Nothing => pure Nothing
+
+  Just name <- gets MD (findInTree (line, col) . nameLocMap)
+    | Nothing => do
+        logString Debug "caseSplit: couldn't find name at \{show (line, col)}"
+        pure Nothing
 
   let find = if col > 0
                 then within (line, col)

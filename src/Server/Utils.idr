@@ -3,9 +3,11 @@
 ||| (C) The Idris Community, 2021
 module Server.Utils
 
+import Core.Context
 import Core.Core
 import Core.FC
 import Core.Name
+import Core.Metadata
 import Data.Bits
 import Data.List
 import Data.Strings
@@ -123,6 +125,7 @@ findInTree p m = snd <$> findInTreeLoc p m
 export
 anyAt : (a -> Bool) -> a -> b -> Bool
 anyAt p loc _ = p loc
+
 
 export
 anyWithName : Name -> (NonEmptyFC -> Bool) -> NonEmptyFC -> (Name, b) -> Bool
