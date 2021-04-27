@@ -29,6 +29,8 @@ record LSPConfiguration where
   isShutdown : Bool
   ||| The currently loaded file, if any, and its version.
   openFile : Maybe (DocumentURI, Int)
+  ||| Limit for multiple search results
+  searchLimit : Nat
 
 ||| Server default configuration. Uses standard input and standard output for input/output.
 export
@@ -39,4 +41,5 @@ defaultConfig = MkLSPConfiguration { inputHandle = stdin
                                    , initialized = Nothing
                                    , isShutdown = False
                                    , openFile = Nothing
+                                   , searchLimit = 5
                                    }

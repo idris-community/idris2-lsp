@@ -19,6 +19,7 @@ import Idris.Resugar
 import Idris.Syntax
 import Idris.IDEMode.Holes
 import Language.LSP.CodeAction.CaseSplit
+import Language.LSP.CodeAction.ExprSearch
 import Language.JSON
 import Language.LSP.Message
 import Libraries.Data.PosMap
@@ -160,7 +161,8 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
 processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
   whenNotShutdown $ whenInitialized $ \_ => do
     splitAction <- caseSplit (getResponseId msg) params
-    let resp = flatten [splitAction]
+    exprSearchAction <- map Just <$> exprSearch params
+    let resp = flatten (splitAction :: exprSearchAction)
     sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make resp))
     where
       flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
