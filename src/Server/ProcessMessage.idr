@@ -17,6 +17,7 @@ import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
 import Idris.IDEMode.Holes
+import Language.LSP.CodeAction.CaseSplit
 import Language.JSON
 import Language.LSP.Message
 import Libraries.Data.PosMap
@@ -44,16 +45,6 @@ displayTerm : {auto c : Ref Ctxt Defs} ->
 displayTerm defs tm
     = do ptm <- resugar [] !(normaliseHoles defs [] tm)
          pure (prettyTerm ptm)
-
-findInTree : FilePos -> PosMap (NonEmptyFC, Name) -> Maybe Name
-findInTree p m = map snd $ head' $ sortBy (\x, y => cmp (measure x) (measure y)) $ searchPos p m
-  where
-    cmp : FileRange -> FileRange -> Ordering
-    cmp ((sr1, sc1), (er1, ec1)) ((sr2, sc2), (er2, ec2)) =
-      compare (er1 - sr1, ec1 - sc1) (er2 - sr2, ec2 - sr2)
-
-anyAt : (a -> Bool) -> a -> b -> Bool
-anyAt p loc _ = p loc
 
 ||| Guard for messages that requires a successful initialization before being allowed.
 whenInitialized : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
@@ -160,6 +151,10 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
       (Nothing, Nothing) => pure ""
     let response = Success (getResponseId msg) (Left $ MkHover (Right $ Right $ MkMarkupContent PlainText line) Nothing)
     sendResponseMessage TextDocumentHover response
+
+processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
+  whenNotShutdown $ whenInitialized $ \_ => caseSplit (getResponseId msg) params
+
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do
     logString Warning $ "received a not supported" ++ show (toJSON method) ++ " request"

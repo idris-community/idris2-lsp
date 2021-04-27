@@ -30,7 +30,11 @@ serverCapabilities =
                        , referencesProvider               = Just (Left False)
                        , documentHighlightProvider        = Just (Left False)
                        , documentSymbolProvider           = Just (Left False)
-                       , codeActionProvider               = Just (Left False)
+                       , codeActionProvider               = Just (Right
+                                                                 (MkCodeActionOptions
+                                                                    Nothing
+                                                                    (Just [Other "case-split"])
+                                                                    (Just False)))
                        , codeLensProvider                 = Just (MkCodeLensOptions Nothing Nothing)
                        , documentLinkProvider             = Just (MkDocumentLinkOptions Nothing Nothing)
                        , colorProvider                    = Just (Left False)
