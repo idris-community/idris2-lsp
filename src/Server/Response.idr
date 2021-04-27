@@ -56,6 +56,16 @@ export
 serverNotInitialized : ResponseError
 serverNotInitialized = MkResponseError ServerNotInitialized "" JNull
 
+writeResponse : Ref LSPConf LSPConfiguration
+             => JSON
+             -> Core ()
+writeResponse msg = do
+  let body = stringify msg
+  let header = header (cast $ length body)
+  outputHandle <- gets LSPConf outputHandle
+  coreLift_ $ fPutStr outputHandle (header ++ body)
+  coreLift_ $ fflush outputHandle
+
 ||| Sends a new notification from the server to the client.
 export
 sendNotificationMessage : Ref LSPConf LSPConfiguration
@@ -63,11 +73,7 @@ sendNotificationMessage : Ref LSPConf LSPConfiguration
                        -> NotificationMessage method
                        -> Core ()
 sendNotificationMessage method msg = do
-  let body = stringify (toJSON msg)
-  let header = header (cast $ length body)
-  outputHandle <- gets LSPConf outputHandle
-  coreLift_ $ fPutStr outputHandle (header ++ body)
-  coreLift_ $ fflush outputHandle
+  writeResponse (toJSON msg)
   logString Info ("Sent notification message for method " ++ stringify (toJSON method))
   logString Debug (stringify (toJSON msg))
 
@@ -78,11 +84,7 @@ sendResponseMessage : Ref LSPConf LSPConfiguration
                    -> ResponseMessage method
                    -> Core ()
 sendResponseMessage method msg = do
-  let body = stringify (toJSON msg)
-  let header = header (cast $ length body)
-  outputHandle <- gets LSPConf outputHandle
-  coreLift_ $ fPutStrLn outputHandle (header ++ body)
-  coreLift_ $ fflush outputHandle
+  writeResponse (toJSON msg)
   logString Info ("Sent response message for method " ++ stringify (toJSON method))
   logString Debug (stringify (toJSON msg))
 
@@ -91,11 +93,7 @@ export
 sendUnknownResponseMessage : Ref LSPConf LSPConfiguration => ResponseError -> Core ()
 sendUnknownResponseMessage err = do
   -- The method type Initialize is irrelevant since the message is unknown, can use any method, the message would be the same.
-  let body = stringify (toJSON {a = ResponseMessage Initialize} (Failure (make MkNull) err))
-  let header = header (cast $ length body)
-  outputHandle <- gets LSPConf outputHandle
-  coreLift_ $ fPutStrLn outputHandle (header ++ body)
-  coreLift_ $ fflush outputHandle
+  writeResponse (toJSON {a = ResponseMessage Initialize} (Failure (make MkNull) err))
   logString Info "Sent response to unknown method"
 
 Cast FilePos Position where
