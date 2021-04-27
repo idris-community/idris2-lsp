@@ -160,8 +160,13 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
 processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
   whenNotShutdown $ whenInitialized $ \_ => do
     splitAction <- caseSplit (getResponseId msg) params
-    let resp = maybe [] (\act => [make act]) splitAction
-    sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (Here resp))
+    let resp = flatten [splitAction]
+    sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make resp))
+    where
+      flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
+      flatten [] = []
+      flatten (Nothing :: xs) = flatten xs
+      flatten ((Just x) :: xs) = make x :: flatten xs
 
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do
