@@ -13,43 +13,42 @@ syncOptions = MkTextDocumentSyncOptions { openClose = Just True
                                         , change = Just Full
                                         , willSave = Nothing
                                         , willSaveWaitUntil = Nothing
-                                        , save = Just (Right (MkSaveOptions (Just True)))
+                                        , save = Just (make (MkSaveOptions (Just True)))
                                         }
 
 ||| Default server capabilities to be sent to clients during the initialization protocol.
 export
 serverCapabilities : ServerCapabilities
 serverCapabilities =
-  MkServerCapabilities { textDocumentSync                 = Just (Left syncOptions)
+  MkServerCapabilities { textDocumentSync                 = Just (make syncOptions)
                        , completionProvider               = Just (MkCompletionOptions Nothing (Just []) (Just []) Nothing)
-                       , hoverProvider                    = Just (Left True)
+                       , hoverProvider                    = Just (make True)
                        , signatureHelpProvider            = Just (MkSignatureHelpOptions Nothing Nothing Nothing)
-                       , declarationProvider              = Just (Left False)
-                       , typeDefinitionProvider           = Just (Left False)
-                       , implementationProvider           = Just (Left False)
-                       , referencesProvider               = Just (Left False)
-                       , documentHighlightProvider        = Just (Left False)
-                       , documentSymbolProvider           = Just (Left False)
-                       , codeActionProvider               = Just (Right
-                                                                 (MkCodeActionOptions
-                                                                    Nothing
-                                                                    (Just [Other "case-split"])
-                                                                    (Just False)))
+                       , declarationProvider              = Just (make False)
+                       , typeDefinitionProvider           = Just (make False)
+                       , implementationProvider           = Just (make False)
+                       , referencesProvider               = Just (make False)
+                       , documentHighlightProvider        = Just (make False)
+                       , documentSymbolProvider           = Just (make False)
+                       , codeActionProvider               = Just (make (MkCodeActionOptions
+                                                                          Nothing
+                                                                          (Just [Other "case-split"])
+                                                                          (Just False)))
                        , codeLensProvider                 = Just (MkCodeLensOptions Nothing Nothing)
                        , documentLinkProvider             = Just (MkDocumentLinkOptions Nothing Nothing)
-                       , colorProvider                    = Just (Left False)
-                       , documentFormattingProvider       = Just (Left False)
-                       , documentRangeFormattingProvider  = Just (Left False)
+                       , colorProvider                    = Just (make False)
+                       , documentFormattingProvider       = Just (make False)
+                       , documentRangeFormattingProvider  = Just (make False)
                        , documentOnTypeFormattingProvider = Nothing
-                       , renameProvider                   = Just (Left False)
-                       , foldingRangeProvider             = Just (Left False)
+                       , renameProvider                   = Just (make False)
+                       , foldingRangeProvider             = Just (make False)
                        , executeCommandProvider           = Just (MkExecuteCommandOptions Nothing [])
-                       , selectionRangeProvider           = Just (Left False)
-                       , linkedEditingRangeProvider       = Just (Left False)
-                       , callHierarchyProvider            = Just (Left False)
+                       , selectionRangeProvider           = Just (make False)
+                       , linkedEditingRangeProvider       = Just (make False)
+                       , callHierarchyProvider            = Just (make False)
                        , semanticTokensProvider           = Nothing
-                       , monikerProvider                  = Just (Left False)
-                       , workspaceSymbolProvider          = Just (Left False)
+                       , monikerProvider                  = Just (make False)
+                       , workspaceSymbolProvider          = Just (make False)
                        , workspace                        = Just (MkWorkspaceServerCapabilities
                                                                  (Just (MkWorkspaceFoldersServerCapabilities (Just False) Nothing))
                                                                  (Just (MkFileOperationsServerCapabilities Nothing Nothing Nothing Nothing Nothing Nothing)))

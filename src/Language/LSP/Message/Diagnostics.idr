@@ -67,7 +67,7 @@ record Diagnostic where
   constructor MkDiagnostic
   range              : Range
   severity           : Maybe DiagnosticSeverity
-  code               : Maybe (Int .+. String)
+  code               : Maybe (OneOf [Int, String])
   codeDescription    : Maybe CodeDescription
   source             : Maybe String
   message            : String

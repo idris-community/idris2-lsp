@@ -105,7 +105,7 @@ record CodeActionRegistrationOptions where
   workDoneProgress : Maybe Bool
   codeActionKinds  : Maybe (List CodeActionKind)
   resolveProvider  : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{CodeActionRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeAction

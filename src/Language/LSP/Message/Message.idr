@@ -3,6 +3,7 @@
 ||| (C) The Idris Community, 2021
 module Language.LSP.Message.Message
 
+import Data.OneOf
 import Language.JSON
 import Language.LSP.Message.CallHierarchy
 import Language.LSP.Message.Cancel
@@ -114,7 +115,7 @@ MessageParams TextDocumentPublishDiagnostics      = PublishDiagnosticsParams
 MessageParams TextDocumentCompletion              = CompletionOptions
 MessageParams WorkspaceCodeLensRefresh            = Maybe Null
 MessageParams CancelRequest                       = CancelParams
-MessageParams Progress                            = WorkDoneProgressBegin .+. WorkDoneProgressReport .+. WorkDoneProgressEnd
+MessageParams Progress                            = OneOf [WorkDoneProgressBegin, WorkDoneProgressReport, WorkDoneProgressEnd]
 
 -- Hacky, but avoids having to carry a FromJSON (MessageParams method) inside sigma types
 findParamsImpl : (method : Method from type) -> FromJSON (MessageParams method)
@@ -192,52 +193,52 @@ public export
 ResponseResult : (method : Method from Request) -> Type
 ResponseResult Initialize                          = InitializeResult
 ResponseResult Shutdown                            = Maybe Null
-ResponseResult WorkspaceSymbol                     = List SymbolInformation .+. Null
+ResponseResult WorkspaceSymbol                     = OneOf [List SymbolInformation, Null]
 ResponseResult WorkspaceExecuteCommand             = JSON
-ResponseResult WorkspaceWillCreateFiles            = WorkspaceEdit .+. Null
-ResponseResult TextDocumentWillSaveWaitUntil       = List TextEdit .+. Null
+ResponseResult WorkspaceWillCreateFiles            = OneOf [WorkspaceEdit, Null]
+ResponseResult TextDocumentWillSaveWaitUntil       = OneOf [List TextEdit, Null]
 ResponseResult CompletionItemResolve               = CompletionItem
-ResponseResult TextDocumentHover                   = Hover .+. Null
-ResponseResult TextDocumentSignatureHelp           = SignatureHelp .+. Null
-ResponseResult TextDocumentDeclaration             = Location .+. List Location .+. List LocationLink .+. Null
-ResponseResult TextDocumentDefinition              = Location .+. List Location .+. List LocationLink .+. Null
-ResponseResult TextDocumentTypeDefinition          = Location .+. List Location .+. List LocationLink .+. Null
-ResponseResult TextDocumentImplementation          = Location .+. List Location .+. List LocationLink .+. Null
-ResponseResult TextDocumentReferences              = List Location .+. Null
-ResponseResult TextDocumentDocumentHighlight       = List DocumentHighlight .+. Null
-ResponseResult TextDocumentDocumentSymbol          = List DocumentSymbol .+. SymbolInformation .+. Null
-ResponseResult TextDocumentCodeAction              = List (Command .+. CodeAction) .+. Null
+ResponseResult TextDocumentHover                   = OneOf [Hover, Null]
+ResponseResult TextDocumentSignatureHelp           = OneOf [SignatureHelp, Null]
+ResponseResult TextDocumentDeclaration             = OneOf [Location, List Location, List LocationLink, Null]
+ResponseResult TextDocumentDefinition              = OneOf [Location, List Location, List LocationLink, Null]
+ResponseResult TextDocumentTypeDefinition          = OneOf [Location, List Location, List LocationLink, Null]
+ResponseResult TextDocumentImplementation          = OneOf [Location, List Location, List LocationLink, Null]
+ResponseResult TextDocumentReferences              = OneOf [List Location, Null]
+ResponseResult TextDocumentDocumentHighlight       = OneOf [List DocumentHighlight, Null]
+ResponseResult TextDocumentDocumentSymbol          = OneOf [List DocumentSymbol, SymbolInformation, Null]
+ResponseResult TextDocumentCodeAction              = OneOf [List (OneOf [Command, CodeAction]), Null]
 ResponseResult CodeActionResolve                   = CodeAction
-ResponseResult TextDocumentCodeLens                = List CodeLens .+. Null
+ResponseResult TextDocumentCodeLens                = OneOf [List CodeLens, Null]
 ResponseResult CodeLensResolve                     = Maybe Null
-ResponseResult TextDocumentDocumentLink            = List DocumentLink .+. Null
+ResponseResult TextDocumentDocumentLink            = OneOf [List DocumentLink, Null]
 ResponseResult DocumentLinkResolve                 = DocumentLink
 ResponseResult TextDocumentDocumentColor           = List ColorInformation
-ResponseResult TextDocumentFormatting              = List TextEdit .+. Null
-ResponseResult TextDocumentRangeFormatting         = List TextEdit .+. Null
-ResponseResult TextDocumentOnTypeFormatting        = List TextEdit .+. Null
-ResponseResult TextDocumentRename                  = WorkspaceEdit .+. Null
-ResponseResult TextDocumentPrepareRename           = Range .+. PrepareRenamePlaceholderResponse .+. PrepareRenameDefaultResponse .+. Null
-ResponseResult TextDocumentFoldingRange            = List FoldingRange .+. Null
-ResponseResult TextDocumentSelectionRange          = List SelectionRange .+. Null
-ResponseResult TextDocumentPrepareCallHierarchy    = List CallHierarchyItem .+. Null
-ResponseResult CallHierarchyIncomingCalls          = List CallHierarchyIncomingCall .+. Null
-ResponseResult CallHierarchyOutgoingCalls          = List CallHierarchyOutgoingCall .+. Null
-ResponseResult TextDocumentSemanticTokensFull      = SemanticTokens .+. Null
-ResponseResult TextDocumentSemanticTokensFullDelta = SemanticTokens .+. SemanticTokensDelta .+. Null
-ResponseResult TextDocumentSemanticTokensRange     = SemanticTokens .+. Null
+ResponseResult TextDocumentFormatting              = OneOf [List TextEdit, Null]
+ResponseResult TextDocumentRangeFormatting         = OneOf [List TextEdit, Null]
+ResponseResult TextDocumentOnTypeFormatting        = OneOf [List TextEdit, Null]
+ResponseResult TextDocumentRename                  = OneOf [WorkspaceEdit, Null]
+ResponseResult TextDocumentPrepareRename           = OneOf [Range, PrepareRenamePlaceholderResponse, PrepareRenameDefaultResponse, Null]
+ResponseResult TextDocumentFoldingRange            = OneOf [List FoldingRange, Null]
+ResponseResult TextDocumentSelectionRange          = OneOf [List SelectionRange, Null]
+ResponseResult TextDocumentPrepareCallHierarchy    = OneOf [List CallHierarchyItem, Null]
+ResponseResult CallHierarchyIncomingCalls          = OneOf [List CallHierarchyIncomingCall, Null]
+ResponseResult CallHierarchyOutgoingCalls          = OneOf [List CallHierarchyOutgoingCall, Null]
+ResponseResult TextDocumentSemanticTokensFull      = OneOf [SemanticTokens, Null]
+ResponseResult TextDocumentSemanticTokensFullDelta = OneOf [SemanticTokens, SemanticTokensDelta, Null]
+ResponseResult TextDocumentSemanticTokensRange     = OneOf [SemanticTokens, Null]
 ResponseResult WorkspaceSemanticTokensRefresh      = Maybe Null
-ResponseResult TextDocumentLinkedEditingRange      = LinkedEditingRanges .+. Null
-ResponseResult TextDocumentMoniker                 = List Moniker .+. Null
-ResponseResult WindowShowMessageRequest            = MessageActionItem .+. Null
+ResponseResult TextDocumentLinkedEditingRange      = OneOf [LinkedEditingRanges, Null]
+ResponseResult TextDocumentMoniker                 = OneOf [List Moniker, Null]
+ResponseResult WindowShowMessageRequest            = OneOf [MessageActionItem, Null]
 ResponseResult WindowShowDocument                  = ShowDocumentResult
 ResponseResult WindowWorkDoneProgressCreate        = Maybe Null
 ResponseResult ClientRegisterCapability            = Maybe Null
 ResponseResult ClientUnregisterCapability          = Maybe Null
-ResponseResult WorkspaceWorkspaceFolders           = List WorkspaceFolder .+. Null
+ResponseResult WorkspaceWorkspaceFolders           = OneOf [List WorkspaceFolder, Null]
 ResponseResult WorkspaceConfiguration              = List JSON
 ResponseResult WorkspaceApplyEdit                  = ApplyWorkspaceEditResponse
-ResponseResult TextDocumentCompletion              = List CompletionItem .+. CompletionList .+. Null
+ResponseResult TextDocumentCompletion              = OneOf [List CompletionItem, CompletionList, Null]
 ResponseResult WorkspaceCodeLensRefresh            = Maybe Null
 
 findNotificationImpl : (method : Method from Notification) -> ToJSON (MessageParams method)
@@ -348,7 +349,7 @@ namespace NotificationMessage
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#requestMessage
 public export
 data RequestMessage : Method from Request -> Type where
-  MkRequestMessage : (id : Int .+. String)
+  MkRequestMessage : (id : OneOf [Int, String])
                   -> (method : Method from Request)
                   -> (params : MessageParams method)
                   -> RequestMessage method
@@ -382,7 +383,7 @@ FromJSON (from ** method : Method from Request ** RequestMessage method) where
 
 namespace RequestMessage
   export
-  id : RequestMessage m -> Int .+. String
+  id : RequestMessage m -> OneOf [Int, String]
   id (MkRequestMessage i _ _) = i
 
   export
@@ -467,8 +468,8 @@ record ResponseError where
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#responseMessage
 public export
 data ResponseMessage : Method from type -> Type where
-  Success : (id : Int .+. String .+. Null) -> (result : ResponseResult method) -> ResponseMessage method
-  Failure : (id : Int .+. String .+. Null) -> (error : ResponseError) -> ResponseMessage method
+  Success : (id : OneOf [Int, String, Null]) -> (result : ResponseResult method) -> ResponseMessage method
+  Failure : (id : OneOf [Int, String, Null]) -> (error : ResponseError) -> ResponseMessage method
 
 export
 {method : Method from Request} -> ToJSON (ResponseMessage method) where
@@ -489,10 +490,10 @@ FromJSON (ResponseResult method) => FromJSON (ResponseMessage method) where
 
 namespace ResponseMessage
   export
-  id : ResponseMessage method -> Int .+. String .+. Null
+  id : ResponseMessage method -> OneOf [Int, String, Null]
   id (Success i _) = i
   id (Failure i _) = i
 
   export
-  getResponseId : RequestMessage method -> Int .+. String .+. Null
-  getResponseId = mapSnd Left . id
+  getResponseId : RequestMessage method -> OneOf [Int, String, Null]
+  getResponseId = extend . RequestMessage.id

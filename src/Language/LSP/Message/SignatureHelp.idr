@@ -55,7 +55,7 @@ record SignatureHelpRegistrationOptions where
   workDoneProgress    : Maybe Bool
   triggerCharacters   : Maybe (List Char)
   retriggerCharacters : Maybe (List Char)
-  documentSelector    : DocumentSelector .+. Null
+  documentSelector    : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{SignatureHelpRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
@@ -80,8 +80,8 @@ FromJSON SignatureHelpTriggerKind where
 public export
 record ParameterInformation where
   constructor MkParameterInformation
-  label         : String .+. (Int, Int)
-  documentation : Maybe (String .+. MarkupContent)
+  label         : OneOf [String, (Int, Int)]
+  documentation : Maybe (OneOf [String, MarkupContent])
 %runElab deriveJSON defaultOpts `{{ParameterInformation}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
@@ -89,7 +89,7 @@ public export
 record SignatureInformation where
   constructor MkSignatureInformation
   label           : String
-  documentation   : Maybe (String .+. MarkupContent)
+  documentation   : Maybe (OneOf [String, MarkupContent])
   parameters_     : Maybe (List ParameterInformation)
   activeParameter : Maybe Int
 %runElab deriveJSON (record {renames = [("parameters_", "parameters")]} defaultOpts) `{{SignatureInformation}}

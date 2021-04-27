@@ -9,6 +9,7 @@ import Core.Env
 import Core.Metadata
 import Core.UnifyState
 import Data.List
+import Data.OneOf
 import Idris.ModTree
 import Idris.Package
 import Idris.Pretty
@@ -82,17 +83,19 @@ processMessage Initialize msg@(MkRequestMessage id Initialize params) = do
               sendUnknownResponseMessage (invalidParams "Expected valid root uri")
   fname <- fromMaybe fpath <$> findIpkg (Just fpath)
   setSourceDir (Just fname)
-  logString Debug $ "rootUri : \{show params.rootUri}"
   sendResponseMessage Initialize response
   update LSPConf (record {initialized = Just params})
+
 processMessage Shutdown msg@(MkRequestMessage _ Shutdown _) = do
   -- In a future multithreaded model, we must guarantee that all pending request are still executed.
   let response = Success (getResponseId msg) (the (Maybe Null) Nothing)
   sendResponseMessage Shutdown response
   update LSPConf (record {isShutdown = True})
+
 processMessage Exit (MkNotificationMessage Exit _) = do
   let status = if !(gets LSPConf isShutdown) then ExitSuccess else ExitFailure 1
   coreLift $ exitWith status
+
 processMessage TextDocumentDidOpen msg@(MkNotificationMessage TextDocumentDidOpen params) =
   whenNotShutdown $ whenInitialized $ \conf => do
     update LSPConf (record {openFile = Just (params.textDocument.uri, params.textDocument.version)})
@@ -103,10 +106,10 @@ processMessage TextDocumentDidOpen msg@(MkNotificationMessage TextDocumentDidOpe
     fname <- fromMaybe fpath <$> findIpkg (Just fpath)
     errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
                             --        a compiler change.
-    logString Debug $ "errors : \{show errs}"
     setSource params.textDocument.text
     resetProofState
     sendDiagnostics params.textDocument.uri (Just params.textDocument.version) errs
+
 processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSave params) =
   whenNotShutdown $ whenInitialized $ \conf => do
     update LSPConf (record {openFile = Just (params.textDocument.uri, 0)})
@@ -123,10 +126,12 @@ processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSav
     setSource source
     resetProofState
     sendDiagnostics params.textDocument.uri Nothing errs
+
 processMessage TextDocumentDidClose msg@(MkNotificationMessage TextDocumentDidClose params) =
   whenNotShutdown $ whenInitialized $ \conf => do
     update LSPConf (record {openFile = Nothing})
     logString Info $ "File \{params.textDocument.uri.path} closed"
+
 processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover params) =
   whenNotShutdown $ whenInitialized $ \conf => do
     let fpath = params.textDocument.uri.path
@@ -149,15 +154,18 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
       (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $ pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
       (Just globalDoc, Nothing) => pure $ renderString $ unAnnotateS $ layoutUnbounded globalDoc
       (Nothing, Nothing) => pure ""
-    let response = Success (getResponseId msg) (Left $ MkHover (Right $ Right $ MkMarkupContent PlainText line) Nothing)
+    let response = Success (getResponseId msg) (make $ MkHover (make $ MkMarkupContent PlainText line) Nothing)
     sendResponseMessage TextDocumentHover response
 
 processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
-  whenNotShutdown $ whenInitialized $ \_ => caseSplit (getResponseId msg) params
+  whenNotShutdown $ whenInitialized $ \_ => do
+    splitAction <- caseSplit (getResponseId msg) params
+    let resp = maybe [] (\act => [make act]) splitAction
+    sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (Here resp))
 
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do
-    logString Warning $ "received a not supported" ++ show (toJSON method) ++ " request"
+    logString Warning $ "received a not supported \{show (toJSON method)} request"
     sendResponseMessage method (methodNotFound msg)
 processMessage {type = Notification} method msg =
   whenNotShutdown $ whenInitialized $ \conf =>

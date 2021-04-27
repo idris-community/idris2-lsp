@@ -31,7 +31,7 @@ public export
 record DefinitionRegistrationOptions where
   constructor MkDefinitionRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{DefinitionRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_definition
@@ -64,7 +64,7 @@ public export
 record TypeDefinitionRegistrationOptions where
   constructor MkTypeDefinitionRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe String
 %runElab deriveJSON defaultOpts `{{TypeDefinitionRegistrationOptions}}
 

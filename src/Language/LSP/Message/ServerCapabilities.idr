@@ -67,32 +67,32 @@ record WorkspaceServerCapabilities where
 public export
 record ServerCapabilities where
   constructor MkServerCapabilities
-  textDocumentSync                 : Maybe (TextDocumentSyncOptions .+. TextDocumentSyncKind)
+  textDocumentSync                 : Maybe (OneOf [TextDocumentSyncOptions, TextDocumentSyncKind])
   completionProvider               : Maybe CompletionOptions
-  hoverProvider                    : Maybe (Bool .+. HoverOptions)
+  hoverProvider                    : Maybe (OneOf [Bool, HoverOptions])
   signatureHelpProvider            : Maybe SignatureHelpOptions
-  declarationProvider              : Maybe (Bool .+. DefinitionOptions)
-  typeDefinitionProvider           : Maybe (Bool .+. TypeDefinitionOptions .+. TypeDefinitionRegistrationOptions)
-  implementationProvider           : Maybe (Bool .+. ImplementationOptions .+. ImplementationRegistrationOptions)
-  referencesProvider               : Maybe (Bool .+. ReferenceOptions)
-  documentHighlightProvider        : Maybe (Bool .+. DocumentHighlightOptions)
-  documentSymbolProvider           : Maybe (Bool .+. DocumentSymbolOptions)
-  codeActionProvider               : Maybe (Bool .+. CodeActionOptions)
+  declarationProvider              : Maybe (OneOf [Bool, DefinitionOptions])
+  typeDefinitionProvider           : Maybe (OneOf [Bool, TypeDefinitionOptions, TypeDefinitionRegistrationOptions])
+  implementationProvider           : Maybe (OneOf [Bool, ImplementationOptions, ImplementationRegistrationOptions])
+  referencesProvider               : Maybe (OneOf [Bool, ReferenceOptions])
+  documentHighlightProvider        : Maybe (OneOf [Bool, DocumentHighlightOptions])
+  documentSymbolProvider           : Maybe (OneOf [Bool, DocumentSymbolOptions])
+  codeActionProvider               : Maybe (OneOf [Bool, CodeActionOptions])
   codeLensProvider                 : Maybe CodeLensOptions
   documentLinkProvider             : Maybe DocumentLinkOptions
-  colorProvider                    : Maybe (Bool .+. DocumentColorOptions .+. DocumentColorRegistrationOptions)
-  documentFormattingProvider       : Maybe (Bool .+. DocumentFormattingOptions)
-  documentRangeFormattingProvider  : Maybe (Bool .+. DocumentRangeFormattingOptions)
+  colorProvider                    : Maybe (OneOf [Bool, DocumentColorOptions, DocumentColorRegistrationOptions])
+  documentFormattingProvider       : Maybe (OneOf [Bool, DocumentFormattingOptions])
+  documentRangeFormattingProvider  : Maybe (OneOf [Bool, DocumentRangeFormattingOptions])
   documentOnTypeFormattingProvider : Maybe DocumentOnTypeFormattingOptions
-  renameProvider                   : Maybe (Bool .+. RenameOptions)
-  foldingRangeProvider             : Maybe (Bool .+. FoldingRangeOptions .+. FoldingRangeRegistrationOptions)
+  renameProvider                   : Maybe (OneOf [Bool, RenameOptions])
+  foldingRangeProvider             : Maybe (OneOf [Bool, FoldingRangeOptions, FoldingRangeRegistrationOptions])
   executeCommandProvider           : Maybe ExecuteCommandOptions
-  selectionRangeProvider           : Maybe (Bool .+. SelectionRangeOptions .+. SelectionRangeRegistrationOptions)
-  linkedEditingRangeProvider       : Maybe (Bool .+. LinkedEditingRangeOptions .+. LinkedEditingRangeRegistrationOptions)
-  callHierarchyProvider            : Maybe (Bool .+. CallHierarchyOptions .+. CallHierarchyRegistrationOptions)
-  semanticTokensProvider           : Maybe (SemanticTokensOptions .+. SemanticTokensRegistrationOptions)
-  monikerProvider                  : Maybe (Bool .+. MonikerOptions .+. MonikerRegistrationOptions)
-  workspaceSymbolProvider          : Maybe (Bool .+. WorkspaceSymbolOptions)
+  selectionRangeProvider           : Maybe (OneOf [Bool, SelectionRangeOptions, SelectionRangeRegistrationOptions])
+  linkedEditingRangeProvider       : Maybe (OneOf [Bool, LinkedEditingRangeOptions, LinkedEditingRangeRegistrationOptions])
+  callHierarchyProvider            : Maybe (OneOf [Bool, CallHierarchyOptions, CallHierarchyRegistrationOptions])
+  semanticTokensProvider           : Maybe (OneOf [SemanticTokensOptions, SemanticTokensRegistrationOptions])
+  monikerProvider                  : Maybe (OneOf [Bool, MonikerOptions, MonikerRegistrationOptions])
+  workspaceSymbolProvider          : Maybe (OneOf [Bool, WorkspaceSymbolOptions])
   workspace                        : Maybe WorkspaceServerCapabilities
   experimental                     : Maybe JSON
 %runElab deriveJSON defaultOpts `{{ServerCapabilities}}

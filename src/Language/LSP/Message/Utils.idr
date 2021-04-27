@@ -3,6 +3,7 @@
 ||| (C) The Idris Community, 2021
 module Language.LSP.Message.Utils
 
+import public Data.OneOf
 import Language.JSON
 import Language.JSON.Interfaces
 import Language.LSP.Message.Derive
@@ -54,68 +55,41 @@ FromJSON Null where
   fromJSON JNull = pure MkNull
   fromJSON _ = neutral
 
-||| Data type isomorphic to `Either`, but is translated untagged from and to JSON.
-public export
-data UntaggedEither a b = Left a | Right b
-
-export
-(Eq a, Eq b) => Eq (UntaggedEither a b) where
-  (Left x)  == (Left y)  = x == y
-  (Right x) == (Right y) = x == y
-  _ == _ = False
-
-export
-(Ord a, Ord b) => Ord (UntaggedEither a b) where
-  compare (Left x)  (Left y)  = compare x y
-  compare (Left _)  (Right _) = LT
-  compare (Right _) (Left _)  = GT
-  compare (Right x) (Right y) = compare x y
-
-export
-(Show a, Show b) => Show (UntaggedEither a b) where
-  showPrec p (Left x)  = showCon p "Left" $ showArg x
-  showPrec p (Right y) = showCon p "Right" $ showArg y
-
-export
-Bifunctor UntaggedEither where
-  bimap f g (Left x) = Left (f x)
-  bimap f g (Right x) = Right (g x)
-
-infixr 0 .+.
-||| Operator synonym for `UntaggedEither`.
-public export
-(.+.) : Type -> Type -> Type
-(.+.) = UntaggedEither
-
 ||| Converts an `UntaggedEither` value to the isomorphic value in `Either`.
 public export
-toEither : UntaggedEither a b -> Either a b
-toEither (Left x)  = Left x
-toEither (Right x) = Right x
+toEither : OneOf [a, b] -> Either a b
+toEither (Here x)  = Left x
+toEither (There (Here x)) = Right x
 
 ||| Converts an `Either` value to the isomorphic value in `UntaggedEither`.
 public export
-fromEither : Either a b -> UntaggedEither a b
-fromEither (Left x)  = Left x
-fromEither (Right x) = Right x
+fromEither : Either a b -> OneOf [a, b]
+fromEither (Left x)  = make x
+fromEither (Right x) = make x
 
 public export
-toMaybe : UntaggedEither a Null -> Maybe a
-toMaybe (Left x) = Just x
-toMaybe (Right MkNull) = Nothing
+toMaybe : OneOf [a, Null] -> Maybe a
+toMaybe (Here x) = Just x
+toMaybe (There (Here MkNull)) = Nothing
 
 public export
-fromMaybe : Maybe a -> UntaggedEither a Null
-fromMaybe (Just x) = Left x
-fromMaybe Nothing = Right MkNull
+fromMaybe : Maybe a -> OneOf [a, Null]
+fromMaybe (Just x) = make x
+fromMaybe Nothing = make MkNull
+
+public export
+ConstraintList : (Type -> Type) -> List Type -> Type
+ConstraintList f [] = ()
+ConstraintList f (x :: xs) = (f x, ConstraintList f xs)
 
 export
-(ToJSON a, ToJSON b) => ToJSON (UntaggedEither a b) where
-  toJSON (Left x)  = toJSON x
-  toJSON (Right x) = toJSON x
+ConstraintList ToJSON as => ToJSON (OneOf as) where
+  toJSON (Here x) = toJSON x
+  toJSON (There x) = toJSON x
 
 export
-(FromJSON a, FromJSON b) => FromJSON (UntaggedEither a b) where
+{as : _} -> ConstraintList FromJSON as => FromJSON (OneOf as) where
   -- NOTE: The rightmost type is parsed first, since in the LSP specification
   --       the most specific type appears also rightmost.
-  fromJSON v = (Right <$> fromJSON v) <|> (Left <$> fromJSON v)
+  fromJSON {as = []} @{()} v = Nothing
+  fromJSON {as = (x :: xs)} @{(c, cs)} v = (There <$> fromJSON v) <|> (Here <$> fromJSON v)

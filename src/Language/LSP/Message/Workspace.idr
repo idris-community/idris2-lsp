@@ -50,7 +50,7 @@ public export
 record TextDocumentEdit where
   constructor MkTextDocumentEdit
   textDocument : OptionalVersionedTextDocumentIdentifier
-  edits        : List (TextEdit .+. AnnotatedTextEdit)
+  edits        : List (OneOf [TextEdit, AnnotatedTextEdit])
 %runElab deriveJSON defaultOpts `{{TextDocumentEdit}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
@@ -119,7 +119,7 @@ public export
 record WorkspaceEdit where
   constructor MkWorkspaceEdit
   changes           : Maybe (SortedMap DocumentURI (List TextEdit))
-  documentChanges   : Maybe (List (TextDocumentEdit .+. CreateFile .+. RenameFile .+. DeleteFile))
+  documentChanges   : Maybe (List (OneOf [TextDocumentEdit, CreateFile, RenameFile, DeleteFile]))
   changeAnnotations : Maybe (SortedMap String ChangeAnnotation)
 %runElab deriveJSON defaultOpts `{{WorkspaceEdit}}
 
@@ -186,7 +186,7 @@ public export
 record WorkspaceFoldersServerCapabilities where
   constructor MkWorkspaceFoldersServerCapabilities
   supported           : Maybe Bool
-  changeNotifications : Maybe (String .+. Bool)
+  changeNotifications : Maybe (OneOf [String, Bool])
 %runElab deriveJSON defaultOpts `{{WorkspaceFoldersServerCapabilities}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_workspaceFolders

@@ -33,7 +33,7 @@ record CodeLensRegistrationOptions where
   constructor MkCodeLensRegistrationOptions
   workDoneProgress : Maybe Bool
   resolveProvider  : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{CodeLensRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeLens

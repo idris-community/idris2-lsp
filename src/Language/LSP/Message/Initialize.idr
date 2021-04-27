@@ -26,15 +26,15 @@ namespace InitializeParams
 public export
 record InitializeParams where
   constructor MkInitializeParams
-  processId         : Integer .+. Null
+  processId         : OneOf [Integer, Null]
   clientInfo        : Maybe ClientInfo
   locale            : Maybe String
-  rootPath          : Maybe (String .+. Null)
-  rootUri           : URI .+. Null
+  rootPath          : Maybe (OneOf [String, Null])
+  rootUri           : OneOf [URI, Null]
   initializeOptions : Maybe JSON
   capabilities      : ClientCapabilities
   trace             : Maybe Trace
-  workspaceFolders  : Maybe (List WorkspaceFolder .+. Null)
+  workspaceFolders  : Maybe (OneOf [List WorkspaceFolder, Null])
   workDoneToken     : Maybe ProgressToken
 %runElab deriveJSON defaultOpts `{{InitializeParams}}
 

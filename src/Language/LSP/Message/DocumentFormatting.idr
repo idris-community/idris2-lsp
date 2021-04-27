@@ -30,7 +30,7 @@ public export
 record DocumentFormattingRegistrationOptions where
   constructor MkDocumentFormattingRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{DocumentFormattingRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_formatting
@@ -42,7 +42,7 @@ record FormattingOptions where
   trimTrailingWhitespace : Maybe Bool
   insertFinalNewline     : Maybe Bool
   trimFinalNewlines      : Maybe Bool
-  other                  : List (String, Bool .+. Int .+. String)
+  other                  : List (String, OneOf [Bool, Int, String])
 
 export
 ToJSON FormattingOptions where
@@ -96,7 +96,7 @@ public export
 record DocumentRangeFormattingRegistrationOptions where
   constructor MkDocumentRangeFormattingRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{DocumentRangeFormattingRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_rangeFormatting
@@ -130,7 +130,7 @@ record DocumentOnTypeFormattingRegistrationOptions where
   constructor MkDocumentOnTypeFormattingRegistrationOptions
   firstTriggerCharacter : Char
   moreTriggerCharacter  : Maybe (List Char)
-  documentSelector      : DocumentSelector .+. Null
+  documentSelector      : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{DocumentOnTypeFormattingRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_onTypeFormatting

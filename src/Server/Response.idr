@@ -7,6 +7,7 @@ import Core.Context
 import Core.Core
 import Core.Env
 import Core.FC
+import Data.OneOf
 import Data.Strings
 import Idris.Pretty
 import Idris.REPL.Opts
@@ -90,7 +91,7 @@ export
 sendUnknownResponseMessage : Ref LSPConf LSPConfiguration => ResponseError -> Core ()
 sendUnknownResponseMessage err = do
   -- The method type Initialize is irrelevant since the message is unknown, can use any method, the message would be the same.
-  let body = stringify (toJSON {a = ResponseMessage Initialize} (Failure (Right $ Right MkNull) err))
+  let body = stringify (toJSON {a = ResponseMessage Initialize} (Failure (make MkNull) err))
   let header = header (cast $ length body)
   outputHandle <- gets LSPConf outputHandle
   coreLift_ $ fPutStrLn outputHandle (header ++ body)

@@ -30,7 +30,7 @@ public export
 record LinkedEditingRangeRegistrationOptions where
   constructor MkLinkedEditingRangesRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe Bool
 %runElab deriveJSON defaultOpts `{{LinkedEditingRangeRegistrationOptions}}
 

@@ -31,7 +31,7 @@ public export
 record ImplementationRegistrationOptions where
   constructor MkImplementationRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe String
 %runElab deriveJSON defaultOpts `{{ImplementationRegistrationOptions}}
 

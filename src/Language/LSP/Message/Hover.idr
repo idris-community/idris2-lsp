@@ -32,7 +32,7 @@ public export
 record HoverRegistrationOptions where
   constructor MkHoverRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : (DocumentSelector .+. Null)
+  documentSelector : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{HoverRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
@@ -48,6 +48,6 @@ record HoverParams where
 public export
 record Hover where
   constructor MkHover
-  contents : MarkedString .+. List MarkedString .+. MarkupContent
+  contents : OneOf [MarkedString, List MarkedString, MarkupContent]
   range : Maybe Range
 %runElab deriveJSON defaultOpts `{{Hover}}
