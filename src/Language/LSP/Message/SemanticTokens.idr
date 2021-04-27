@@ -23,8 +23,8 @@ namespace SemanticTokenClientCapabilities
   public export
   record SemanticTokenRequests where
     constructor MkSemanticTokenRequests
-    range : Maybe (Bool .+. ())
-    full  : Maybe (Bool .+. SemanticTokenRequestsFull)
+    range : Maybe (OneOf [Bool, ()])
+    full  : Maybe (OneOf [Bool, SemanticTokenRequestsFull])
   %runElab deriveJSON defaultOpts `{{SemanticTokenRequests}}
 
 namespace TokenFormat
@@ -67,8 +67,8 @@ public export
 record SemanticTokensOptions where
   constructor MkSemanticTokensOptions
   legend : SemanticTokensLegend
-  range  : Maybe (Bool .+. ())
-  full   : Maybe (Bool .+. SemanticTokenRequestsFull)
+  range  : Maybe (OneOf [Bool, ()])
+  full   : Maybe (OneOf [Bool, SemanticTokenRequestsFull])
 %runElab deriveJSON defaultOpts `{{SemanticTokensOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
@@ -76,9 +76,9 @@ public export
 record SemanticTokensRegistrationOptions where
   constructor MkSemanticTokensRegistrationOptions
   legend           : SemanticTokensLegend
-  range            : Maybe (Bool .+. ())
-  full             : Maybe (Bool .+. SemanticTokenRequestsFull)
-  documentSelector : DocumentSelector .+. Null
+  range            : Maybe (OneOf [Bool, ()])
+  full             : Maybe (OneOf [Bool, SemanticTokenRequestsFull])
+  documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe Bool
 %runElab deriveJSON defaultOpts `{{SemanticTokensRegistrationOptions}}
 

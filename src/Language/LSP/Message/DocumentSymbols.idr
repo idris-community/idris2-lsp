@@ -154,7 +154,7 @@ public export
 record DocumentSymbolRegistrationOptions where
   constructor MkDocumentSymbolRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
   label            : Maybe String
 %runElab deriveJSON defaultOpts `{{DocumentSymbolRegistrationOptions}}
 

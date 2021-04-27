@@ -12,5 +12,5 @@ import Language.Reflection
 public export
 record CancelParams where
   constructor MkCancelParams
-  id : Int .+. String
+  id : OneOf [Int, String]
 %runElab deriveJSON defaultOpts `{{CancelParams}}

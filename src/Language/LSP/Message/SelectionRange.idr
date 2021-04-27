@@ -30,7 +30,7 @@ public export
 record SelectionRangeRegistrationOptions where
   constructor MkSelectionRangeRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe String
 %runElab deriveJSON defaultOpts `{{SelectionRangeRegistrationOptions}}
 

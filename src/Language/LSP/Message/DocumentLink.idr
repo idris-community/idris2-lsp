@@ -34,7 +34,7 @@ record DocumentLinkRegistrationOptions where
   constructor MkDocumentLinkRegistrationOptions
   workDoneProgress : Maybe Bool
   resolveProvider  : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{DocumentLinkRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentLink

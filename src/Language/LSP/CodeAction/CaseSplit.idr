@@ -23,31 +23,19 @@ import TTImp.Interactive.CaseSplit
 import TTImp.TTImp
 
 -- fork of updateCase in Idris.IDEMode.CaseSplit.updateCase
-originalLine
-  : {auto c : Ref Ctxt Defs} ->
-    {auto s : Ref Syn SyntaxInfo} ->
-    {auto o : Ref ROpts REPLOpts} ->
-    List ClauseUpdate -> Int -> Int ->
-    Core String
-originalLine splits line col
-    = do opts <- get ROpts
-         case mainfile opts of
-              Nothing => throw (InternalError "No file loaded")
-              Just f =>
-                do Right file <- coreLift $ readFile f
-                       | Left err => throw (FileErr f err)
-                   let thisline = elemAt (forget $ lines file) (integerToNat (cast line))
-                   case thisline of
-                        Nothing => throw (InternalError "File too short!")
-                        Just l => pure l
-  where
-    getValid : ClauseUpdate -> Maybe (List (Name, RawImp))
-    getValid (Valid _ ups) = Just ups
-    getValid _ = Nothing
-
-    getBad : ClauseUpdate -> Maybe RawImp
-    getBad (Impossible lhs) = Just lhs
-    getBad _ = Nothing
+originalLine : Ref Ctxt Defs
+            => Ref Syn SyntaxInfo
+            => Ref ROpts REPLOpts
+            => List ClauseUpdate -> Int -> Int
+            -> Core String
+originalLine splits line col = do
+  Just f <- gets ROpts mainfile
+    | Nothing => throw (InternalError "No file loaded")
+  Right file <- coreLift $ readFile f
+    | Left err => throw (FileErr f err)
+  let Just l = elemAt (forget $ lines file) (integerToNat (cast line))
+    | Nothing => throw (InternalError "File too short!")
+  pure l
 
 export
 caseSplit : Ref LSPConf LSPConfiguration
@@ -56,32 +44,23 @@ caseSplit : Ref LSPConf LSPConfiguration
          => Ref UST UState
          => Ref Syn SyntaxInfo
          => Ref ROpts REPLOpts
-         => Int .+. String .+. Null -> CodeActionParams -> Core ()
+         => OneOf [Int, String, Null] -> CodeActionParams -> Core (Maybe CodeAction)
 caseSplit msgId params = do
   let True = params.range.start.line == params.range.end.line
-      | _ =>
-        sendResponseMessage
-          TextDocumentCodeAction
-          (Failure msgId (MkResponseError InvalidParams "Multiple lines were selected." JNull))
+      | _ => pure Nothing
 
   meta <- get MD
   let line = params.range.start.line
   let col = params.range.start.character
   let Just name = findInTree (line, col) (nameLocMap meta)
-      | Nothing =>
-          sendResponseMessage
-            TextDocumentCodeAction
-            (Failure msgId (MkResponseError InternalError "Can't find name" JNull))
+    | Nothing => pure Nothing
 
   let find = if col > 0
                 then within (line, col)
                 else onLine line
 
   OK splits <- getSplits (anyAt find) name
-     | SplitFail err => do
-        sendResponseMessage
-          TextDocumentCodeAction
-          (Failure msgId (MkResponseError InternalError "Can't split: \{show err}" JNull))
+     | SplitFail err => pure Nothing
 
   lines <- updateCase splits line col
   original <- originalLine splits line col
@@ -95,15 +74,13 @@ caseSplit msgId params = do
         , documentChanges   = Nothing
         , changeAnnotations = Nothing
         }
-  let caseSplitCodeAction = MkCodeAction
-        { title       = "Case split on \{show name}"
-        , kind        = Just $ Other "case-split"
-        , diagnostics = Just []
-        , isPreferred = Just False
-        , disabled    = Nothing
-        , edit        = Just workspaceEdit
-        , command     = Nothing
-        , data_       = Nothing
-        }
-  let response = Success msgId (Left [Right caseSplitCodeAction])
-  sendResponseMessage TextDocumentCodeAction response
+  pure $ Just $ MkCodeAction
+    { title       = "Case split on \{show name}"
+    , kind        = Just $ Other "case-split"
+    , diagnostics = Just []
+    , isPreferred = Just False
+    , disabled    = Nothing
+    , edit        = Just workspaceEdit
+    , command     = Nothing
+    , data_       = Nothing
+    }

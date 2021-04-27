@@ -30,7 +30,7 @@ public export
 record DocumentHighlightRegistrationOptions where
   constructor MkDocumentHighlightRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{DocumentHighlightRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight

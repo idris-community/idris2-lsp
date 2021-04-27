@@ -44,7 +44,7 @@ namespace MarkedString
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
 MarkedString : Type
-MarkedString = String .+. MarkedStringWithLanguage
+MarkedString = OneOf [String, MarkedStringWithLanguage]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#markupContent
 public export

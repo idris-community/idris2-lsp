@@ -93,7 +93,7 @@ DocumentSelector = List DocumentFilter
 public export
 record TextDocumentRegistrationOptions where
   constructor MkTextDocumentRegistrationOptions
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{TextDocumentRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocumentRegistrationOptions
@@ -125,7 +125,7 @@ public export
 record DidChangeTextDocumentParams where
   constructor MkDidChangeTextDocumentParams
   textDocument   : VersionedTextDocumentIdentifier
-  contentChanges : List (TextDocumentContentChangeEvent .+. TextDocumentContentChangeEventWithRange)
+  contentChanges : List (OneOf [TextDocumentContentChangeEvent, TextDocumentContentChangeEventWithRange])
 %runElab deriveJSON defaultOpts `{{DidChangeTextDocumentParams}}
 
 namespace TextDocumentSaveReason
@@ -165,7 +165,7 @@ record SaveOptions where
 public export
 record TextDocumentSaveRegistrationOptions where
   constructor MkTextDocumentSaveRegistrationOptions
-  documentSelector : (DocumentSelector .+. Null)
+  documentSelector : OneOf [DocumentSelector, Null]
   includeText      : Maybe Bool
 %runElab deriveJSON defaultOpts `{{TextDocumentSaveRegistrationOptions}}
 
@@ -202,5 +202,5 @@ record TextDocumentSyncOptions where
   change            : Maybe TextDocumentSyncKind
   willSave          : Maybe Bool
   willSaveWaitUntil : Maybe Bool
-  save              : Maybe (Bool .+. SaveOptions)
+  save              : Maybe (OneOf [Bool, SaveOptions])
 %runElab deriveJSON defaultOpts `{{TextDocumentSyncOptions}}

@@ -49,7 +49,7 @@ record RenameRegistrationOptions where
   constructor MkRenameRegistrationOptions
   workDoneProgress : Maybe Bool
   prepareProvider  : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
 %runElab deriveJSON defaultOpts `{{RenameRegistrationOptions}}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_rename

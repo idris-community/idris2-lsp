@@ -32,7 +32,7 @@ public export
 record CallHierarchyRegistrationOptions where
   constructor MkCallHierarchyRegistrationOptions
   workDoneProgress : Maybe Bool
-  documentSelector : DocumentSelector .+. Null
+  documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe String
 %runElab deriveJSON defaultOpts `{{CallHierarchyRegistrationOptions}}
 

@@ -11,7 +11,7 @@ import Language.Reflection
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#progress
 public export
 ProgressToken : Type
-ProgressToken = Int .+. String
+ProgressToken = OneOf [Int, String]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#clientInitiatedProgress
 public export

@@ -215,7 +215,7 @@ record CompletionOptions where
 public export
 record CompletionRegistrationOptions where
   constructor MkCompletionRegistrationOptions
-  documentSelector    : (DocumentSelector .+. Null)
+  documentSelector    : (OneOf [DocumentSelector, Null])
   workDoneProgress    : Maybe Bool
   triggerCharacters   : Maybe (List Char)
   allCommitCharacters : Maybe (List Char)
@@ -267,7 +267,7 @@ record CompletionItem where
   kind                : Maybe CompletionItemKind
   tags                : Maybe (List CompletionItemTag)
   detail              : Maybe String
-  documentation       : Maybe (String .+. MarkupContent)
+  documentation       : Maybe (OneOf [String, MarkupContent])
   deprecated          : Maybe Bool
   preselect           : Maybe Bool
   sortText            : Maybe String
@@ -275,7 +275,7 @@ record CompletionItem where
   insertText          : Maybe String
   insertTextFormat    : Maybe InsertTextFormat
   insertTextMode      : Maybe InsertTextMode
-  textEdit            : Maybe (TextEdit .+. InsertReplaceEdit)
+  textEdit            : Maybe (OneOf [TextEdit, InsertReplaceEdit])
   additionalTextEdits : Maybe (List TextEdit)
   commitCharacters    : Maybe (List Char)
   command             : Maybe Command
