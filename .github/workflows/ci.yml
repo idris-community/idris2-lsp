@@ -18,29 +18,10 @@ jobs:
     env:
       IDRIS2_CG: chez
       IDRIS2_TESTS_CG: chez
+    container: snazzybucket/idris2api:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          repository: idris-lang/idris2
-          path: idris2
-      - name: Install build dependencies
-        run: |
-          sudo apt-get install -y chezscheme
-          echo "$HOME/.idris2/bin" >> $GITHUB_PATH
-      - name: Build from bootstrap
-        run: |
-          cd idris2
-          make bootstrap
-          make install
-          make clean # to make sure you're building everything with the new version
-          make distclean
-          make all
-          make install
-          make install-api
-        shell: bash
       - name: build and test
         run: |
           make build && make test INTERACTIVE=''
