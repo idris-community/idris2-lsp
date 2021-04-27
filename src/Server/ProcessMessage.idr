@@ -45,16 +45,6 @@ displayTerm defs tm
     = do ptm <- resugar [] !(normaliseHoles defs [] tm)
          pure (prettyTerm ptm)
 
-findInTree : FilePos -> PosMap (NonEmptyFC, Name) -> Maybe Name
-findInTree p m = map snd $ head' $ sortBy (\x, y => cmp (measure x) (measure y)) $ searchPos p m
-  where
-    cmp : FileRange -> FileRange -> Ordering
-    cmp ((sr1, sc1), (er1, ec1)) ((sr2, sc2), (er2, ec2)) =
-      compare (er1 - sr1, ec1 - sc1) (er2 - sr2, ec2 - sr2)
-
-anyAt : (a -> Bool) -> a -> b -> Bool
-anyAt p loc _ = p loc
-
 ||| Guard for messages that requires a successful initialization before being allowed.
 whenInitialized : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
 whenInitialized k =
