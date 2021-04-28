@@ -18,6 +18,7 @@ import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
 import Idris.IDEMode.Holes
+import Language.JSON
 import Language.LSP.CodeAction.AddClause
 import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
@@ -25,7 +26,7 @@ import Language.LSP.CodeAction.GenerateDef
 import Language.LSP.CodeAction.MakeLemma
 import Language.LSP.CodeAction.MakeWith
 import Language.LSP.CodeAction.MakeCase
-import Language.JSON
+import Language.LSP.SignatureHelp
 import Language.LSP.Message
 import Libraries.Data.PosMap
 import Server.Capabilities
@@ -186,6 +187,15 @@ processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeA
       flatten [] = []
       flatten (Nothing :: xs) = flatten xs
       flatten ((Just x) :: xs) = make x :: flatten xs
+
+processMessage TextDocumentSignatureHelp m@(MkRequestMessage id TextDocumentSignatureHelp params) =
+  whenNotShutdown $ whenInitialized $ \conf => do
+    -- let response = Success (getResponseId m)
+    signatureHelpData <- signatureHelp params
+    _ <- traverseOpt
+          (sendResponseMessage TextDocumentSignatureHelp . Success (getResponseId m) . make)
+          signatureHelpData
+    pure ()
 
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do
