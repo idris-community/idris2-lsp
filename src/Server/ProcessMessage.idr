@@ -140,16 +140,18 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
     res <- loadMainFile fname
 
     defs <- get Ctxt
-    meta <- get MD
+    nameLocs <- gets MD nameLocMap
 
-    let name = findInTree (params.position.line, params.position.character) (nameLocMap meta)
+    let Just name = findInTree (params.position.line, params.position.character) nameLocs
+      | Nothing => do let response = Success (getResponseId msg) (make $ MkHover (make $ MkMarkupContent PlainText "") Nothing)
+                      sendResponseMessage TextDocumentHover response
     -- Lookup the name globally
-    globals <- maybe (pure []) (\n => lookupCtxtName n (gamma defs)) name
+    globals <- lookupCtxtName name (gamma defs)
     globalResult <- the (Core $ Maybe $ Doc IdrisAnn) $ case globals of
       [] => pure Nothing
       ts => do tys <- traverse (displayType defs) ts
                pure $ Just (vsep tys)
-    localResult <- findTypeAt $ anyAt $ within (params.position.line, params.position.character)
+    localResult <- findTypeAt $ anyWithName name $ within (params.position.line, params.position.character)
     line <- case (globalResult, localResult) of
       -- Give precedence to the local name, as it shadows the others
       (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $ pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
