@@ -22,6 +22,7 @@ import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
 import Language.LSP.CodeAction.GenerateDef
 import Language.LSP.CodeAction.MakeLemma
+import Language.LSP.CodeAction.MakeWith
 import Language.JSON
 import Language.LSP.Message
 import Libraries.Data.PosMap
@@ -167,13 +168,14 @@ processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeA
     exprSearchAction <- map Just <$> exprSearch params
     splitAction <- caseSplit (getResponseId msg) params
     lemmaAction <- makeLemma params
+    withAction <- makeWith params
     -- The order is important here, the generate definition functionality
     -- leave a trace in the context, which could be pixed up in other
     -- parts which look up information from the Context. In the resp the order
     -- is not improtant.
     -- TODO: Figure out how to clear out the temporary results of generate-def
     generateDefAction <- map Just <$> generateDef (getResponseId msg) params
-    let resp = flatten $ splitAction :: lemmaAction :: generateDefAction ++ exprSearchAction
+    let resp = flatten $ splitAction :: lemmaAction :: withAction :: generateDefAction ++ exprSearchAction
     sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make resp))
     where
       flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
