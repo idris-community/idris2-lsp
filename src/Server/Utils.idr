@@ -126,7 +126,6 @@ export
 anyAt : (a -> Bool) -> a -> b -> Bool
 anyAt p loc _ = p loc
 
-
 export
 anyWithName : Name -> (NonEmptyFC -> Bool) -> NonEmptyFC -> (Name, b) -> Bool
 anyWithName name p loc (n, _) = p loc && name == n
