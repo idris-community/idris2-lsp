@@ -32,7 +32,10 @@ serverCapabilities =
                        , documentSymbolProvider           = Just (make False)
                        , codeActionProvider               = Just (make (MkCodeActionOptions
                                                                           Nothing
-                                                                          (Just [Other "case-split"])
+                                                                          (Just
+                                                                            [ Other "case-split"
+                                                                            , Other "generate-def"
+                                                                            ])
                                                                           (Just False)))
                        , codeLensProvider                 = Just (MkCodeLensOptions Nothing Nothing)
                        , documentLinkProvider             = Just (MkDocumentLinkOptions Nothing Nothing)

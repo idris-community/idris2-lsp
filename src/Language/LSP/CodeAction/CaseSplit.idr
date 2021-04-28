@@ -16,6 +16,7 @@ import Language.LSP.Message
 import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
 import Server.Configuration
+import Server.Log
 import Server.Response
 import Server.Utils
 import System.File
@@ -47,20 +48,26 @@ caseSplit : Ref LSPConf LSPConfiguration
          => OneOf [Int, String, Null] -> CodeActionParams -> Core (Maybe CodeAction)
 caseSplit msgId params = do
   let True = params.range.start.line == params.range.end.line
-      | _ => pure Nothing
+      | _ => do
+        logString Debug "caseSplit: start and end line were different"
+        pure Nothing
 
-  meta <- get MD
   let line = params.range.start.line
   let col = params.range.start.character
-  let Just name = findInTree (line, col) (nameLocMap meta)
-    | Nothing => pure Nothing
+
+  Just name <- gets MD (findInTree (line, col) . nameLocMap)
+    | Nothing => do
+        logString Debug "caseSplit: couldn't find name at \{show (line, col)}"
+        pure Nothing
 
   let find = if col > 0
                 then within (line, col)
                 else onLine line
 
   OK splits <- getSplits (anyAt find) name
-     | SplitFail err => pure Nothing
+     | SplitFail err => do
+        logString Debug "caseSplit: found error when splitting: \{show err}"
+        pure Nothing
 
   lines <- updateCase splits line col
   original <- originalLine splits line col
