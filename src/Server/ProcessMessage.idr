@@ -18,6 +18,7 @@ import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
 import Idris.IDEMode.Holes
+import Language.LSP.CodeAction.AddClause
 import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
 import Language.LSP.CodeAction.GenerateDef
@@ -169,13 +170,14 @@ processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeA
     splitAction <- caseSplit (getResponseId msg) params
     lemmaAction <- makeLemma params
     withAction <- makeWith params
+    clauseAction <- addClause params
     -- The order is important here, the generate definition functionality
     -- leave a trace in the context, which could be pixed up in other
     -- parts which look up information from the Context. In the resp the order
     -- is not improtant.
     -- TODO: Figure out how to clear out the temporary results of generate-def
     generateDefAction <- map Just <$> generateDef (getResponseId msg) params
-    let resp = flatten $ splitAction :: lemmaAction :: withAction :: generateDefAction ++ exprSearchAction
+    let resp = flatten $ [splitAction, lemmaAction, withAction, clauseAction] ++ generateDefAction ++ exprSearchAction
     sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make resp))
     where
       flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
