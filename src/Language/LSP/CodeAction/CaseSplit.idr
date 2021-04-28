@@ -48,7 +48,9 @@ caseSplit : Ref LSPConf LSPConfiguration
          => OneOf [Int, String, Null] -> CodeActionParams -> Core (Maybe CodeAction)
 caseSplit msgId params = do
   let True = params.range.start.line == params.range.end.line
-      | _ => pure Nothing
+      | _ => do
+        logString Debug "caseSplit: start and end line were different"
+        pure Nothing
 
   let line = params.range.start.line
   let col = params.range.start.character
@@ -63,7 +65,9 @@ caseSplit msgId params = do
                 else onLine line
 
   OK splits <- getSplits (anyAt find) name
-     | SplitFail err => pure Nothing
+     | SplitFail err => do
+        logString Debug "caseSplit: found error when splitting: \{show err}"
+        pure Nothing
 
   lines <- updateCase splits line col
   original <- originalLine splits line col
