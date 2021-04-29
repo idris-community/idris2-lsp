@@ -26,6 +26,7 @@ import Language.LSP.CodeAction.GenerateDef
 import Language.LSP.CodeAction.MakeLemma
 import Language.LSP.CodeAction.MakeWith
 import Language.LSP.CodeAction.MakeCase
+import Language.LSP.DocumentSymbol
 import Language.LSP.SignatureHelp
 import Language.LSP.Message
 import Libraries.Data.PosMap
@@ -197,10 +198,16 @@ processMessage TextDocumentSignatureHelp m@(MkRequestMessage id TextDocumentSign
           signatureHelpData
     pure ()
 
+processMessage TextDocumentDocumentSymbol m@(MkRequestMessage id TextDocumentDocumentSymbol params) =
+  whenNotShutdown $ whenInitialized $ \conf => do
+    documentSymbolData <- documentSymbol params
+    sendResponseMessage TextDocumentDocumentSymbol $ Success (getResponseId m) $ make documentSymbolData
+
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do
     logString Warning $ "received a not supported \{show (toJSON method)} request"
     sendResponseMessage method (methodNotFound msg)
+
 processMessage {type = Notification} method msg =
   whenNotShutdown $ whenInitialized $ \conf =>
     logString Warning "unhandled notification"
