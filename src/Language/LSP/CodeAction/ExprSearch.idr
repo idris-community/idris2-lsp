@@ -56,7 +56,7 @@ buildCodeAction name uri range str =
                                       , documentChanges   = Nothing
                                       , changeAnnotations = Nothing
                                       }
-   in MkCodeAction { title       = "Expression search on \{show name} as ~ \{strSubstr 0 40 str} ..."
+   in MkCodeAction { title       = "Expression search on \{show $ dropAllNS name} as ~ \{strSubstr 0 40 str} ..."
                    , kind        = Just (Other "refactor.rewrite.auto")
                    , diagnostics = Just []
                    , isPreferred = Just False
