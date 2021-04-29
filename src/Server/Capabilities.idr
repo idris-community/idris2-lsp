@@ -35,6 +35,7 @@ serverCapabilities =
                                                                           (Just
                                                                             [ Other "case-split"
                                                                             , Other "generate-def"
+                                                                            , Other "make-case"
                                                                             ])
                                                                           (Just False)))
                        , codeLensProvider                 = Just (MkCodeLensOptions Nothing Nothing)

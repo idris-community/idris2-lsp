@@ -24,12 +24,13 @@ import TTImp.Interactive.CaseSplit
 import TTImp.TTImp
 
 -- fork of updateCase in Idris.IDEMode.CaseSplit.updateCase
+export
 originalLine : Ref Ctxt Defs
             => Ref Syn SyntaxInfo
             => Ref ROpts REPLOpts
-            => List ClauseUpdate -> Int -> Int
+            => Int -> Int
             -> Core String
-originalLine splits line col = do
+originalLine line col = do
   Just f <- gets ROpts mainfile
     | Nothing => throw (InternalError "No file loaded")
   Right file <- coreLift $ readFile f
@@ -70,7 +71,7 @@ caseSplit msgId params = do
         pure Nothing
 
   lines <- updateCase splits line col
-  original <- originalLine splits line col
+  original <- originalLine line col
 
   let docURI = params.textDocument.uri
   let rng = MkRange (MkPosition line 0)
