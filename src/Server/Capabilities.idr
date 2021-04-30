@@ -29,7 +29,9 @@ serverCapabilities =
                        , implementationProvider           = Just (make False)
                        , referencesProvider               = Just (make False)
                        , documentHighlightProvider        = Just (make False)
-                       , documentSymbolProvider           = Just (make False)
+                       , documentSymbolProvider           = Just (make (MkDocumentSymbolOptions
+                                                                          Nothing
+                                                                          Nothing))
                        , codeActionProvider               = Just (make (MkCodeActionOptions
                                                                           Nothing
                                                                           (Just
