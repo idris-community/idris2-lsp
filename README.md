@@ -1,5 +1,6 @@
 # [WIP] idris2-lsp
-Language Server for Idris2
+Language Server for Idris2.
+
 Refer to the project wiki for editor-specific configurations.
 
 ## Compile
