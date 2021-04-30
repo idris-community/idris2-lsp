@@ -85,56 +85,56 @@ signatureHelp : Ref Ctxt Defs
              => Ref ROpts REPLOpts
              => Ref Syn SyntaxInfo
              => SignatureHelpParams -> Core (Maybe SignatureHelp)
-signatureHelp params = do
-  let line = params.position.line
-  let col = params.position.character
-  nameLocs <- gets MD nameLocMap
-  let Just ((fname, nstart, nend), name) = findInTreeLoc (line, col) nameLocs
-    | Nothing => do
-        logString Debug "signatureHelp: didn't find name for \{show (line,col)}"
-        pure Nothing
+signatureHelp params =
+  catch (do let line = params.position.line
+            let col = params.position.character
+            nameLocs <- gets MD nameLocMap
+            let Just ((fname, nstart, nend), name) = findInTreeLoc (line, col) nameLocs
+              | Nothing => do
+                  logString Debug "signatureHelp: didn't find name for \{show (line,col)}"
+                  pure Nothing
 
-  -- Check of the name is a local name.
-  localResult <- findTypeAt $ anyWithName name $ within (line, col)
+            -- Check of the name is a local name.
+            localResult <- findTypeAt $ anyWithName name $ within (line, col)
 
-  docs <- getNonColoredDocsForName (MkFC fname nstart nend) name
+            docs <- getNonColoredDocsForName (MkFC fname nstart nend) name
 
-  -- Generate the data type information if it is not in the generated doc already.
-  -- When there is no Constructor info, the data structure information is hidden
-  -- and only partial information can be retrieved.
-  dataTypeInformation <-
-    if "Constructors:" `isInfixOf` docs
-      then pure []
-      else do
-        defs <- lookupDefName name !(gets Ctxt gamma)
-        infos <- traverse
-                  (\(n, _, d) => do
-                    infoStr <- renderDataTypeInfo n d
-                    pure $ map (\str => ("Data structure of", str)) infoStr)
-                  defs
-        pure $ catMaybes infos
+            -- Generate the data type information if it is not in the generated doc already.
+            -- When there is no Constructor info, the data structure information is hidden
+            -- and only partial information can be retrieved.
+            dataTypeInformation <-
+              if "Constructors:" `isInfixOf` docs
+                then pure []
+                else do
+                  defs <- lookupDefName name !(gets Ctxt gamma)
+                  infos <- traverse
+                            (\(n, _, d) => do
+                              infoStr <- renderDataTypeInfo n d
+                              pure $ map (\str => ("Data structure of", str)) infoStr)
+                            defs
+                  pure $ catMaybes infos
 
-  -- Use one signature block, as it seems the nvim client doesn't render more than one... :(
-  let signatureDocs : List (String, String)
-      signatureDocs =
-        case localResult of
-          Just (n,_,t) => [("Local", show n ++ " : " ++ show t), ("Shadowing", docs)]
-          Nothing    => [("Global definition(s)", docs)]
+            -- Use one signature block, as it seems the nvim client doesn't render more than one... :(
+            let signatureDocs : List (String, String)
+                signatureDocs =
+                  case localResult of
+                    Just (n,_,t) => [("Local", show n ++ " : " ++ show t), ("Shadowing", docs)]
+                    Nothing    => [("Global definition(s)", docs)]
 
-  let signatures =
-        MkSignatureInformation
-          { label = show name
-          , documentation
-              = Just $ make
-              $ concatMap
-                  (\(header, body) => "\n" ++ header ++ "\n" ++ body ++ "\n")
-                  (signatureDocs ++ dataTypeInformation)
-          , parameters_ = Nothing
-          , activeParameter = Nothing
-          }
-  pure $ Just $ MkSignatureHelp
-    { signatures = [signatures]
-    , activeSignature = Nothing
-    , activeParameter = Nothing
-    }
-
+            let signatures =
+                  MkSignatureInformation
+                    { label = show name
+                    , documentation
+                        = Just $ make
+                        $ concatMap
+                            (\(header, body) => "\n" ++ header ++ "\n" ++ body ++ "\n")
+                            (signatureDocs ++ dataTypeInformation)
+                    , parameters_ = Nothing
+                    , activeParameter = Nothing
+                    }
+            pure $ Just $ MkSignatureHelp
+              { signatures = [signatures]
+              , activeSignature = Nothing
+              , activeParameter = Nothing
+              })
+  (\err => pure Nothing)
