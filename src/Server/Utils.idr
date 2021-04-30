@@ -12,6 +12,7 @@ import Data.Bits
 import Data.List
 import Data.Strings
 import Language.JSON
+import Language.LSP.Message
 import Libraries.Data.PosMap
 import System.File
 
@@ -19,6 +20,15 @@ import System.File
 export
 gets : (l : label) -> Ref l a => (a -> b) -> Core b
 gets l f = f <$> get l
+
+export
+modify : (l : label) -> Ref l a => (a -> a) -> Core ()
+modify l f = put l . f =<< get l
+
+export
+uncons' : List a -> Maybe (a, List a)
+uncons' [] = Nothing
+uncons' (x :: xs) = Just (x, xs)
 
 ||| Reads a single header from an LSP message on the supplied file handle.
 ||| Headers end with the string "\r\n".
@@ -129,3 +139,20 @@ anyAt p loc _ = p loc
 export
 anyWithName : Name -> (NonEmptyFC -> Bool) -> NonEmptyFC -> (Name, b) -> Bool
 anyWithName name p loc (n, _) = p loc && name == n
+
+export
+Cast FilePos Position where
+  cast (line, col) = MkPosition line col
+
+export
+Cast Position FilePos where
+  cast (MkPosition line col) = (line, col)
+
+export
+Cast FC Range where
+  cast (MkFC _ start end) = MkRange { start = cast start, end = cast end }
+  cast EmptyFC = MkRange { start = MkPosition 0 0, end = MkPosition 0 0 }
+
+export
+Cast NonEmptyFC Range where
+  cast (_, start, end) = MkRange { start = cast start, end = cast end }
