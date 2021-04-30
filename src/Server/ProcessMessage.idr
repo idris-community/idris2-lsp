@@ -33,6 +33,7 @@ import Libraries.Data.PosMap
 import Server.Capabilities
 import Server.Configuration
 import Server.Log
+import Server.QuickFix
 import Server.Response
 import Server.Utils
 import System
@@ -116,7 +117,10 @@ processMessage TextDocumentDidOpen msg@(MkNotificationMessage TextDocumentDidOpe
                             --        a compiler change.
     setSource params.textDocument.text
     resetProofState
-    sendDiagnostics params.textDocument.uri (Just params.textDocument.version) errs
+    let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
+    modify LSPConf (record { quickfixes = [] })
+    traverse_ (findQuickfix caps params.textDocument.uri) errs
+    sendDiagnostics caps params.textDocument.uri (Just params.textDocument.version) errs
 
 processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSave params) =
   whenNotShutdown $ whenInitialized $ \conf => do
@@ -133,7 +137,10 @@ processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSav
     logString Debug $ "errors : \{show errs}"
     setSource source
     resetProofState
-    sendDiagnostics params.textDocument.uri Nothing errs
+    modify LSPConf (record { quickfixes = [] })
+    let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
+    traverse_ (findQuickfix caps params.textDocument.uri) errs
+    sendDiagnostics caps params.textDocument.uri Nothing errs
 
 processMessage TextDocumentDidClose msg@(MkNotificationMessage TextDocumentDidClose params) =
   whenNotShutdown $ whenInitialized $ \conf => do
@@ -169,6 +176,7 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
 
 processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
   whenNotShutdown $ whenInitialized $ \_ => do
+    quickfixActions <- map Just <$> gets LSPConf quickfixes
     exprSearchAction <- map Just <$> exprSearch params
     splitAction <- caseSplit (getResponseId msg) params
     lemmaAction <- makeLemma params
@@ -181,7 +189,9 @@ processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeA
     -- is not improtant.
     -- TODO: Figure out how to clear out the temporary results of generate-def
     generateDefAction <- map Just <$> generateDef (getResponseId msg) params
-    let resp = flatten $ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction] ++ generateDefAction ++ exprSearchAction
+    let resp = flatten $ quickfixActions
+                           ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
+                           ++ generateDefAction ++ exprSearchAction
     sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make resp))
     where
       flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])

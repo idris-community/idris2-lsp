@@ -1,8 +1,10 @@
-||| Definition and helper functions related to the LSP server implementation configuration.
+||| Definition and helper functions related to the LSP server implementation
+||| configuration.
 |||
 ||| (C) The Idris Community, 2021
 module Server.Configuration
 
+import Language.LSP.Message.CodeAction
 import Language.LSP.Message.Initialize
 import Language.LSP.Message.URI
 import System.File
@@ -31,6 +33,8 @@ record LSPConfiguration where
   openFile : Maybe (DocumentURI, Int)
   ||| Limit for multiple search results
   searchLimit : Nat
+  ||| List of quickfixes to be send in addition to other code actions
+  quickfixes : List CodeAction
 
 ||| Server default configuration. Uses standard input and standard output for input/output.
 export
@@ -42,4 +46,5 @@ defaultConfig = MkLSPConfiguration { inputHandle = stdin
                                    , isShutdown = False
                                    , openFile = Nothing
                                    , searchLimit = 5
+                                   , quickfixes = []
                                    }
