@@ -6,8 +6,11 @@ import Core.Env
 import Core.FC
 import Core.Metadata
 import Data.List
+import Data.List1
 import Data.String
+import Idris.Pretty
 import Idris.REPL.Opts
+import Idris.Resugar
 import Idris.Syntax
 import Language.LSP.Message
 import Language.JSON
@@ -15,6 +18,45 @@ import Server.Configuration
 import Server.Diagnostics
 import Server.Utils
 import Server.Log
+
+pShowMN : {vars : _} -> Term vars -> Env t vars -> Doc IdrisAnn -> Doc IdrisAnn
+pShowMN (Local _ _ _ p) env acc =
+  case dropAllNS (nameAt p) of
+       MN _ _ => acc <++> parens ("implicitly bound at" <++> pretty (getBinderLoc p env))
+       _      => acc
+pShowMN _ _ acc = acc
+
+pshow : {vars : _}
+     -> Ref Ctxt Defs
+     => Ref Syn SyntaxInfo
+     => Env Term vars
+     -> Term vars
+     -> Core String
+pshow env tm
+    = do defs <- get Ctxt
+         ntm <- normaliseHoles defs env tm
+         itm <- resugar env ntm
+         pure $ show (pShowMN ntm env $ prettyTerm itm)
+
+addMissingCases : Ref Ctxt Defs
+               => Ref Syn SyntaxInfo
+               => String -> List ClosedTerm -> Nat -> Core String
+addMissingCases n [] k = pure ""
+addMissingCases n (x :: xs) k =
+  [| pure "\{!(pshow [] x)} = ?\{n}_missing_case_\{show k}\n" ++ addMissingCases n xs (S k) |]
+
+findBlankLine : List String -> Int -> Int
+findBlankLine [] acc = acc
+findBlankLine (x :: xs) acc = if trim x == "" then acc else findBlankLine xs (acc + 1)
+
+-- TODO: use string iterators
+findString : String -> List String -> Int -> Int -> Maybe Range
+findString rep [] line col = Nothing
+findString rep ("" :: xs) line col = findString rep xs (line - 1) 0
+findString rep (str :: xs) line col =
+  if isPrefixOf rep str
+     then Just (MkRange (MkPosition line col) (MkPosition line (col + cast (length rep))))
+     else assert_total $ findString rep (prim__strTail str :: xs) line (col + 1)
 
 export
 findQuickfix : Ref LSPConf LSPConfiguration
@@ -72,8 +114,112 @@ findQuickfix caps uri err@(ValidCase fc _ (Left tm)) =
                                   , data_       = Nothing
                                   }
     modify LSPConf (record { quickfixes $= (codeAction ::) })
--- findQuickfix caps uri (NotCovering fc x y) = ?findQuickfix_rhs_12
--- findQuickfix caps uri (NotTotal fc x y) = ?findQuickfix_rhs_13
+findQuickfix caps uri err@(NotCovering fc n (MissingCases cs)) = do
+  whenJust (isNonEmptyFC fc) $ \fc => do
+    cases <- addMissingCases !(prettyName n) cs 1
+    let startline = startLine fc
+    let endline = endLine fc
+    src <- forget . String.lines <$> getSource
+    let blank = findBlankLine (drop (integerToNat (cast endline)) src) endline
+    diagnostic <- toDiagnostic caps uri err
+    let range = MkRange (MkPosition blank 0) (MkPosition blank 0)
+    let textEdit = MkTextEdit range cases
+    let workspaceEdit = MkWorkspaceEdit { changes           = Just (singleton uri [textEdit])
+                                        , documentChanges   = Nothing
+                                        , changeAnnotations = Nothing
+                                        }
+    let missingCodeAction = MkCodeAction { title       = "QuickFix: add missing cases"
+                                         , kind        = Just QuickFix
+                                         , diagnostics = Just [diagnostic]
+                                         , isPreferred = Just True
+                                         , disabled    = Nothing
+                                         , edit        = Just workspaceEdit
+                                         , command     = Nothing
+                                         , data_       = Nothing
+                                         }
+    let range = MkRange (MkPosition startline 0) (MkPosition startline 0)
+    let textEdit = MkTextEdit range "partial\n"
+    let workspaceEdit = MkWorkspaceEdit { changes           = Just (singleton uri [textEdit])
+                                        , documentChanges   = Nothing
+                                        , changeAnnotations = Nothing
+                                        }
+    let partialCodeAction = MkCodeAction { title       = "QuickFix: add partial annotation"
+                                         , kind        = Just QuickFix
+                                         , diagnostics = Just [diagnostic]
+                                         , isPreferred = Just False
+                                         , disabled    = Nothing
+                                         , edit        = Just workspaceEdit
+                                         , command     = Nothing
+                                         , data_       = Nothing
+                                         }
+    modify LSPConf (record { quickfixes $= (\qf => missingCodeAction :: partialCodeAction :: qf) })
+findQuickfix caps uri err@(NotCovering fc n _) = do
+  whenJust (isNonEmptyFC fc) $ \fc => do
+    diagnostic <- toDiagnostic caps uri err
+    let startline = startLine fc
+    let range = MkRange (MkPosition startline 0) (MkPosition startline 0)
+    let textEdit = MkTextEdit range "partial\n"
+    let workspaceEdit = MkWorkspaceEdit { changes           = Just (singleton uri [textEdit])
+                                        , documentChanges   = Nothing
+                                        , changeAnnotations = Nothing
+                                        }
+    let codeAction = MkCodeAction { title       = "QuickFix: add partial annotation"
+                                  , kind        = Just QuickFix
+                                  , diagnostics = Just [diagnostic]
+                                  , isPreferred = Just False
+                                  , disabled    = Nothing
+                                  , edit        = Just workspaceEdit
+                                  , command     = Nothing
+                                  , data_       = Nothing
+                                  }
+    modify LSPConf (record { quickfixes $= (codeAction ::) })
+findQuickfix caps uri err@(NotTotal fc n _) = do
+  whenJust (isNonEmptyFC fc) $ \fc => do
+    diagnostic <- toDiagnostic caps uri err
+    context <- gets Ctxt gamma
+    Just gdef <- lookupCtxtExact n context
+      | Nothing => do logString Debug "findQuickfix: name not in context"
+                      pure ()
+    case findSetTotal gdef.flags of
+         Just req => do
+           let endline = endLine fc
+           src <- take (integerToNat (cast endline) + 1) . forget . String.lines <$> getSource
+           let Just range = findString (show req) src (endline + 1) 0
+             | Nothing => do logString Debug "findQuickfix: error while fetching source line"
+                             pure ()
+           let textEdit = MkTextEdit range "covering"
+           let workspaceEdit = MkWorkspaceEdit { changes           = Just (singleton uri [textEdit])
+                                               , documentChanges   = Nothing
+                                               , changeAnnotations = Nothing
+                                               }
+           let codeAction = MkCodeAction { title       = "QuickFix: add covering annotation"
+                                         , kind        = Just QuickFix
+                                         , diagnostics = Just [diagnostic]
+                                         , isPreferred = Just False
+                                         , disabled    = Nothing
+                                         , edit        = Just workspaceEdit
+                                         , command     = Nothing
+                                         , data_       = Nothing
+                                         }
+           modify LSPConf (record { quickfixes $= (codeAction ::) })
+         Nothing => do
+           let startline = startLine fc
+           let range = MkRange (MkPosition startline 0) (MkPosition startline 0)
+           let textEdit = MkTextEdit range "covering\n"
+           let workspaceEdit = MkWorkspaceEdit { changes           = Just (singleton uri [textEdit])
+                                               , documentChanges   = Nothing
+                                               , changeAnnotations = Nothing
+                                               }
+           let codeAction = MkCodeAction { title       = "QuickFix: add covering annotation"
+                                         , kind        = Just QuickFix
+                                         , diagnostics = Just [diagnostic]
+                                         , isPreferred = Just False
+                                         , disabled    = Nothing
+                                         , edit        = Just workspaceEdit
+                                         , command     = Nothing
+                                         , data_       = Nothing
+                                         }
+           modify LSPConf (record { quickfixes $= (codeAction ::) })
 -- findQuickfix caps uri (AmbiguousName fc xs) = ?findQuickfix_rhs_18
 -- findQuickfix caps uri (AmbiguousElab fc x xs) = ?findQuickfix_rhs_19
 -- findQuickfix caps uri (MaybeMisspelling x xs) = ?findQuickfix_rhs_66

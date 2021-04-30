@@ -71,7 +71,8 @@ record ServerCapabilities where
   completionProvider               : Maybe CompletionOptions
   hoverProvider                    : Maybe (OneOf [Bool, HoverOptions])
   signatureHelpProvider            : Maybe SignatureHelpOptions
-  declarationProvider              : Maybe (OneOf [Bool, DefinitionOptions])
+  declarationProvider              : Maybe (OneOf [Bool, DeclarationOptions, DeclarationRegistrationOptions])
+  definitionProvider               : Maybe (OneOf [Bool, DefinitionOptions, DefinitionRegistrationOptions])
   typeDefinitionProvider           : Maybe (OneOf [Bool, TypeDefinitionOptions, TypeDefinitionRegistrationOptions])
   implementationProvider           : Maybe (OneOf [Bool, ImplementationOptions, ImplementationRegistrationOptions])
   referencesProvider               : Maybe (OneOf [Bool, ReferenceOptions])
