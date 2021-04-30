@@ -26,6 +26,7 @@ import Language.LSP.CodeAction.GenerateDef
 import Language.LSP.CodeAction.MakeLemma
 import Language.LSP.CodeAction.MakeWith
 import Language.LSP.CodeAction.MakeCase
+import Language.LSP.Definition
 import Language.LSP.DocumentSymbol
 import Language.LSP.SignatureHelp
 import Language.LSP.Message
@@ -104,6 +105,14 @@ processMessage Shutdown msg@(MkRequestMessage _ Shutdown _) = do
 processMessage Exit (MkNotificationMessage Exit _) = do
   let status = if !(gets LSPConf isShutdown) then ExitSuccess else ExitFailure 1
   coreLift $ exitWith status
+
+processMessage TextDocumentDefinition m@(MkRequestMessage id TextDocumentDefinition params) =
+  whenNotShutdown $ whenInitialized $ \conf => do
+    link <- gotoDefinition params
+    _ <- traverseOpt
+          (sendResponseMessage TextDocumentDefinition . Success (getResponseId m) . make)
+          link
+    pure ()
 
 processMessage TextDocumentDidOpen msg@(MkNotificationMessage TextDocumentDidOpen params) =
   whenNotShutdown $ whenInitialized $ \conf => do
