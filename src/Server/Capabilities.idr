@@ -24,7 +24,8 @@ serverCapabilities =
                        , completionProvider               = Just (MkCompletionOptions Nothing (Just []) (Just []) Nothing)
                        , hoverProvider                    = Just (make True)
                        , signatureHelpProvider            = Just (MkSignatureHelpOptions Nothing Nothing Nothing)
-                       , definitionProvider               = Just (make False)
+                       , definitionProvider               = Just (make (MkDefinitionOptions
+                                                                          (Just False)))
                        , declarationProvider              = Just (make False)
                        , typeDefinitionProvider           = Just (make False)
                        , implementationProvider           = Just (make False)
