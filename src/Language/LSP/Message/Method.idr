@@ -35,6 +35,7 @@ data Method : MethodFrom -> MethodType -> Type where
   TextDocumentWillSaveWaitUntil       : Method Client Request
   TextDocumentDidSave                 : Method Client Notification
   TextDocumentDidClose                : Method Client Notification
+  TextDocumentCompletion              : Method Client Request
   CompletionItemResolve               : Method Client Request
   TextDocumentHover                   : Method Client Request
   TextDocumentSignatureHelp           : Method Client Request
@@ -82,7 +83,6 @@ data Method : MethodFrom -> MethodType -> Type where
   WorkspaceConfiguration              : Method Server Request
   WorkspaceApplyEdit                  : Method Server Request
   TextDocumentPublishDiagnostics      : Method Server Notification
-  TextDocumentCompletion              : Method Server Request
   WorkspaceCodeLensRefresh            : Method Server Request
 
   CancelRequest                       : Method from   Notification
@@ -256,6 +256,7 @@ FromJSON (Method Client Request) where
   fromJSON (JString "workspace/executeCommand")               = pure WorkspaceExecuteCommand
   fromJSON (JString "workspace/willCreateFiles")              = pure WorkspaceWillCreateFiles
   fromJSON (JString "textDocument/willSaveWaitUntil")         = pure TextDocumentWillSaveWaitUntil
+  fromJSON (JString "textDocument/completion")                = pure TextDocumentCompletion
   fromJSON (JString "completionItem/resolve")                 = pure CompletionItemResolve
   fromJSON (JString "textDocument/hover")                     = pure TextDocumentHover
   fromJSON (JString "textDocument/signatureHelp")             = pure TextDocumentSignatureHelp
@@ -312,7 +313,6 @@ FromJSON (Method Server Request) where
   fromJSON (JString "workspace/workspaceFolders")     = pure WorkspaceWorkspaceFolders
   fromJSON (JString "workspace/configuration")        = pure WorkspaceConfiguration
   fromJSON (JString "workspace/applyEdit")            = pure WorkspaceApplyEdit
-  fromJSON (JString "textDocument/completion")        = pure TextDocumentCompletion
   fromJSON (JString "workspace/codeLens/refresh")     = pure WorkspaceCodeLensRefresh
   fromJSON _ = neutral
 
