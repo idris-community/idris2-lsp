@@ -1,0 +1,3 @@
+[submodule "Idris2"]
+	path = Idris2
+	url = https://github.com/idris-lang/Idris2
