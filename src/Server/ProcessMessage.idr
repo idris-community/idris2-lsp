@@ -222,6 +222,14 @@ processMessage TextDocumentDocumentSymbol m@(MkRequestMessage id TextDocumentDoc
     documentSymbolData <- documentSymbol params
     sendResponseMessage TextDocumentDocumentSymbol $ Success (getResponseId m) $ make documentSymbolData
 
+processMessage TextDocumentCodeLens msg@(MkRequestMessage id TextDocumentCodeLens params) =
+  whenNotShutdown $ whenInitialized $ \conf =>
+    sendResponseMessage TextDocumentCodeLens (Success (getResponseId msg) (make MkNull))
+
+processMessage TextDocumentDocumentLink msg@(MkRequestMessage id TextDocumentDocumentLink params) =
+  whenNotShutdown $ whenInitialized $ \conf =>
+    sendResponseMessage TextDocumentDocumentLink (Success (getResponseId msg) (make MkNull))
+
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do
     logString Warning $ "received a not supported \{show (toJSON method)} request"
