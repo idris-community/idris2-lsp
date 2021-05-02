@@ -26,7 +26,7 @@ getNonColoredDocsForName fc n = do
   put ROpts (record { color = False, synHighlightOn = False } ropts)
   docs <- getDocsForName fc n
   put ROpts ropts
-  pure docs
+  pure (show docs)
 
 -- Find the unique Name in the type term for the function return type which represent
 -- the datatype. This function should be called only for a closed term of a DCon.

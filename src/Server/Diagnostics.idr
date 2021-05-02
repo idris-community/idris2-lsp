@@ -18,6 +18,9 @@ import Server.Log
 import Server.Utils
 import System.File
 
+keyword : Doc IdrisAnn -> Doc IdrisAnn
+keyword = annotate (Syntax SynKeyword)
+
 buildRelatedInformation : URI -> FC -> String -> DiagnosticRelatedInformation
 buildRelatedInformation uri fc msg = MkDiagnosticRelatedInformation (MkLocation uri (cast fc)) msg
 
@@ -100,8 +103,7 @@ perror (CantSolveEq fc env l r) =
                          , "and"
                          , code !(pshow env r) <+> dot
                          ])
-perror (PatternVariableUnifies fc env n tm) = do
-  let (min, max) = order fc (getLoc tm)
+perror (PatternVariableUnifies fc env n tm) =
   pure $ errorDesc (hsep [ reflow "Pattern variable"
                          , code (prettyVar n)
                          , reflow "unifies with" <+> colon
@@ -111,11 +113,6 @@ perror (PatternVariableUnifies fc env n tm) = do
     prettyVar : Name -> Doc IdrisAnn
     prettyVar (PV n _) = prettyVar n
     prettyVar n = pretty n
-    order : FC -> FC -> (FC, FC)
-    order EmptyFC fc2 = (EmptyFC, fc2)
-    order fc1 EmptyFC = (fc1, EmptyFC)
-    order fc1@(MkFC _ sr1 sc1) fc2@(MkFC _ sr2 sc2) =
-      if sr1 < sr2 then (fc1, fc2) else if sr1 == sr2 && sc1 < sc2 then (fc1, fc2) else (fc2, fc1)
 perror (CyclicMeta fc env n tm)
     = pure $ errorDesc (reflow "Cycle detected in solution of metavariable" <++> meta (pretty !(prettyName n)) <++> equals
         <++> code !(pshow env tm))
@@ -129,10 +126,10 @@ perror (ValidCase _ env (Right err))
 perror (UndefinedName fc x)
     = pure $ errorDesc (reflow "Undefined name" <++> code (pretty x) <+> dot)
 perror (InvisibleName fc n (Just ns))
-    = pure $ errorDesc ("Name" <++> code (pretty n) <++> reflow "is inaccessible since"
-        <++> code (pretty ns) <++> reflow "is not explicitly imported.")
-        <+> line <+> reflow "Suggestion: add an explicit" <++> keyword "export" <++> "or" <++> keyword ("public" <++> "export")
-        <++> reflow "modifier. By default, all names are" <++> keyword "private" <++> reflow "in namespace blocks."
+     = pure $ errorDesc ("Name" <++> code (pretty n) <++> reflow "is inaccessible since"
+         <++> code (pretty ns) <++> reflow "is not explicitly imported.")
+         <+> line <+> reflow "Suggestion: add an explicit" <++> keyword "export" <++> "or" <++> keyword ("public" <++> "export")
+         <++> reflow "modifier. By default, all names are" <++> keyword "private" <++> reflow "in namespace blocks."
 perror (InvisibleName fc x Nothing)
     = pure $ errorDesc ("Name" <++> code (pretty x) <++> reflow "is private.")
         <+> line <+> reflow "Suggestion: add an explicit" <++> keyword "export" <++> "or" <++> keyword ("public" <++> "export")

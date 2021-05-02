@@ -46,7 +46,7 @@ displayType : {auto c : Ref Ctxt Defs} ->
 displayType defs (n, i, gdef)
     = maybe (do tm <- resugar [] !(normaliseHoles defs [] (type gdef))
                 pure (pretty !(aliasName (fullname gdef)) <++> colon <++> prettyTerm tm))
-            (\num => prettyHole defs [] n num (type gdef))
+            (\num => reAnnotate Syntax <$> prettyHole defs [] n num (type gdef))
             (isHole gdef)
 
 displayTerm : {auto c : Ref Ctxt Defs} ->

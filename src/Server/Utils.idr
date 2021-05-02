@@ -11,6 +11,8 @@ import Core.Metadata
 import Data.Bits
 import Data.List
 import Data.Strings
+import Idris.Pretty
+import Idris.Syntax
 import Language.JSON
 import Language.LSP.Message
 import Libraries.Data.PosMap
@@ -156,3 +158,7 @@ Cast FC Range where
 export
 Cast NonEmptyFC Range where
   cast (_, start, end) = MkRange { start = cast start, end = cast end }
+
+export
+prettyTerm : PTerm -> Doc IdrisAnn
+prettyTerm = reAnnotate Syntax . Pretty.prettyTerm
