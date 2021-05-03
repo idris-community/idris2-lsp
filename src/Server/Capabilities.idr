@@ -5,6 +5,7 @@ module Server.Capabilities
 
 import Language.JSON
 import Language.LSP.Message
+import Language.LSP.Completion
 
 %default total
 
@@ -21,7 +22,7 @@ export
 serverCapabilities : ServerCapabilities
 serverCapabilities =
   MkServerCapabilities { textDocumentSync                 = Just (make syncOptions)
-                       , completionProvider               = Just (MkCompletionOptions Nothing (Just []) (Just []) Nothing)
+                       , completionProvider               = Just completionProvider
                        , hoverProvider                    = Just (make True)
                        , signatureHelpProvider            = Just (MkSignatureHelpOptions Nothing Nothing Nothing)
                        , definitionProvider               = Just (make (MkDefinitionOptions
