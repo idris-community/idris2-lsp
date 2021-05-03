@@ -12,6 +12,7 @@ import Data.List1
 import Data.Strings
 import Idris.CommandLine
 import Idris.REPL.Opts
+import Idris.REPL.Common
 import Idris.Package.Types
 import Idris.SetOptions
 import Idris.Syntax
@@ -94,7 +95,10 @@ runServer = do
                     sendUnknownResponseMessage parseError
                     runServer
   logString Info $ "Received message for method " ++ show (toJSON method)
-  processMessage method msg
+  catch (processMessage method msg)
+        (\err => do
+          logString Error (show err)
+          resetContext)
   runServer
 
 main : IO ()
