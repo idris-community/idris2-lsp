@@ -69,6 +69,7 @@ generateDef : Ref LSPConf LSPConfiguration
             => Ref ROpts REPLOpts
             => OneOf [Int, String, Null] -> CodeActionParams -> Core (List CodeAction)
 generateDef msgId params = do
+  defs <- branch
   let True = params.range.start.line == params.range.end.line
       | _ => do
         logString Debug "generateDef: start and end lines were different."
@@ -99,6 +100,8 @@ generateDef msgId params = do
         logString Debug "generateDef next: returned unexpected REPL result in \{show k}"
         pure Nothing
     pure (Just block)
+
+  put Ctxt defs
 
   let docURI = params.textDocument.uri
   let rng = MkRange (MkPosition (line + 1) 0) (MkPosition (line + 1) 0) -- insert
