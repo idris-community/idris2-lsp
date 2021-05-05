@@ -128,7 +128,7 @@ processMessage TextDocumentDidOpen msg@(MkNotificationMessage TextDocumentDidOpe
     setSource params.textDocument.text
     resetProofState
     let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
-    modify LSPConf (record { quickfixes = [] })
+    modify LSPConf (record { quickfixes = [], cachedActions = [], cachedHovers = [] })
     traverse_ (findQuickfix caps params.textDocument.uri) errs
     sendDiagnostics caps params.textDocument.uri (Just params.textDocument.version) errs
 
@@ -147,14 +147,14 @@ processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSav
     logString Debug $ "errors : \{show errs}"
     setSource source
     resetProofState
-    modify LSPConf (record { quickfixes = [] })
+    modify LSPConf (record { quickfixes = [], cachedActions = [], cachedHovers = [] })
     let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
     traverse_ (findQuickfix caps params.textDocument.uri) errs
     sendDiagnostics caps params.textDocument.uri Nothing errs
 
 processMessage TextDocumentDidClose msg@(MkNotificationMessage TextDocumentDidClose params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    update LSPConf (record {openFile = Nothing})
+    modify LSPConf (record { openFile = Nothing, quickfixes = [], cachedActions = [], cachedHovers = [] })
     logString Info $ "File \{params.textDocument.uri.path} closed"
 
 processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover params) =
