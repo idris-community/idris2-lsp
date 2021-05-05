@@ -12,6 +12,7 @@ import Idris.REPL.Opts
 import Idris.Syntax
 import Idris.Syntax
 import Language.JSON
+import Language.LSP.CodeAction
 import Language.LSP.Message
 import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
@@ -23,22 +24,6 @@ import System.File
 import TTImp.Interactive.CaseSplit
 import TTImp.TTImp
 
--- fork of updateCase in Idris.IDEMode.CaseSplit.updateCase
-export
-originalLine : Ref Ctxt Defs
-            => Ref Syn SyntaxInfo
-            => Ref ROpts REPLOpts
-            => Int -> Int
-            -> Core String
-originalLine line col = do
-  Just f <- gets ROpts mainfile
-    | Nothing => throw (InternalError "No file loaded")
-  Right file <- coreLift $ readFile f
-    | Left err => throw (FileErr f err)
-  let Just l = elemAt (forget $ lines file) (integerToNat (cast line))
-    | Nothing => throw (InternalError "File too short!")
-  pure l
-
 export
 caseSplit : Ref LSPConf LSPConfiguration
          => Ref MD Metadata
@@ -46,24 +31,24 @@ caseSplit : Ref LSPConf LSPConfiguration
          => Ref UST UState
          => Ref Syn SyntaxInfo
          => Ref ROpts REPLOpts
-         => OneOf [Int, String, Null] -> CodeActionParams -> Core (Maybe CodeAction)
-caseSplit msgId params = do
+         => CodeActionParams -> Core (Maybe CodeAction)
+caseSplit params = do
   let True = params.range.start.line == params.range.end.line
-      | _ => do
-        logString Debug "caseSplit: start and end line were different"
-        pure Nothing
+    | _ => do logString Debug "caseSplit: start and end line were different"
+              pure Nothing
+
+  [] <- searchCache params.range CaseSplit
+    | action :: _ => do logString Debug "caseSplit: found cached action"
+                        pure (Just action)
 
   let line = params.range.start.line
   let col = params.range.start.character
 
-  Just name <- gets MD (findInTree (line, col) . nameLocMap)
-    | Nothing => do
-        logString Debug "caseSplit: couldn't find name at \{show (line, col)}"
-        pure Nothing
+  Just (loc, name) <- gets MD (findInTreeLoc (cast params.range.start) (cast params.range.end) . nameLocMap)
+    | Nothing => do logString Debug "caseSplit: couldn't find name at \{show (line, col)}"
+                    pure Nothing
 
-  let find = if col > 0
-                then within (line, col)
-                else onLine line
+  let find = if col > 0 then within (line, col) else onLine line
 
   OK splits <- getSplits (anyAt find) name
      | SplitFail err => do
@@ -71,7 +56,9 @@ caseSplit msgId params = do
         pure Nothing
 
   lines <- updateCase splits line col
-  original <- originalLine line col
+  Just original <- getSourceLine (line + 1)
+    | Nothing => do logString Debug $ "caseSplit: error while fetching the referenced line"
+                    pure Nothing
 
   let docURI = params.textDocument.uri
   let rng = MkRange (MkPosition line 0)
@@ -82,13 +69,15 @@ caseSplit msgId params = do
         , documentChanges   = Nothing
         , changeAnnotations = Nothing
         }
-  pure $ Just $ MkCodeAction
-    { title       = "Case split on \{show name}"
-    , kind        = Just $ Other "case-split"
-    , diagnostics = Just []
-    , isPreferred = Just False
-    , disabled    = Nothing
-    , edit        = Just workspaceEdit
-    , command     = Nothing
-    , data_       = Nothing
-    }
+  let action = MkCodeAction
+        { title       = "Case split on ?\{show name}"
+        , kind        = Just $ Other "case-split"
+        , diagnostics = Just []
+        , isPreferred = Just False
+        , disabled    = Nothing
+        , edit        = Just workspaceEdit
+        , command     = Nothing
+        , data_       = Nothing
+        }
+  modify LSPConf (record { cachedActions $= insert (cast loc, CaseSplit, [action]) })
+  pure (Just action)

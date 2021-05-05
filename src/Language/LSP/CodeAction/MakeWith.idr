@@ -13,6 +13,7 @@ import Idris.REPL.Opts
 import Idris.Syntax
 import Idris.Resugar
 import Language.JSON
+import Language.LSP.CodeAction
 import Language.LSP.Message
 import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
@@ -51,10 +52,14 @@ makeWith params = do
     | _ => do logString Debug "makeWith: start and end line were different"
               pure Nothing
 
+  [] <- searchCache params.range CaseSplit
+    | action :: _ => do logString Debug "makeWith: found cached action"
+                        pure (Just action)
+
   nameLocs <- gets MD nameLocMap
   let line = params.range.start.line
   let col = params.range.start.character
-  let Just ((_, nstart, nend), name) = findInTreeLoc (line, col) nameLocs
+  let Just (loc@(_, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
     | Nothing => do logString Debug "makeWith: couldn't find name at \{show (line, col)}"
                     pure Nothing
 
@@ -74,5 +79,7 @@ makeWith params = do
   let with_ = makeWith name l
   let range = MkRange (MkPosition line 0) (MkPosition line (cast (length src) - 1))
   let edit = MkTextEdit range with_
+  let action = buildCodeAction name params.textDocument.uri [edit]
 
-  pure $ Just $ buildCodeAction name params.textDocument.uri [edit]
+  modify LSPConf (record { cachedActions $= insert (cast loc, MakeWith, [action]) })
+  pure $ Just action

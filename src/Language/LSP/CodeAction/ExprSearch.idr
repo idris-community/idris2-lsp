@@ -12,9 +12,11 @@ import Idris.REPL.Opts
 import Idris.Syntax
 import Idris.Resugar
 import Language.JSON
+import Language.LSP.CodeAction
 import Language.LSP.Message
 import Libraries.Data.PosMap
 import Server.Configuration
+import Server.Log
 import Server.Utils
 import TTImp.TTImp
 import TTImp.Interactive.ExprSearch
@@ -77,11 +79,15 @@ exprSearch params = do
   let True = params.range.start.line == params.range.end.line
     | _ => pure []
 
+  [] <- searchCache params.range CaseSplit
+    | actions => do logString Debug "exprSearch: found cached action"
+                    pure actions
+
   fuel <- gets LSPConf searchLimit
   nameLocs <- gets MD nameLocMap
   let line = params.range.start.line
   let col = params.range.start.character
-  let Just ((_, nstart, nend), name) = findInTreeLoc (line, col) nameLocs
+  let Just (loc@(_, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
     | Nothing => pure []
 
   context <- gets Ctxt gamma
@@ -108,4 +114,6 @@ exprSearch params = do
                     _ => pure []
 
   let range = MkRange (uncurry MkPosition nstart) (uncurry MkPosition nend)
-  pure $ map (buildCodeAction name params.textDocument.uri range) solutions
+  let actions = map (buildCodeAction name params.textDocument.uri range) solutions
+  modify LSPConf (record { cachedActions $= insert (cast loc, ExprSearch, actions) })
+  pure actions

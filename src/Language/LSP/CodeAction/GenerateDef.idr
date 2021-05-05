@@ -15,6 +15,7 @@ import Idris.REPL.Opts
 import Idris.Syntax
 import Idris.Syntax
 import Language.JSON
+import Language.LSP.CodeAction
 import Language.LSP.Message
 import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
@@ -54,7 +55,7 @@ guessName : Ref MD Metadata
          => (Int, Int) -> Core (Maybe Name)
 guessName (line, col) = do
   meta <- get MD
-  let Nothing = findInTree (line, col) (nameLocMap meta)
+  let Nothing = findPointInTree (line, col) (nameLocMap meta)
       | Just name => pure (Just name)
   Nothing <- findTypeAt $ anyAt $ within (line, col)
       | Just (name, _, _) => pure (Just name)
@@ -74,6 +75,11 @@ generateDef msgId params = do
       | _ => do
         logString Debug "generateDef: start and end lines were different."
         pure []
+
+  [] <- searchCache params.range GenerateDef
+    | actions => do logString Debug "generateDef: found cached action"
+                    pure actions
+
   let line = params.range.start.line
   let col = params.range.start.character
   Just name <- guessName (line, col)
@@ -106,7 +112,7 @@ generateDef msgId params = do
   let docURI = params.textDocument.uri
   let rng = MkRange (MkPosition (line + 1) 0) (MkPosition (line + 1) 0) -- insert
 
-  for (number 1 (block :: blocks)) $ \(i,b) => do
+  actions <- for (number 1 (block :: blocks)) $ \(i,b) => do
     let funcDef = show b
     let lastLine = last (String.lines funcDef)
     let edit = MkTextEdit rng (funcDef ++ "\n") -- extra newline
@@ -125,4 +131,6 @@ generateDef msgId params = do
       , command     = Nothing
       , data_       = Nothing
       }
-
+  -- TODO: retrieve the line length efficiently
+  modify LSPConf (record { cachedActions $= insert (MkRange (MkPosition line 0) (MkPosition line 1000), GenerateDef, actions) })
+  pure actions
