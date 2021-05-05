@@ -14,8 +14,10 @@ import Data.Strings
 import Idris.Pretty
 import Idris.Syntax
 import Language.JSON
+import Language.LSP.CodeAction
 import Language.LSP.Message
 import Libraries.Data.PosMap
+import Server.Configuration
 import System.File
 
 ||| Gets a specific component of a reference, using the supplied projection.
@@ -119,20 +121,32 @@ stringify (JObject xs) = "{" ++ stringifyProps xs ++ "}"
                                   else "," ++ stringifyProps xs
 
 export
-findInTreeLoc' : FilePos -> PosMap (NonEmptyFC, Name) -> List (NonEmptyFC, Name)
-findInTreeLoc' p m = sortBy (\x, y => cmp (measure x) (measure y)) $ searchPos p m
+findInTreeLoc' : FilePos -> FilePos -> PosMap (NonEmptyFC, a) -> List (NonEmptyFC, a)
+findInTreeLoc' sp ep m = sortBy (\x, y => cmp (measure x) (measure y)) $ dominators (sp, ep) m
   where
     cmp : FileRange -> FileRange -> Ordering
     cmp ((sr1, sc1), (er1, ec1)) ((sr2, sc2), (er2, ec2)) =
       compare (er1 - sr1, ec1 - sc1) (er2 - sr2, ec2 - sc2)
 
 export
-findInTreeLoc : FilePos -> PosMap (NonEmptyFC, Name) -> Maybe (NonEmptyFC, Name)
-findInTreeLoc p m = head' $ findInTreeLoc' p m
+findPointInTreeLoc' : FilePos -> PosMap (NonEmptyFC, a) -> List (NonEmptyFC, a)
+findPointInTreeLoc' p = findInTreeLoc' p p
 
 export
-findInTree : FilePos -> PosMap (NonEmptyFC, Name) -> Maybe Name
-findInTree p m = snd <$> findInTreeLoc p m
+findInTreeLoc : FilePos -> FilePos -> PosMap (NonEmptyFC, a) -> Maybe (NonEmptyFC, a)
+findInTreeLoc sp ep m = head' $ findInTreeLoc' sp ep m
+
+export
+findPointInTreeLoc : FilePos -> PosMap (NonEmptyFC, a) -> Maybe (NonEmptyFC, a)
+findPointInTreeLoc p = findInTreeLoc p p
+
+export
+findInTree : FilePos -> FilePos -> PosMap (NonEmptyFC, a) -> Maybe a
+findInTree sp ep m = snd <$> findInTreeLoc sp ep m
+
+export
+findPointInTree : FilePos -> PosMap (NonEmptyFC, a) -> Maybe a
+findPointInTree p = findInTree p p
 
 export
 anyAt : (a -> Bool) -> a -> b -> Bool
@@ -159,6 +173,17 @@ export
 Cast NonEmptyFC Range where
   cast (_, start, end) = MkRange { start = cast start, end = cast end }
 
+public export
+Measure (Range, a) where
+  measure (r, _) = (cast r.start, cast r.end)
+
 export
 prettyTerm : PTerm -> Doc IdrisAnn
 prettyTerm = reAnnotate Syntax . Pretty.prettyTerm
+
+export
+searchCache : Ref LSPConf LSPConfiguration => Range -> IdrisAction -> Core (List CodeAction)
+searchCache r type = do
+  cache <- gets LSPConf cachedActions
+  let inRange = dominators (cast r.start, cast r.end) cache
+  pure $ concatMap (snd . snd) $ filter (\(_, t, _) => type == t) inRange

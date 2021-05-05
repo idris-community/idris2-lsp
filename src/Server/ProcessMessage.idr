@@ -1,4 +1,5 @@
-||| Functions for the processing of received request and notifications.
+||| Functions for the processing of received request and
+||| notifications.
 |||
 ||| (C) The Idris Community, 2021
 module Server.ProcessMessage
@@ -158,14 +159,15 @@ processMessage TextDocumentDidClose msg@(MkNotificationMessage TextDocumentDidCl
 
 processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    let fpath = params.textDocument.uri.path
-    fname <- fromMaybe fpath <$> findIpkg (Just fpath)
-    res <- loadMainFile fname
+    Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
+      | Just hover => do logString Debug "hover: found cached action"
+                         let response = Success (getResponseId msg) (make hover)
+                         sendResponseMessage TextDocumentHover response
 
     defs <- get Ctxt
     nameLocs <- gets MD nameLocMap
 
-    let Just name = findInTree (params.position.line, params.position.character) nameLocs
+    let Just (loc, name) = findPointInTreeLoc (params.position.line, params.position.character) nameLocs
       | Nothing => do let response = Success (getResponseId msg) (make $ MkHover (make $ MkMarkupContent PlainText "") Nothing)
                       sendResponseMessage TextDocumentHover response
     -- Lookup the name globally
@@ -180,23 +182,20 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
       (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $ pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
       (Just globalDoc, Nothing) => pure $ renderString $ unAnnotateS $ layoutUnbounded globalDoc
       (Nothing, Nothing) => pure ""
-    let response = Success (getResponseId msg) (make $ MkHover (make $ MkMarkupContent PlainText line) Nothing)
+    let hover = MkHover (make $ MkMarkupContent PlainText line) Nothing
+    modify LSPConf (record { cachedHovers $= insert (cast loc, hover) })
+    let response = Success (getResponseId msg) (make hover)
     sendResponseMessage TextDocumentHover response
 
 processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
   whenNotShutdown $ whenInitialized $ \_ => do
     quickfixActions <- map Just <$> gets LSPConf quickfixes
     exprSearchAction <- map Just <$> exprSearch params
-    splitAction <- caseSplit (getResponseId msg) params
+    splitAction <- caseSplit params
     lemmaAction <- makeLemma params
     withAction <- makeWith params
     clauseAction <- addClause params
     makeCaseAction <- handleMakeCase params
-    -- The order is important here, the generate definition functionality
-    -- leave a trace in the context, which could be pixed up in other
-    -- parts which look up information from the Context. In the resp the order
-    -- is not improtant.
-    -- TODO: Figure out how to clear out the temporary results of generate-def
     generateDefAction <- map Just <$> generateDef (getResponseId msg) params
     let resp = flatten $ quickfixActions
                            ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]

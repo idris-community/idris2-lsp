@@ -89,7 +89,7 @@ signatureHelp params =
   catch (do let line = params.position.line
             let col = params.position.character
             nameLocs <- gets MD nameLocMap
-            let Just ((fname, nstart, nend), name) = findInTreeLoc (line, col) nameLocs
+            let Just ((fname, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
               | Nothing => do
                   logString Debug "signatureHelp: didn't find name for \{show (line,col)}"
                   pure Nothing

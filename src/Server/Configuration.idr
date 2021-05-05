@@ -4,9 +4,14 @@
 ||| (C) The Idris Community, 2021
 module Server.Configuration
 
+import Core.FC
+import Language.LSP.CodeAction
 import Language.LSP.Message.CodeAction
 import Language.LSP.Message.Initialize
+import Language.LSP.Message.Hover
+import Language.LSP.Message.Location
 import Language.LSP.Message.URI
+import Libraries.Data.PosMap
 import System.File
 
 ||| Label for the configuration reference.
@@ -35,16 +40,24 @@ record LSPConfiguration where
   searchLimit : Nat
   ||| List of quickfixes to be send in addition to other code actions
   quickfixes : List CodeAction
+  ||| Cached code actions by position
+  cachedActions : PosMap (Range, IdrisAction, List CodeAction)
+  ||| Cached hovers
+  cachedHovers : PosMap (Range, Hover)
 
 ||| Server default configuration. Uses standard input and standard output for input/output.
 export
 defaultConfig : LSPConfiguration
-defaultConfig = MkLSPConfiguration { inputHandle = stdin
-                                   , outputHandle = stdout
-                                   , logHandle = stderr
-                                   , initialized = Nothing
-                                   , isShutdown = False
-                                   , openFile = Nothing
-                                   , searchLimit = 5
-                                   , quickfixes = []
-                                   }
+defaultConfig =
+  MkLSPConfiguration
+    { inputHandle   = stdin
+    , outputHandle  = stdout
+    , logHandle     = stderr
+    , initialized   = Nothing
+    , isShutdown    = False
+    , openFile      = Nothing
+    , searchLimit   = 5
+    , quickfixes    = []
+    , cachedActions = empty
+    , cachedHovers  = empty
+    }

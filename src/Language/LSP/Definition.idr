@@ -66,7 +66,7 @@ gotoDefinition params = do
   let col  = params.position.character
 
   nameLocs <- gets MD nameLocMap
-  let Just (_, name) = findInTreeLoc (line, col) nameLocs
+  let Just (_, name) = findPointInTreeLoc (line, col) nameLocs
     | Nothing => do
         logString Debug "gotoDefinition: Couldn't find a name at \{show (line, col)}"
         pure Nothing

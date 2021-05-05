@@ -12,6 +12,7 @@ import Idris.REPL.Opts
 import Idris.Syntax
 import Idris.Resugar
 import Language.JSON
+import Language.LSP.CodeAction
 import Language.LSP.Message
 import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
@@ -55,10 +56,14 @@ makeLemma params = do
     | _ => do logString Debug "makeLemma: start and end line were different"
               pure Nothing
 
+  [] <- searchCache params.range MakeLemma
+    | action :: _ => do logString Debug "makeLemma: found cached action"
+                        pure (Just action)
+
   nameLocs <- gets MD nameLocMap
   let line = params.range.start.line
   let col = params.range.start.character
-  let Just ((_, nstart, nend), name) = findInTreeLoc (line, col) nameLocs
+  let Just (loc@(_, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
     | Nothing => do logString Debug "makeLemma: couldn't find name at \{show (line, col)}"
                     pure Nothing
 
@@ -89,4 +94,6 @@ makeLemma params = do
   let appEdit = MkTextEdit (MkRange (uncurry MkPosition nstart) (uncurry MkPosition nend)) lemmaApp
   let tyEdit = MkTextEdit (MkRange (MkPosition blank 0) (MkPosition blank 0))
                           (relit markM "\{show $ dropNS name} : \{show lemmaTy}\n\n")
-  pure $ Just $ buildCodeAction name params.textDocument.uri [tyEdit, appEdit]
+  let action = buildCodeAction name params.textDocument.uri [tyEdit, appEdit]
+  modify LSPConf (record { cachedActions $= insert (cast loc, MakeLemma, [action]) })
+  pure $ Just action
