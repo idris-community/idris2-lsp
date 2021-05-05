@@ -10,7 +10,7 @@ import Language.LSP.Message
 
 syncOptions : TextDocumentSyncOptions
 syncOptions = MkTextDocumentSyncOptions { openClose = Just True
-                                        , change = Just Full
+                                        , change = Nothing
                                         , willSave = Nothing
                                         , willSaveWaitUntil = Nothing
                                         , save = Just (make (MkSaveOptions (Just True)))
