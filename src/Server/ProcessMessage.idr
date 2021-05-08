@@ -90,10 +90,20 @@ processMessage Initialize msg@(MkRequestMessage id Initialize params) = do
   -- The compiler does not work with the same root directory model that LSP operates with,
   -- may be a point of friction in particular with the location of generated binary files.
   let Just fpath = path <$> toMaybe params.rootUri
-    | _ => do logString Error $ "Error in initialize expected valid root uri"
+    | _ => do logString Error "Error in initialize expected valid root uri"
               sendUnknownResponseMessage (invalidParams "Expected valid root uri")
   fname <- fromMaybe fpath <$> findIpkg (Just fpath)
   setSourceDir (Just fname)
+
+  case params.initializationOptions of
+       Just (JObject xs) =>
+         case lookup "logFile" xs of
+              Just (JString fname) => changeLogFile fname
+              Just _ => logString Error "Incorrect type for log file location, expected string"
+              Nothing => pure ()
+       Just _ => logString Error "Incorrect type for initialization options"
+       Nothing => pure ()
+
   sendResponseMessage Initialize response
   update LSPConf (record {initialized = Just params})
 

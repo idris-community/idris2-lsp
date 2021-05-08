@@ -4,9 +4,12 @@
 module Server.Log
 
 import Core.Core
+import Core.Directory
 import Server.Configuration
 import Server.Utils
+import System.Directory
 import System.File
+import System.Path
 
 %default total
 
@@ -50,10 +53,26 @@ export
 logString : Ref LSPConf LSPConfiguration => Severity -> String -> Core ()
 logString severity msg = do
   logHandle <- gets LSPConf logHandle
-  coreLift_ $ fPutStrLn logHandle ("LOG " ++ show severity ++ ": " ++ msg)
-  coreLift_ $ fflush logHandle
---   fPutStrLn stderr ("LOG " ++ show severity ++ ": " ++ msg) *> pure ()
+  ignore $ coreLift $ fPutStrLn logHandle ("LOG " ++ show severity ++ ": " ++ msg)
+  coreLift $ fflush logHandle
+
 ||| Logs a showable value with the provided severity level.
 export
 logShow : Ref LSPConf LSPConfiguration => Show a => Severity -> a -> Core ()
 logShow severity = logString severity . show
+
+||| Changes the log file location, if possible.
+export covering
+changeLogFile : Ref LSPConf LSPConfiguration => String -> Core ()
+changeLogFile fname = do
+  let True = isAbsolute fname
+    | False => logString Error "Unable to change log file location: \{fname} is not an absolute path"
+  case parent fname of
+       Just dir => do Right _ <- coreLift $ mkdirAll dir
+                        | Left err => logString Error "Unable to create directory \{dir}: \{show err}"
+                      logString Debug "Created new log directory \{dir}"
+       Nothing => pure ()
+  Right handle <- coreLift $ openFile fname Append
+    | Left err => logString Error "Unable to updated log file location \{fname}: \{show err}"
+  modify LSPConf (record { logHandle = handle })
+  logString Debug "Log file location updated to \{fname}"
