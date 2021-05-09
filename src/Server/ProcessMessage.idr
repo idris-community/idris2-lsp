@@ -244,6 +244,10 @@ processMessage TextDocumentCodeLens msg@(MkRequestMessage id TextDocumentCodeLen
   whenNotShutdown $ whenInitialized $ \conf =>
     sendResponseMessage TextDocumentCodeLens (Success (getResponseId msg) (make MkNull))
 
+processMessage TextDocumentCompletion msg@(MkRequestMessage id TextDocumentCompletion params) =
+  whenNotShutdown $ whenInitialized $ \conf =>
+    sendResponseMessage TextDocumentCompletion (Success (getResponseId msg) (make MkNull))
+
 processMessage TextDocumentDocumentLink msg@(MkRequestMessage id TextDocumentDocumentLink params) =
   whenNotShutdown $ whenInitialized $ \conf =>
     sendResponseMessage TextDocumentDocumentLink (Success (getResponseId msg) (make MkNull))
