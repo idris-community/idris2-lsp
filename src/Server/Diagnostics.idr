@@ -359,7 +359,7 @@ perror (InRHS fc n err)
     = pure $ hsep [ errorDesc (reflow "While processing right hand side of" <++> code (pretty !(prettyName n))) <+> dot
                   , !(perror err)
                   ]
-perror (MaybeMisspelling err ns) = pure $ !(perror err) <+> case ns of
+perror (MaybeMisspelling err ns) = pure $ !(perror err) <++> case ns of
   (n ::: []) => reflow "Did you mean:" <++> pretty n <+> "?"
   _ => let (xs, x) = unsnoc ns in
        reflow "Did you mean any of:"
