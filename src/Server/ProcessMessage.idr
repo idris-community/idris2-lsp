@@ -39,6 +39,7 @@ import Server.QuickFix
 import Server.Response
 import Server.Utils
 import System
+import System.Clock
 
 displayType : {auto c : Ref Ctxt Defs} ->
               {auto s : Ref Syn SyntaxInfo} ->
@@ -96,16 +97,25 @@ processMessage Initialize msg@(MkRequestMessage id Initialize params) = do
   setSourceDir (Just fname)
 
   case params.initializationOptions of
-       Just (JObject xs) =>
+       Just (JObject xs) => do
          case lookup "logFile" xs of
               Just (JString fname) => changeLogFile fname
               Just _ => logString Error "Incorrect type for log file location, expected string"
+              Nothing => pure ()
+         case lookup "longActionTimeout" xs of
+              Just (JNumber v) => do
+                let n = 1000000 * cast v
+                let scale       = 1000000000
+                let seconds     = n `div` scale
+                let nanoseconds = n `mod` scale
+                modify LSPConf (record {longActionTimeout = makeDuration seconds nanoseconds})
+              Just _ => logString Error "Incorrect type for long action timeout, expected number"
               Nothing => pure ()
        Just _ => logString Error "Incorrect type for initialization options"
        Nothing => pure ()
 
   sendResponseMessage Initialize response
-  update LSPConf (record {initialized = Just params})
+  modify LSPConf (record {initialized = Just params})
 
 processMessage Shutdown msg@(MkRequestMessage _ Shutdown _) = do
   -- In a future multithreaded model, we must guarantee that all pending request are still executed.
@@ -219,7 +229,6 @@ processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeA
 
 processMessage TextDocumentSignatureHelp m@(MkRequestMessage id TextDocumentSignatureHelp params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    -- let response = Success (getResponseId m)
     signatureHelpData <- signatureHelp params
     _ <- traverseOpt
           (sendResponseMessage TextDocumentSignatureHelp . Success (getResponseId m) . make)
