@@ -25,17 +25,25 @@ import Server.Response
 import Server.Utils
 import System.File
 import Server.Log
+import System.Clock
 import TTImp.Interactive.GenerateDef
 import TTImp.TTImp
 import TTImp.Interactive.ExprSearch
 import Parser.Unlit
 
 -- forked from Language.LSP.CodeAction.ExprSearch
-fueledRepeat : Nat -> List a -> (Nat -> Core (Maybe a)) -> Core (List a)
-fueledRepeat Z acc f = pure (reverse acc)
-fueledRepeat (S k) acc f = do Just res <- f k
-                                | Nothing => pure (reverse acc)
-                              fueledRepeat k (res :: acc) f
+fueledTimedRepeat : Ref LSPConf LSPConfiguration
+                 => Nat -> Clock Monotonic -> Clock Duration -> List a -> (Nat -> Core (Maybe a)) -> Core (List a)
+fueledTimedRepeat Z _ _ acc _ = pure (reverse acc)
+fueledTimedRepeat (S k) start timeout acc f = do
+  Just res <- f k
+    | Nothing => pure (reverse acc)
+  time <- coreLift $ clockTime Monotonic
+  let diff = timeDifference time start
+  if diff < timeout
+     then fueledTimedRepeat k start timeout (res :: acc) f
+     else do logString Info "GeneratedDef timed out"
+             pure (reverse acc)
 
 number : Nat -> List a -> List (Nat, a)
 number n [] = []
@@ -86,6 +94,10 @@ generateDef msgId params = do
     | Nothing => do
         logString Debug "generateDef: couldn't find name at: \{show (line, col)}"
         pure []
+
+  timeout <- gets LSPConf longActionTimeout
+  start <- coreLift $ clockTime Monotonic
+
   Edited (DisplayEdit block)
     <- Idris.REPL.process
         (Editing (GenerateDef False (fromInteger (cast (line + 1))) name 0)) -- off-by-one
@@ -96,16 +108,22 @@ generateDef msgId params = do
         logString Debug "generateDef: return unexpected REPL result."
         pure []
 
-  fuel <- gets LSPConf searchLimit
-  blocks <- fueledRepeat (pred fuel) [] $ \k => do
-    Edited (DisplayEdit block) <- Idris.REPL.process (Editing GenerateDefNext)
-    | Edited (EditError err) => do
-        logString Debug "generateDef next: had an EditError in \{show k}: \{show err}"
-        pure Nothing
-    | other => do
-        logString Debug "generateDef next: returned unexpected REPL result in \{show k}"
-        pure Nothing
-    pure (Just block)
+  time <- coreLift $ clockTime Monotonic
+  let diff = timeDifference time start
+  blocks <- case diff < timeout of
+    False => do logString Info "GeneratedDef timed out"
+                pure []
+    True => do
+      fuel <- gets LSPConf searchLimit
+      fueledTimedRepeat (pred fuel) start timeout [] $ \k => do
+        Edited (DisplayEdit block) <- Idris.REPL.process (Editing GenerateDefNext)
+          | Edited (EditError err) => do
+              logString Debug "generateDef next: had an EditError in \{show k}: \{show err}"
+              pure Nothing
+          | other => do
+              logString Debug "generateDef next: returned unexpected REPL result in \{show k}"
+              pure Nothing
+        pure (Just block)
 
   put Ctxt defs
 
@@ -122,7 +140,7 @@ generateDef msgId params = do
           , changeAnnotations = Nothing
           }
     pure $ MkCodeAction
-      { title = "Generate definition #\{show i} as ~ \{strSubstr 0 40 lastLine} ..."
+      { title = "Generate definition #\{show i} as ~ \{strSubstr 0 50 lastLine} ..."
       , kind        = Just $ Other "generate-def"
       , diagnostics = Just []
       , isPreferred = Just False

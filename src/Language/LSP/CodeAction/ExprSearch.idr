@@ -18,6 +18,7 @@ import Libraries.Data.PosMap
 import Server.Configuration
 import Server.Log
 import Server.Utils
+import System.Clock
 import TTImp.TTImp
 import TTImp.Interactive.ExprSearch
 
@@ -45,11 +46,18 @@ nextProofSearch = do
   put ROpts (record { psResult = Just (n, next) } opts)
   pure (Just (n, res))
 
-fueledRepeat : Nat -> List a -> Core (Maybe a) -> Core (List a)
-fueledRepeat Z acc f = pure (reverse acc)
-fueledRepeat (S k) acc f = do Just res <- f
-                                | Nothing => pure (reverse acc)
-                              fueledRepeat k (res :: acc) f
+fueledTimedRepeat : Ref LSPConf LSPConfiguration
+                 => Nat -> Clock Monotonic -> Clock Duration -> List a -> Core (Maybe a) -> Core (List a)
+fueledTimedRepeat Z _ _ acc _ = pure (reverse acc)
+fueledTimedRepeat (S k) start timeout acc f = do
+  Just res <- f
+    | Nothing => pure (reverse acc)
+  time <- coreLift $ clockTime Monotonic
+  let diff = timeDifference time start
+  if diff < timeout
+     then fueledTimedRepeat k start timeout (res :: acc) f
+     else do logString Info "ExprSearch timed out - timeout \{show timeout} - delta \{show diff}"
+             pure (reverse acc)
 
 buildCodeAction : Name -> URI -> Range -> String -> CodeAction
 buildCodeAction name uri range str =
@@ -58,7 +66,7 @@ buildCodeAction name uri range str =
                                       , documentChanges   = Nothing
                                       , changeAnnotations = Nothing
                                       }
-   in MkCodeAction { title       = "Expression search on \{show $ dropAllNS name} as ~ \{strSubstr 0 40 str} ..."
+   in MkCodeAction { title       = "Expression search on \{show $ dropAllNS name} as ~ \{strSubstr 0 50 str} ..."
                    , kind        = Just (Other "refactor.rewrite.auto")
                    , diagnostics = Just []
                    , isPreferred = Just False
@@ -98,12 +106,15 @@ exprSearch params = do
                       let searchtm = exprSearch replFC name []
                       ropts <- get ROpts
                       put ROpts (record { psResult = Just (name, searchtm) } ropts)
-                      fueledRepeat fuel [] (do Just (_, restm) <- nextProofSearch
-                                                 | Nothing => pure Nothing
-                                               let tm' = dropLams locs restm
-                                               itm <- pterm tm'
-                                               let itm' : PTerm = if toBrack then addBracket replFC itm else itm
-                                               pure $ Just (show itm'))
+                      timeout <- gets LSPConf longActionTimeout
+                      start <- coreLift $ clockTime Monotonic
+                      fueledTimedRepeat fuel start timeout []
+                        (do Just (_, restm) <- nextProofSearch
+                              | Nothing => pure Nothing
+                            let tm' = dropLams locs restm
+                            itm <- pterm tm'
+                            let itm' : PTerm = if toBrack then addBracket replFC itm else itm
+                            pure $ Just (show itm'))
                     [(n, nidx, PMDef pi [] (STerm _ tm) _ _)] => case holeInfo pi of
                       NotHole => pure []
                       SolvedHole locs => do

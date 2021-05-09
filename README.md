@@ -14,3 +14,4 @@ Server options that can be set via the `initializationOptions` object in the ini
 |Option key|Type|Description|
 |----------|----|-----------|
 |`logFile`|`string`|Absolute location of the log file for the server (default: stderr)|
+|`longActionTimeout`|`number`|Timeout in ms for long actions, e.g. expression search (default: 5000)|
