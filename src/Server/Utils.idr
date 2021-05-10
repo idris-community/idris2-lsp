@@ -167,7 +167,7 @@ Cast Position FilePos where
 export
 Cast FC Range where
   cast (MkFC _ start end) = MkRange { start = cast start, end = cast end }
-  cast EmptyFC = MkRange { start = MkPosition 0 0, end = MkPosition 0 0 }
+  cast _ = MkRange { start = MkPosition 0 0, end = MkPosition 0 0 }
 
 export
 Cast NonEmptyFC Range where

@@ -98,7 +98,7 @@ runServer = do
   catch (processMessage method msg)
         (\err => do
           logString Error (show err)
-          resetContext)
+          resetContext "")
   runServer
 
 main : IO ()
@@ -118,7 +118,7 @@ main = do
               addLibDir cwd
               o <- newRef ROpts (Opts.defaultOpts Nothing (REPL False) [])
               u <- newRef UST initUState
-              m <- newRef MD initMetadata
+              m <- newRef MD (initMetadata "")
               runServer)
     (\err => fPutStrLn stderr ("CRITICAL UNCAUGHT ERROR " ++ show err) *> exitWith (ExitFailure 1))
     (\res => pure ())
