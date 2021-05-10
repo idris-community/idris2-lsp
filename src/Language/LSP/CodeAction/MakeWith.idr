@@ -52,7 +52,7 @@ makeWith params = do
     | _ => do logString Debug "makeWith: start and end line were different"
               pure Nothing
 
-  [] <- searchCache params.range CaseSplit
+  [] <- searchCache params.range MakeWith
     | action :: _ => do logString Debug "makeWith: found cached action"
                         pure (Just action)
 
