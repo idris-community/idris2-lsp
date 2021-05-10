@@ -87,7 +87,7 @@ exprSearch params = do
   let True = params.range.start.line == params.range.end.line
     | _ => pure []
 
-  [] <- searchCache params.range CaseSplit
+  [] <- searchCache params.range ExprSearch
     | actions => do logString Debug "exprSearch: found cached action"
                     pure actions
 
