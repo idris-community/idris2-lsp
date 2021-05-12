@@ -202,8 +202,9 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
       (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $ pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
       (Just globalDoc, Nothing) => pure $ renderString $ unAnnotateS $ layoutUnbounded globalDoc
       (Nothing, Nothing) => pure ""
-    let markdownLine = "```idris\n" ++ line ++ "\n```"
-    let hover = MkHover (make $ MkMarkupContent Markdown markdownLine) Nothing
+    let supportsMarkup = maybe False (Markdown `elem`) (conf.capabilities.textDocument >>= (.hover) >>= (.contentFormat))
+    let markupContent = the MarkupContent $ if supportsMarkup then MkMarkupContent Markdown $ "```idris\n" ++ line ++ "\n```" else MkMarkupContent PlainText line
+    let hover = MkHover (make markupContent) Nothing
     modify LSPConf (record { cachedHovers $= insert (cast loc, hover) })
     let response = Success (getResponseId msg) (make hover)
     sendResponseMessage TextDocumentHover response
