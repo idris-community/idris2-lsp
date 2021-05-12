@@ -13,6 +13,13 @@ namespace MarkupKind
   public export
   data MarkupKind = PlainText | Markdown
 
+public export
+Eq MarkupKind where
+  PlainText == PlainText = True
+  PlainText == _ = False
+  Markdown == Markdown = True
+  Markdown == _ = False
+
 export
 ToJSON MarkupKind where
   toJSON PlainText = JString "plaintext"
