@@ -76,7 +76,7 @@ handleMakeCase params = do
         }
   let codeAction = MkCodeAction
         { title       = "Make case for hole ?\{show name'}"
-        , kind        = Just $ Other "make-case"
+        , kind        = Just RefactorRewrite
         , diagnostics = Just []
         , isPreferred = Just False -- not a quickfix
         , disabled    = Nothing
