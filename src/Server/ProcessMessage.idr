@@ -140,7 +140,7 @@ processMessage TextDocumentDidOpen msg@(MkNotificationMessage TextDocumentDidOpe
     update LSPConf (record {openFile = Just (params.textDocument.uri, params.textDocument.version)})
     -- TODO: the compiler works directly with the file, we should upstream some changes to allow it to work with the
     --       source passed by the client.
-    resetContext ""
+    resetContext "(interactive)"
     let fpath = params.textDocument.uri.path
     fname <- fromMaybe fpath <$> findIpkg (Just fpath)
     errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
@@ -156,7 +156,7 @@ processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSav
   whenNotShutdown $ whenInitialized $ \conf => do
     update LSPConf (record {openFile = Just (params.textDocument.uri, 0)})
     -- TODO: same issue of TextDocumentDidOpen
-    resetContext ""
+    resetContext "(interactive)"
     let fpath = params.textDocument.uri.path
     fname <- fromMaybe fpath <$> findIpkg (Just fpath)
     let Just source = params.text
