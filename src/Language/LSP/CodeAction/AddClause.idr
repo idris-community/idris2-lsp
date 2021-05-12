@@ -29,7 +29,7 @@ buildCodeAction uri edits =
                                       , changeAnnotations = Nothing
                                       }
    in MkCodeAction { title       = "Add clause"
-                   , kind        = Just (Other "refactor.rewrite.auto")
+                   , kind        = Just RefactorRewrite
                    , diagnostics = Just []
                    , isPreferred = Just False
                    , disabled    = Nothing

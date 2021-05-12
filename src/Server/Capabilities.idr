@@ -36,11 +36,7 @@ serverCapabilities =
                                                                           Nothing))
                        , codeActionProvider               = Just (make (MkCodeActionOptions
                                                                           Nothing
-                                                                          (Just
-                                                                            [ Other "case-split"
-                                                                            , Other "generate-def"
-                                                                            , Other "make-case"
-                                                                            ])
+                                                                          Nothing
                                                                           (Just False)))
                        , codeLensProvider                 = Just (MkCodeLensOptions Nothing Nothing)
                        , documentLinkProvider             = Just (MkDocumentLinkOptions Nothing Nothing)

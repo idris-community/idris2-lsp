@@ -30,7 +30,7 @@ buildCodeAction name uri edits =
                                       , changeAnnotations = Nothing
                                       }
    in MkCodeAction { title       = "Make lemma of \{show name}"
-                   , kind        = Just (Other "refactor.rewrite.auto")
+                   , kind        = Just RefactorExtract
                    , diagnostics = Just []
                    , isPreferred = Just False
                    , disabled    = Nothing

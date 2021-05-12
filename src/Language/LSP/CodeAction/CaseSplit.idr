@@ -71,7 +71,7 @@ caseSplit params = do
         }
   let action = MkCodeAction
         { title       = "Case split on ?\{show name}"
-        , kind        = Just $ Other "refactor.rewrite.auto"
+        , kind        = Just RefactorRewrite
         , diagnostics = Just []
         , isPreferred = Just False
         , disabled    = Nothing
