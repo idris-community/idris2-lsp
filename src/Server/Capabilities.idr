@@ -16,6 +16,27 @@ syncOptions = MkTextDocumentSyncOptions { openClose = Just True
                                         , save = Just (make (MkSaveOptions (Just True)))
                                         }
 
+semanticTokensLegend : SemanticTokensLegend
+semanticTokensLegend = MkSemanticTokensLegend
+  -- ``type``: type constructors       ==> ``type``
+
+  -- ``function``: defined functions   ==> ``function``
+
+  -- ``data``: data constructors       ==> ``struct``
+
+  -- ``bound``: bound variables, or    ==> ``variable``
+
+  -- ``keyword``                       ==> ``keyword``
+  ["type", "function", "struct", "variable", "keyword"]
+  []
+
+semanticTokensOptions : SemanticTokensOptions
+semanticTokensOptions = MkSemanticTokensOptions
+  semanticTokensLegend
+  (Just (make False))
+  (Just (make True))
+
+
 ||| Default server capabilities to be sent to clients during the initialization protocol.
 export
 serverCapabilities : ServerCapabilities
@@ -54,7 +75,7 @@ serverCapabilities =
                        , selectionRangeProvider           = Just (make False)
                        , linkedEditingRangeProvider       = Just (make False)
                        , callHierarchyProvider            = Just (make False)
-                       , semanticTokensProvider           = Nothing
+                       , semanticTokensProvider           = Just (make semanticTokensOptions)
                        , monikerProvider                  = Just (make False)
                        , workspaceSymbolProvider          = Just (make False)
                        , workspace                        = Just (MkWorkspaceServerCapabilities

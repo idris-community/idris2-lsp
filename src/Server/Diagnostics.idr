@@ -116,6 +116,12 @@ perror (PatternVariableUnifies fc env n tm) = do
     order fc1 EmptyFC = (fc1, EmptyFC)
     order fc1@(MkFC _ sr1 sc1) fc2@(MkFC _ sr2 sc2) =
       if sr1 < sr2 then (fc1, fc2) else if sr1 == sr2 && sc1 < sc2 then (fc1, fc2) else (fc2, fc1)
+    order fc1@(MkVirtualFC _ sr1 sc1) fc2@(MkVirtualFC _ sr2 sc2) =
+      if sr1 < sr2 then (fc1, fc2) else if sr1 == sr2 && sc1 < sc2 then (fc1, fc2) else (fc2, fc1)
+    order fc1@(MkFC _ sr1 sc1) fc2@(MkVirtualFC _ sr2 sc2) =
+      if sr1 < sr2 then (fc1, fc2) else if sr1 == sr2 && sc1 < sc2 then (fc1, fc2) else (fc2, fc1)
+    order fc1@(MkVirtualFC _ sr1 sc1) fc2@(MkFC _ sr2 sc2) =
+      if sr1 < sr2 then (fc1, fc2) else if sr1 == sr2 && sc1 < sc2 then (fc1, fc2) else (fc2, fc1)
 perror (CyclicMeta fc env n tm)
     = pure $ errorDesc (reflow "Cycle detected in solution of metavariable" <++> meta (pretty !(prettyName n)) <++> equals
         <++> code !(pshow env tm))

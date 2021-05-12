@@ -57,6 +57,30 @@ displayTerm defs tm
     = do ptm <- resugar [] !(normaliseHoles defs [] tm)
          pure (prettyTerm ptm)
 
+-- Tokens must be single-line.
+encode : (relLine : Int)
+      -> (relStartChar : Int)
+      -> List ASemanticDecoration
+      -> List Int
+encode relLine relStartChar [] = []
+encode relLine relStartChar (((_, (sl, sc), (el, ec)), decor, _) :: xs) =
+  encoding ++ encode sl sc xs
+ where
+  encodeDecorType : Decoration -> Int
+  encodeDecorType Typ      = 0
+  encodeDecorType Function = 1
+  encodeDecorType Data     = 2
+  encodeDecorType Keyword  = 3
+  encodeDecorType Bound    = 4
+
+  -- Line, StartChar, Length, TokenType, TokenModifiers
+  encoding : List Int
+  encoding = [ sl - relLine
+             , sc - relStartChar
+             , ec - sc
+             , encodeDecorType decor
+             , 0]
+
 ||| Guard for messages that requires a successful initialization before being allowed.
 whenInitialized : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
 whenInitialized k =
@@ -138,13 +162,10 @@ processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSav
     resetContext
     let fpath = params.textDocument.uri.path
     fname <- fromMaybe fpath <$> findIpkg (Just fpath)
-    let Just source = params.text
-      | _  => do logString Error $ "Error in textDocument/didSave expected format"
-                 sendUnknownResponseMessage (invalidParams "Expected full text after save")
     errs <- buildDeps fname -- FIXME: add string version to the compiler (requires upstream change, probably)
                             -- FIXME: stop emitting errors on stdout (requires upstream change)
     logString Debug $ "errors : \{show errs}"
-    setSource source
+    -- setSource source
     resetProofState
     modify LSPConf (record { quickfixes = [] })
     let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
@@ -221,6 +242,15 @@ processMessage TextDocumentDocumentSymbol m@(MkRequestMessage id TextDocumentDoc
   whenNotShutdown $ whenInitialized $ \conf => do
     documentSymbolData <- documentSymbol params
     sendResponseMessage TextDocumentDocumentSymbol $ Success (getResponseId m) $ make documentSymbolData
+
+processMessage TextDocumentSemanticTokensFull m@(MkRequestMessage id TextDocumentSemanticTokensFull (MkSemanticTokensParams _ _ file)) = do
+  whenNotShutdown $ whenInitialized $ \conf => do
+    md <- get MD
+    let dat = fromMaybe [] (flip intersections md.semanticHighlighting <$> bounds md.semanticHighlighting)
+    let enc = encode 1 1 dat
+    logString Warning $ "Sending sem highlight info of size \{show $ length enc}"
+    sendResponseMessage TextDocumentSemanticTokensFull $ Success (getResponseId m)
+      (make $ MkSemanticTokens Nothing enc)
 
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do
