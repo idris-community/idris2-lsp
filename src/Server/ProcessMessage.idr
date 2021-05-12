@@ -59,6 +59,30 @@ displayTerm defs tm
     = do ptm <- resugar [] !(normaliseHoles defs [] tm)
          pure (prettyTerm ptm)
 
+-- Tokens must be single-line.
+encode : (relLine : Int)
+      -> (relStartChar : Int)
+      -> List ASemanticDecoration
+      -> List Int
+encode relLine relStartChar [] = []
+encode relLine relStartChar (((_, (sl, sc), (el, ec)), decor, _) :: xs) =
+  encoding ++ encode sl sc xs
+ where
+  encodeDecorType : Decoration -> Int
+  encodeDecorType Typ      = 0
+  encodeDecorType Function = 1
+  encodeDecorType Data     = 2
+  encodeDecorType Keyword  = 3
+  encodeDecorType Bound    = 4
+
+  -- Line, StartChar, Length, TokenType, TokenModifiers
+  encoding : List Int
+  encoding = [ sl - relLine
+             , sc - relStartChar
+             , ec - sc
+             , encodeDecorType decor
+             , 0]
+
 ||| Guard for messages that requires a successful initialization before being allowed.
 whenInitialized : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
 whenInitialized k =
@@ -253,6 +277,15 @@ processMessage TextDocumentCompletion msg@(MkRequestMessage id TextDocumentCompl
 processMessage TextDocumentDocumentLink msg@(MkRequestMessage id TextDocumentDocumentLink params) =
   whenNotShutdown $ whenInitialized $ \conf =>
     sendResponseMessage TextDocumentDocumentLink (Success (getResponseId msg) (make MkNull))
+
+processMessage TextDocumentSemanticTokensFull m@(MkRequestMessage id TextDocumentSemanticTokensFull (MkSemanticTokensParams _ _ file)) = do
+  whenNotShutdown $ whenInitialized $ \conf => do
+    md <- get MD
+    let dat = fromMaybe [] (flip intersections md.semanticHighlighting <$> bounds md.semanticHighlighting)
+    let enc = encode 1 1 dat
+    logString Warning $ "Sending sem highlight info of size \{show $ length enc}"
+    sendResponseMessage TextDocumentSemanticTokensFull $ Success (getResponseId m)
+      (make $ MkSemanticTokens Nothing enc)
 
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do

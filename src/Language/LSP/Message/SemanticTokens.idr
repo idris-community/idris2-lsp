@@ -44,7 +44,7 @@ FromJSON TokenFormat where
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
 public export
 record SemanticTokensLegend where
-  constructor MkSemanticTokensLenged
+  constructor MkSemanticTokensLegend
   tokenTypes     : List String
   tokenModifiers : List String
 %runElab deriveJSON defaultOpts `{{SemanticTokensLegend}}
