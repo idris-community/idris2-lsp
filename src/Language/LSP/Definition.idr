@@ -82,8 +82,8 @@ gotoDefinition params = do
         pure Nothing
 
   case globalDef.location of
-    EmptyFC => do
+    MkFC f s e => mkLocation f s e
+    _ => do
       logString Debug "gotoDefinition: \{show name} didn't have location information."
       pure Nothing
-    MkFC f s e => mkLocation f s e
 
