@@ -7,6 +7,7 @@ import Test.Golden
 allTests : TestPool
 allTests = MkTestPool "Messages" []
   [ "messages001"
+  , "messages002"
   ]
 
 main : IO ()

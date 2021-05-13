@@ -2,11 +2,13 @@ INTERACTIVE ?= --interactive
 
 .PHONY: testbin test
 
-test:
+test: clean testbin
 	touch /tmp/test-lsp.idr
 	./build/exec/runtests lsp $(INTERACTIVE) --only $(only)
 
 testbin:
+	# hack so `1/1: Building lsp.messages002.Foo` doesn't appear in test output
+	idris2 --check ./lsp/messages002/Foo.idr
 	idris2 --build tests.ipkg
 
 clean:

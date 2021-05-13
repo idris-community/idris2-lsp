@@ -4,7 +4,8 @@ build:
 
 clean:
 	idris2 --clean lsp.ipkg
-	rm -r build
+	${RM} -r build
+	${MAKE} -C tests clean
 
 repl:
 	rlwrap idris2 --repl lsp.ipkg

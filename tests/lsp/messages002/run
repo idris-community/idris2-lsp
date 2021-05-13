@@ -1,0 +1,8 @@
+# the path here seems fragile,
+# should probably come up with a better alternative
+
+rm -f generated-in.log
+rm -f expected
+cat tmpl-in.txt | LINE_ENDINGS=windows ../../../scripts/format.sh  > generated-in.log
+cat tmpl-expected.txt | LINE_ENDINGS=linux ../../../scripts/format.sh  > expected
+cat generated-in.log | ../../../build/exec/idris2-lsp

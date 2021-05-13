@@ -1,0 +1,7 @@
+{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"processId":17766,"rootPath":"PATH_ROOT_PROJECT","rootUri":"file://PATH_ROOT_PROJECT/Foo.idr","capabilities":{},"workspaceFolders":[{"uri":"file://PATH_ROOT_PROJECT/Foo.idr","name":"testidris2lsp"}]}}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file://PATH_ROOT_PROJECT/Foo.idr","languageId":"idris","version":1,"text":"foo : Nat -> Bool\nfoo k = ?foo_rhs\n"}}}
+{"jsonrpc":"2.0","id":1,"method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"file://PATH_ROOT_PROJECT/Foo.idr"}}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/codeAction","params":{"textDocument":{"uri":"file://PATH_ROOT_PROJECT/Foo.idr"},"range":{"start":{"line":1,"character":11},"end":{"line":1,"character":11}},"context":{"diagnostics":[]}}}
+{"jsonrpc":"2.0","id":3,"method":"shutdown"}
+{"jsonrpc":"2.0","id":4,"method":"exit"}
