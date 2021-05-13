@@ -141,7 +141,7 @@ generateDef msgId params = do
           }
     pure $ MkCodeAction
       { title = "Generate definition #\{show i} as ~ \{strSubstr 0 50 lastLine} ..."
-      , kind        = Just $ Other "generate-def"
+      , kind        = Just RefactorRewrite
       , diagnostics = Just []
       , isPreferred = Just False
       , disabled    = Nothing

@@ -30,7 +30,7 @@ buildCodeAction name uri edits =
                                       , changeAnnotations = Nothing
                                       }
    in MkCodeAction { title       = "Make with of \{show name}"
-                   , kind        = Just (Other "refactor.rewrite.auto")
+                   , kind        = Just RefactorRewrite
                    , diagnostics = Just []
                    , isPreferred = Just False
                    , disabled    = Nothing
