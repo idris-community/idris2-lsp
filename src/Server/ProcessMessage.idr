@@ -36,6 +36,7 @@ import Server.Capabilities
 import Server.Configuration
 import Server.Log
 import Server.QuickFix
+import Server.SemanticTokens
 import Server.Response
 import Server.Utils
 import System
@@ -58,30 +59,6 @@ displayTerm : {auto c : Ref Ctxt Defs} ->
 displayTerm defs tm
     = do ptm <- resugar [] !(normaliseHoles defs [] tm)
          pure (prettyTerm ptm)
-
--- Tokens must be single-line.
-encode : (relLine : Int)
-      -> (relStartChar : Int)
-      -> List ASemanticDecoration
-      -> List Int
-encode relLine relStartChar [] = []
-encode relLine relStartChar (((_, (sl, sc), (el, ec)), decor, _) :: xs) =
-  encoding ++ encode sl sc xs
- where
-  encodeDecorType : Decoration -> Int
-  encodeDecorType Typ      = 0
-  encodeDecorType Function = 1
-  encodeDecorType Data     = 2
-  encodeDecorType Keyword  = 3
-  encodeDecorType Bound    = 4
-
-  -- Line, StartChar, Length, TokenType, TokenModifiers
-  encoding : List Int
-  encoding = [ sl - relLine
-             , sc - relStartChar
-             , ec - sc
-             , encodeDecorType decor
-             , 0]
 
 ||| Guard for messages that requires a successful initialization before being allowed.
 whenInitialized : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
@@ -280,12 +257,8 @@ processMessage TextDocumentDocumentLink msg@(MkRequestMessage id TextDocumentDoc
 
 processMessage TextDocumentSemanticTokensFull m@(MkRequestMessage id TextDocumentSemanticTokensFull (MkSemanticTokensParams _ _ file)) = do
   whenNotShutdown $ whenInitialized $ \conf => do
-    md <- get MD
-    let dat = fromMaybe [] (flip intersections md.semanticHighlighting <$> bounds md.semanticHighlighting)
-    let enc = encode 1 1 dat
-    logString Warning $ "Sending sem highlight info of size \{show $ length enc}"
-    sendResponseMessage TextDocumentSemanticTokensFull $ Success (getResponseId m)
-      (make $ MkSemanticTokens Nothing enc)
+    tokens <- getSemanticTokens
+    sendResponseMessage TextDocumentSemanticTokensFull $ Success (getResponseId m) (make $ tokens)
 
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do
