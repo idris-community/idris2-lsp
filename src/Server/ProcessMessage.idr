@@ -40,6 +40,7 @@ import Server.QuickFix
 import Server.Response
 import Server.Utils
 import System
+import System.File
 import System.Clock
 
 displayType : {auto c : Ref Ctxt Defs} ->
@@ -88,12 +89,16 @@ loadURI : Ref LSPConf LSPConfiguration
        => Ref Syn SyntaxInfo
        => Ref MD Metadata
        => Ref ROpts REPLOpts
-       => InitializeParams -> URI -> Maybe Int -> Core ()
+       => InitializeParams -> URI -> Maybe Int -> Core Bool
 loadURI conf uri version = do
   modify LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
   resetContext "(interactive)"
   let fpath = uri.path
   fname <- fromMaybe fpath <$> findIpkg (Just fpath)
+  Right res <- coreLift $ File.readFile fname
+    | Left err => do logString Error "Cannot read file at \{show uri}"
+                     pure False
+  setSource res
   errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
                           --        a compiler change.
   resetProofState
@@ -101,6 +106,7 @@ loadURI conf uri version = do
   modify LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
   traverse_ (findQuickfix caps uri) errs
   sendDiagnostics caps uri version errs
+  pure True
 
 loadIfNeeded : Ref LSPConf LSPConfiguration
             => Ref Ctxt Defs
@@ -108,12 +114,26 @@ loadIfNeeded : Ref LSPConf LSPConfiguration
             => Ref Syn SyntaxInfo
             => Ref MD Metadata
             => Ref ROpts REPLOpts
-            => InitializeParams -> URI -> Maybe Int -> Core ()
+            => InitializeParams -> URI -> Maybe Int -> Core Bool
 loadIfNeeded conf uri version = do
   Just (oldUri, oldVersion) <- gets LSPConf openFile
     | Nothing => loadURI conf uri version
-  unless (oldUri == uri && (isNothing version || (Just oldVersion) == version)) $
-    loadURI conf uri version
+  if (oldUri == uri && (isNothing version || (Just oldVersion) == version))
+     then pure True
+     else loadURI conf uri version
+
+withURI : Ref LSPConf LSPConfiguration
+       => Ref Ctxt Defs
+       => Ref UST UState
+       => Ref Syn SyntaxInfo
+       => Ref MD Metadata
+       => Ref ROpts REPLOpts
+       => InitializeParams -> Method Client Request -> OneOf [Int, String, Null]
+       -> URI -> Maybe Int -> Core () -> Core ()
+withURI conf method id uri version k = do
+  if !(loadIfNeeded conf uri version)
+     then k
+     else sendResponseMessage method (Failure id (MkResponseError (Custom 3) "File \{show uri} cannot be read on disk" JNull))
 
 ||| Process a parsed LSP message received from a client.
 export
@@ -171,12 +191,12 @@ processMessage Exit (MkNotificationMessage Exit _) = do
 
 processMessage TextDocumentDidOpen msg@(MkNotificationMessage TextDocumentDidOpen params) =
   whenNotShutdown $ whenInitialized $ \conf =>
-    loadURI conf params.textDocument.uri (Just params.textDocument.version)
+    ignore $ loadURI conf params.textDocument.uri (Just params.textDocument.version)
 
 processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSave params) =
   whenNotShutdown $ whenInitialized $ \conf => do
     modify LSPConf (record { dirtyFiles $= delete params.textDocument.uri })
-    loadURI conf params.textDocument.uri Nothing
+    ignore $ loadURI conf params.textDocument.uri Nothing
 
 processMessage TextDocumentDidChange msg@(MkNotificationMessage TextDocumentDidChange params) =
   whenNotShutdown $ whenInitialized $ \conf =>
@@ -193,10 +213,9 @@ processMessage TextDocumentDidClose msg@(MkNotificationMessage TextDocumentDidCl
     logString Info $ "File \{params.textDocument.uri.path} closed"
 
 processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover params) =
-  whenNotShutdown $ whenInitialized $ \conf =>
-    whenNotDirty TextDocumentHover (getResponseId msg) params.textDocument.uri $ do
-      loadIfNeeded conf params.textDocument.uri Nothing
-
+  whenNotShutdown $ whenInitialized $ \conf => do
+    whenNotDirty TextDocumentHover (getResponseId msg) params.textDocument.uri $
+    withURI conf TextDocumentHover (getResponseId msg) params.textDocument.uri Nothing $ do
       Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
         | Just hover => do logString Debug "hover: found cached action"
                            let response = Success (getResponseId msg) (make hover)
@@ -229,8 +248,8 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
 
 processMessage TextDocumentDefinition msg@(MkRequestMessage id TextDocumentDefinition params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentDefinition (getResponseId msg) params.textDocument.uri $ do
-      loadIfNeeded conf params.textDocument.uri Nothing
+    whenNotDirty TextDocumentDefinition (getResponseId msg) params.textDocument.uri $
+    withURI conf TextDocumentDefinition (getResponseId msg) params.textDocument.uri Nothing $ do
       link <- gotoDefinition params
       ignore $ traverseOpt
                  (sendResponseMessage TextDocumentDefinition . Success (getResponseId msg) . make)
@@ -238,8 +257,8 @@ processMessage TextDocumentDefinition msg@(MkRequestMessage id TextDocumentDefin
 
 processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $ do
-      loadIfNeeded conf params.textDocument.uri Nothing
+    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $
+    withURI conf TextDocumentCodeAction (getResponseId msg) params.textDocument.uri Nothing $ do
 
       quickfixActions <- map Just <$> gets LSPConf quickfixes
       exprSearchAction <- map Just <$> exprSearch params
@@ -261,8 +280,8 @@ processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeA
 
 processMessage TextDocumentSignatureHelp msg@(MkRequestMessage id TextDocumentSignatureHelp params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $ do
-      loadIfNeeded conf params.textDocument.uri Nothing
+    whenNotDirty TextDocumentSignatureHelp (getResponseId msg) params.textDocument.uri $
+    withURI conf TextDocumentSignatureHelp (getResponseId msg) params.textDocument.uri Nothing $ do
 
       signatureHelpData <- signatureHelp params
       ignore $ traverseOpt
@@ -271,8 +290,8 @@ processMessage TextDocumentSignatureHelp msg@(MkRequestMessage id TextDocumentSi
 
 processMessage TextDocumentDocumentSymbol msg@(MkRequestMessage id TextDocumentDocumentSymbol params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $ do
-      loadIfNeeded conf params.textDocument.uri Nothing
+    whenNotDirty TextDocumentDocumentSymbol (getResponseId msg) params.textDocument.uri $
+    withURI conf TextDocumentDocumentSymbol (getResponseId msg) params.textDocument.uri Nothing $ do
 
       documentSymbolData <- documentSymbol params
       sendResponseMessage TextDocumentDocumentSymbol $ Success (getResponseId msg) $ make documentSymbolData
