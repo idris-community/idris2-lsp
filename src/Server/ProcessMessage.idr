@@ -42,6 +42,9 @@ import Server.Utils
 import System
 import System.Clock
 
+import Data.List1
+import Libraries.Data.List.Extra
+
 displayType : {auto c : Ref Ctxt Defs} ->
               {auto s : Ref Syn SyntaxInfo} ->
               Defs -> (Name, Int, GlobalDef) ->
@@ -255,9 +258,15 @@ processMessage TextDocumentDocumentLink msg@(MkRequestMessage id TextDocumentDoc
   whenNotShutdown $ whenInitialized $ \conf =>
     sendResponseMessage TextDocumentDocumentLink (Success (getResponseId msg) (make MkNull))
 
-processMessage TextDocumentSemanticTokensFull m@(MkRequestMessage id TextDocumentSemanticTokensFull (MkSemanticTokensParams _ _ file)) = do
+processMessage TextDocumentSemanticTokensFull m@(MkRequestMessage id TextDocumentSemanticTokensFull params) = do
   whenNotShutdown $ whenInitialized $ \conf => do
-    tokens <- getSemanticTokens
+    -- TODO load if needed waiting on ShinKage
+    -- TODO check if dirty ShinKage
+    md <- get MD
+    src <- getSource
+    let srcLines = forget $ lines src
+    let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
+    let tokens = getSemanticTokens md getLineLength
     sendResponseMessage TextDocumentSemanticTokensFull $ Success (getResponseId m) (make $ tokens)
 
 processMessage {type = Request} method msg =

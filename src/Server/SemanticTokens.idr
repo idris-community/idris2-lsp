@@ -1,17 +1,14 @@
 module Server.SemanticTokens
 
-import Core.Context
-import Core.Core
 import Core.Metadata
 import Data.List
-import Idris.REPL.Opts
 import Language.LSP.Message
 import Libraries.Data.PosMap
+import Data.String
+import Core.Context
 
 ||| encode using relative tokens according the to LSP spec
-encode : FilePos
-      -> List ASemanticDecoration
-      -> List Int
+encode : FilePos -> List ASemanticDecoration -> List Int
 encode _ [] = []
 encode (relLine, relStartChar) (((_, (sl, sc), (el, ec)), decor, _) :: xs) =
   encoding ++ encode (sl, sc) xs
@@ -33,18 +30,18 @@ encode (relLine, relStartChar) (((_, (sl, sc), (el, ec)), decor, _) :: xs) =
              , 0]
 
 ||| Remove zero width tokens and split multiline tokens
-processToken : (Int -> Core Int) -> ASemanticDecoration -> Core (List ASemanticDecoration)
+processToken : (Int -> Int) -> ASemanticDecoration -> List ASemanticDecoration
 processToken getLineLength orig@((fileName, (startLine, startChar), (endLine, endChar)), decoration, name) =
   if startLine == endLine
-  then pure $
+  then
     if startChar == endChar
     then []
     else [orig]
   else
-    do
-      lineLength <- getLineLength startLine
-      rest <- processToken getLineLength ((fileName, (startLine+1, 0), (endLine, endChar)), decoration, name)
-      pure $ if lineLength - startChar == 0 then rest else ((fileName, (startLine, startChar), (startLine, lineLength)), decoration, name) :: rest
+    let
+      lineLength = getLineLength startLine
+      rest = processToken getLineLength ((fileName, (startLine+1, 0), (endLine, endChar)), decoration, name)
+      in if lineLength - startChar == 0 then rest else ((fileName, (startLine, startChar), (startLine, lineLength)), decoration, name) :: rest
 
 ||| Write from last to current, poping of the stack when the end of a token is reached
 ||| current = Nothing means there a no remaining tokens except those on the stack
@@ -82,29 +79,26 @@ ensureParentFirst full@(x@((_, xstart, _), _, _)::rest) =
     sortFunction ((_, _, xend), _, _) ((_, _, yend), _, _) = compare yend xend
   in sortBy sortFunction (x :: same) ++ ensureParentFirst newRest
 
-||| Get the symantic tokens for the current file
+||| Get the semantic tokens from the Metadata 
 export
-getSemanticTokens : Ref ROpts REPLOpts => Ref MD Metadata => Core SemanticTokens
-getSemanticTokens = do
-    md <- get MD
-    let semHigh = md.semanticHighlighting
+getSemanticTokens : Metadata -> (getLineLength : Int -> Int) -> SemanticTokens
+getSemanticTokens md getLineLength =
+  let
+    semHigh = md.semanticHighlighting
 
-    let aliases : List ASemanticDecoration =
-          flip foldMap md.semanticAliases $ \ (from, to) =>
-            let decors = uncurry exactRange (snd to) semHigh
-            in map (\ ((fnm, loc), rest) => ((fnm, snd from), rest)) decors
+    aliases : List ASemanticDecoration =
+      flip foldMap md.semanticAliases $ \ (from, to) =>
+        let decors = uncurry exactRange (snd to) semHigh
+        in map (\ ((fnm, loc), rest) => ((fnm, snd from), rest)) decors
 
-    let defaults : List ASemanticDecoration =
-          flip foldMap md.semanticDefaults $ \ decor@((_, range), _) =>
-             case uncurry exactRange range semHigh of
-               [] => [decor]
-               _ => []
-
-    let outOfOrderHighlightingList = toList $ semHigh `union` ((fromList aliases) `union` (fromList defaults))
-    let overlappingHighlightingList = ensureParentFirst $ outOfOrderHighlightingList
-    let multilineSemanticHighlightingList = removeOverlap (0, 0) [] $ overlappingHighlightingList
-    let getLineLength = map (cast {from=Nat} . length . fromMaybe "") . getSourceLine . (+1)
-    singlelineSemanticHighlightingListList <- traverse (processToken getLineLength) multilineSemanticHighlightingList
-    let singlelineSemanticHighlightingList = concat {t=List} {a=List ASemanticDecoration} singlelineSemanticHighlightingListList
-    let enc = encode (0, 0) singlelineSemanticHighlightingList
-    pure $ MkSemanticTokens Nothing enc
+    defaults : List ASemanticDecoration =
+      flip foldMap md.semanticDefaults $ \ decor@((_, range), _) =>
+        case uncurry exactRange range semHigh of
+          [] => [decor]
+          _ => []
+    outOfOrderHighlightingList = toList $ semHigh `union` ((fromList aliases) `union` (fromList defaults))
+    overlappingHighlightingList = ensureParentFirst $ outOfOrderHighlightingList
+    multilineSemanticHighlightingList = removeOverlap (0, 0) [] $ overlappingHighlightingList
+    singlelineSemanticHighlightingList = foldMap (processToken getLineLength) $ multilineSemanticHighlightingList
+    encodedTokens = encode (0, 0) singlelineSemanticHighlightingList
+    in MkSemanticTokens Nothing encodedTokens
