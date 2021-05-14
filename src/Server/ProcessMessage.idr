@@ -11,6 +11,7 @@ import Core.Metadata
 import Core.UnifyState
 import Data.List
 import Data.OneOf
+import Data.SortedSet
 import Idris.ModTree
 import Idris.Package
 import Idris.Pretty
@@ -77,6 +78,47 @@ whenNotShutdown k =
      then sendUnknownResponseMessage (invalidRequest "Server has been shutdown")
      else k
 
+whenNotDirty : Ref LSPConf LSPConfiguration
+            => Method Client Request -> OneOf [Int, String, Null] -> DocumentURI -> Core () -> Core ()
+whenNotDirty method id uri k = do
+  if !(gets LSPConf (contains uri . dirtyFiles))
+    then let response = Failure id (MkResponseError (Custom 2) "File has changes that were not saved" JNull)
+          in sendResponseMessage method response
+    else k
+
+loadURI : Ref LSPConf LSPConfiguration
+       => Ref Ctxt Defs
+       => Ref UST UState
+       => Ref Syn SyntaxInfo
+       => Ref MD Metadata
+       => Ref ROpts REPLOpts
+       => InitializeParams -> URI -> Maybe Int -> Core ()
+loadURI conf uri version = do
+  modify LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
+  resetContext "(interactive)"
+  let fpath = uri.path
+  fname <- fromMaybe fpath <$> findIpkg (Just fpath)
+  errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
+                          --        a compiler change.
+  resetProofState
+  let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
+  modify LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
+  traverse_ (findQuickfix caps uri) errs
+  sendDiagnostics caps uri version errs
+
+loadIfNeeded : Ref LSPConf LSPConfiguration
+            => Ref Ctxt Defs
+            => Ref UST UState
+            => Ref Syn SyntaxInfo
+            => Ref MD Metadata
+            => Ref ROpts REPLOpts
+            => InitializeParams -> URI -> Maybe Int -> Core ()
+loadIfNeeded conf uri version = do
+  Just (oldUri, oldVersion) <- gets LSPConf openFile
+    | Nothing => loadURI conf uri version
+  unless (oldUri == uri && (isNothing version || (Just oldVersion) == version)) $
+    loadURI conf uri version
+
 ||| Process a parsed LSP message received from a client.
 export
 processMessage : Ref LSPConf LSPConfiguration
@@ -131,120 +173,113 @@ processMessage Exit (MkNotificationMessage Exit _) = do
   let status = if !(gets LSPConf isShutdown) then ExitSuccess else ExitFailure 1
   coreLift $ exitWith status
 
-processMessage TextDocumentDefinition m@(MkRequestMessage id TextDocumentDefinition params) =
-  whenNotShutdown $ whenInitialized $ \conf => do
-    link <- gotoDefinition params
-    _ <- traverseOpt
-          (sendResponseMessage TextDocumentDefinition . Success (getResponseId m) . make)
-          link
-    pure ()
-
 processMessage TextDocumentDidOpen msg@(MkNotificationMessage TextDocumentDidOpen params) =
-  whenNotShutdown $ whenInitialized $ \conf => do
-    update LSPConf (record {openFile = Just (params.textDocument.uri, params.textDocument.version)})
-    -- TODO: the compiler works directly with the file, we should upstream some changes to allow it to work with the
-    --       source passed by the client.
-    resetContext "(interactive)"
-    let fpath = params.textDocument.uri.path
-    fname <- fromMaybe fpath <$> findIpkg (Just fpath)
-    errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
-                            --        a compiler change.
-    setSource params.textDocument.text
-    resetProofState
-    let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
-    modify LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
-    traverse_ (findQuickfix caps params.textDocument.uri) errs
-    sendDiagnostics caps params.textDocument.uri (Just params.textDocument.version) errs
+  whenNotShutdown $ whenInitialized $ \conf =>
+    loadURI conf params.textDocument.uri (Just params.textDocument.version)
 
 processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSave params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    update LSPConf (record {openFile = Just (params.textDocument.uri, 0)})
-    -- TODO: same issue of TextDocumentDidOpen
-    resetContext "(interactive)"
-    let fpath = params.textDocument.uri.path
-    fname <- fromMaybe fpath <$> findIpkg (Just fpath)
-    let Just source = params.text
-      | _  => do logString Error $ "Error in textDocument/didSave expected format"
-                 sendUnknownResponseMessage (invalidParams "Expected full text after save")
-    errs <- buildDeps fname -- FIXME: add string version to the compiler (requires upstream change, probably)
-                            -- FIXME: stop emitting errors on stdout (requires upstream change)
-    logString Debug $ "errors : \{show errs}"
-    setSource source
-    resetProofState
-    modify LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
-    let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
-    traverse_ (findQuickfix caps params.textDocument.uri) errs
-    sendDiagnostics caps params.textDocument.uri Nothing errs
+    modify LSPConf (record { dirtyFiles $= delete params.textDocument.uri })
+    loadURI conf params.textDocument.uri Nothing
+
+processMessage TextDocumentDidChange msg@(MkNotificationMessage TextDocumentDidChange params) =
+  whenNotShutdown $ whenInitialized $ \conf =>
+    modify LSPConf (record { dirtyFiles $= insert params.textDocument.uri })
 
 processMessage TextDocumentDidClose msg@(MkNotificationMessage TextDocumentDidClose params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    modify LSPConf (record { openFile = Nothing, quickfixes = [], cachedActions = empty, cachedHovers = empty })
+    modify LSPConf (record { openFile = Nothing
+                           , quickfixes = []
+                           , cachedActions = empty
+                           , cachedHovers = empty
+                           , dirtyFiles $= delete params.textDocument.uri
+                           })
     logString Info $ "File \{params.textDocument.uri.path} closed"
 
 processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover params) =
+  whenNotShutdown $ whenInitialized $ \conf =>
+    whenNotDirty TextDocumentHover (getResponseId msg) params.textDocument.uri $ do
+      loadIfNeeded conf params.textDocument.uri Nothing
+
+      Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
+        | Just hover => do logString Debug "hover: found cached action"
+                           let response = Success (getResponseId msg) (make hover)
+                           sendResponseMessage TextDocumentHover response
+
+      defs <- get Ctxt
+      nameLocs <- gets MD nameLocMap
+
+      let Just (loc, name) = findPointInTreeLoc (params.position.line, params.position.character) nameLocs
+        | Nothing => do let response = Success (getResponseId msg) (make $ MkHover (make $ MkMarkupContent PlainText "") Nothing)
+                        sendResponseMessage TextDocumentHover response
+      -- Lookup the name globally
+      globals <- lookupCtxtName name (gamma defs)
+      globalResult <- the (Core $ Maybe $ Doc IdrisAnn) $ case globals of
+        [] => pure Nothing
+        ts => do tys <- traverse (displayType defs) ts
+                 pure $ Just (vsep tys)
+      localResult <- findTypeAt $ anyWithName name $ within (params.position.line, params.position.character)
+      line <- case (globalResult, localResult) of
+        -- Give precedence to the local name, as it shadows the others
+        (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $ pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
+        (Just globalDoc, Nothing) => pure $ renderString $ unAnnotateS $ layoutUnbounded globalDoc
+        (Nothing, Nothing) => pure ""
+      let supportsMarkup = maybe False (Markdown `elem`) $ conf.capabilities.textDocument >>= .hover >>= .contentFormat
+      let markupContent = the MarkupContent $ if supportsMarkup then MkMarkupContent Markdown $ "```idris\n" ++ line ++ "\n```" else MkMarkupContent PlainText line
+      let hover = MkHover (make markupContent) Nothing
+      modify LSPConf (record { cachedHovers $= insert (cast loc, hover) })
+      let response = Success (getResponseId msg) (make hover)
+      sendResponseMessage TextDocumentHover response
+
+processMessage TextDocumentDefinition msg@(MkRequestMessage id TextDocumentDefinition params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
-      | Just hover => do logString Debug "hover: found cached action"
-                         let response = Success (getResponseId msg) (make hover)
-                         sendResponseMessage TextDocumentHover response
-
-    defs <- get Ctxt
-    nameLocs <- gets MD nameLocMap
-
-    let Just (loc, name) = findPointInTreeLoc (params.position.line, params.position.character) nameLocs
-      | Nothing => do let response = Success (getResponseId msg) (make $ MkHover (make $ MkMarkupContent PlainText "") Nothing)
-                      sendResponseMessage TextDocumentHover response
-    -- Lookup the name globally
-    globals <- lookupCtxtName name (gamma defs)
-    globalResult <- the (Core $ Maybe $ Doc IdrisAnn) $ case globals of
-      [] => pure Nothing
-      ts => do tys <- traverse (displayType defs) ts
-               pure $ Just (vsep tys)
-    localResult <- findTypeAt $ anyWithName name $ within (params.position.line, params.position.character)
-    line <- case (globalResult, localResult) of
-      -- Give precedence to the local name, as it shadows the others
-      (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $ pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
-      (Just globalDoc, Nothing) => pure $ renderString $ unAnnotateS $ layoutUnbounded globalDoc
-      (Nothing, Nothing) => pure ""
-    let supportsMarkup = maybe False (Markdown `elem`) $ conf.capabilities.textDocument >>= .hover >>= .contentFormat
-    let markupContent = the MarkupContent $ if supportsMarkup then MkMarkupContent Markdown $ "```idris\n" ++ line ++ "\n```" else MkMarkupContent PlainText line
-    let hover = MkHover (make markupContent) Nothing
-    modify LSPConf (record { cachedHovers $= insert (cast loc, hover) })
-    let response = Success (getResponseId msg) (make hover)
-    sendResponseMessage TextDocumentHover response
+    whenNotDirty TextDocumentDefinition (getResponseId msg) params.textDocument.uri $ do
+      loadIfNeeded conf params.textDocument.uri Nothing
+      link <- gotoDefinition params
+      ignore $ traverseOpt
+                 (sendResponseMessage TextDocumentDefinition . Success (getResponseId msg) . make)
+                 link
 
 processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
-  whenNotShutdown $ whenInitialized $ \_ => do
-    quickfixActions <- map Just <$> gets LSPConf quickfixes
-    exprSearchAction <- map Just <$> exprSearch params
-    splitAction <- caseSplit params
-    lemmaAction <- makeLemma params
-    withAction <- makeWith params
-    clauseAction <- addClause params
-    makeCaseAction <- handleMakeCase params
-    generateDefAction <- map Just <$> generateDef (getResponseId msg) params
-    let resp = flatten $ quickfixActions
-                           ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
-                           ++ generateDefAction ++ exprSearchAction
-    sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make resp))
-    where
-      flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
-      flatten [] = []
-      flatten (Nothing :: xs) = flatten xs
-      flatten ((Just x) :: xs) = make x :: flatten xs
-
-processMessage TextDocumentSignatureHelp m@(MkRequestMessage id TextDocumentSignatureHelp params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    signatureHelpData <- signatureHelp params
-    _ <- traverseOpt
-          (sendResponseMessage TextDocumentSignatureHelp . Success (getResponseId m) . make)
-          signatureHelpData
-    pure ()
+    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $ do
+      loadIfNeeded conf params.textDocument.uri Nothing
 
-processMessage TextDocumentDocumentSymbol m@(MkRequestMessage id TextDocumentDocumentSymbol params) =
+      quickfixActions <- map Just <$> gets LSPConf quickfixes
+      exprSearchAction <- map Just <$> exprSearch params
+      splitAction <- caseSplit params
+      lemmaAction <- makeLemma params
+      withAction <- makeWith params
+      clauseAction <- addClause params
+      makeCaseAction <- handleMakeCase params
+      generateDefAction <- map Just <$> generateDef (getResponseId msg) params
+      let resp = flatten $ quickfixActions
+                             ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
+                             ++ generateDefAction ++ exprSearchAction
+      sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make resp))
+      where
+        flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
+        flatten [] = []
+        flatten (Nothing :: xs) = flatten xs
+        flatten ((Just x) :: xs) = make x :: flatten xs
+
+processMessage TextDocumentSignatureHelp msg@(MkRequestMessage id TextDocumentSignatureHelp params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    documentSymbolData <- documentSymbol params
-    sendResponseMessage TextDocumentDocumentSymbol $ Success (getResponseId m) $ make documentSymbolData
+    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $ do
+      loadIfNeeded conf params.textDocument.uri Nothing
+
+      signatureHelpData <- signatureHelp params
+      ignore $ traverseOpt
+                 (sendResponseMessage TextDocumentSignatureHelp . Success (getResponseId msg) . make)
+                 signatureHelpData
+
+processMessage TextDocumentDocumentSymbol msg@(MkRequestMessage id TextDocumentDocumentSymbol params) =
+  whenNotShutdown $ whenInitialized $ \conf => do
+    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $ do
+      loadIfNeeded conf params.textDocument.uri Nothing
+
+      documentSymbolData <- documentSymbol params
+      sendResponseMessage TextDocumentDocumentSymbol $ Success (getResponseId msg) $ make documentSymbolData
 
 processMessage TextDocumentCodeLens msg@(MkRequestMessage id TextDocumentCodeLens params) =
   whenNotShutdown $ whenInitialized $ \conf =>

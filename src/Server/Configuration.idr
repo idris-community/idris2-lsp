@@ -5,6 +5,7 @@
 module Server.Configuration
 
 import Core.FC
+import Data.SortedSet
 import Language.LSP.CodeAction
 import Language.LSP.Message.CodeAction
 import Language.LSP.Message.Initialize
@@ -37,6 +38,8 @@ record LSPConfiguration where
   isShutdown : Bool
   ||| The currently loaded file, if any, and its version.
   openFile : Maybe (DocumentURI, Int)
+  ||| Files with modification not saved. Command will fail on these files.
+  dirtyFiles : SortedSet DocumentURI
   ||| Limit for multiple search results
   searchLimit : Nat
   ||| List of quickfixes to be send in addition to other code actions
@@ -60,6 +63,7 @@ defaultConfig =
     , initialized       = Nothing
     , isShutdown        = False
     , openFile          = Nothing
+    , dirtyFiles        = empty
     , searchLimit       = 5
     , quickfixes        = []
     , cachedActions     = empty

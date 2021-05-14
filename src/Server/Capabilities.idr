@@ -10,7 +10,7 @@ import Language.LSP.Message
 
 syncOptions : TextDocumentSyncOptions
 syncOptions = MkTextDocumentSyncOptions { openClose = Just True
-                                        , change = Nothing
+                                        , change = Just Incremental
                                         , willSave = Nothing
                                         , willSaveWaitUntil = Nothing
                                         , save = Just (make (MkSaveOptions (Just True)))
@@ -57,11 +57,7 @@ serverCapabilities =
                                                                           Nothing))
                        , codeActionProvider               = Just (make (MkCodeActionOptions
                                                                           Nothing
-                                                                          (Just
-                                                                            [ Other "case-split"
-                                                                            , Other "generate-def"
-                                                                            , Other "make-case"
-                                                                            ])
+                                                                          Nothing
                                                                           (Just False)))
                        , codeLensProvider                 = Just (MkCodeLensOptions Nothing Nothing)
                        , documentLinkProvider             = Just (MkDocumentLinkOptions Nothing Nothing)
