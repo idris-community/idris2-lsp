@@ -19,13 +19,9 @@ syncOptions = MkTextDocumentSyncOptions { openClose = Just True
 semanticTokensLegend : SemanticTokensLegend
 semanticTokensLegend = MkSemanticTokensLegend
   -- ``type``: type constructors       ==> ``type``
-
   -- ``function``: defined functions   ==> ``function``
-
   -- ``data``: data constructors       ==> ``struct``
-
   -- ``bound``: bound variables, or    ==> ``variable``
-
   -- ``keyword``                       ==> ``keyword``
   ["type", "function", "struct", "variable", "keyword"]
   []

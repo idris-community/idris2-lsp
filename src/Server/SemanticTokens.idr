@@ -41,7 +41,7 @@ processToken getLineLength orig@((fileName, (startLine, startChar), (endLine, en
     let
       lineLength = getLineLength startLine
       rest = processToken getLineLength ((fileName, (startLine+1, 0), (endLine, endChar)), decoration, name)
-      in if lineLength - startChar == 0 then rest else ((fileName, (startLine, startChar), (startLine, lineLength)), decoration, name) :: rest
+      in if lineLength == startChar then rest else ((fileName, (startLine, startChar), (startLine, lineLength)), decoration, name) :: rest
 
 ||| Write from last to current, poping of the stack when the end of a token is reached
 ||| current = Nothing means there a no remaining tokens except those on the stack
@@ -57,27 +57,6 @@ removeOverlap last stack [] = fst $ processStack last Nothing stack
 removeOverlap last stack (current@((fileName, start, end), decoration, name)::rest) =
   let (output, newStack) = processStack last (Just start) stack
   in output ++ removeOverlap start (current :: newStack) rest
-
-||| Split the remaining base on if they have the same start as the previous token
-splitStart : FilePos -> List ASemanticDecoration -> (List ASemanticDecoration, List ASemanticDecoration)
-splitStart _ [] = ([], [])
-splitStart pstart full@(x@((_, xstart, _), _, _)::rest) = 
-  if pstart == xstart
-  then
-    let (same, newRest) = splitStart pstart rest
-    in (x :: same, newRest)
-  else ([], full)
-
-||| If two highlights start at the same line ensure the parent is first
-||| This step may be able to be removed if changes are made to semantic highlighting
-ensureParentFirst : List ASemanticDecoration -> List ASemanticDecoration
-ensureParentFirst [] = []
-ensureParentFirst full@(x@((_, xstart, _), _, _)::rest) =
-  let
-    (same, newRest) = splitStart xstart rest
-    sortFunction : ASemanticDecoration -> ASemanticDecoration -> Ordering
-    sortFunction ((_, _, xend), _, _) ((_, _, yend), _, _) = compare yend xend
-  in sortBy sortFunction (x :: same) ++ ensureParentFirst newRest
 
 ||| Get the semantic tokens from the Metadata 
 export
@@ -96,9 +75,9 @@ getSemanticTokens md getLineLength =
         case uncurry exactRange range semHigh of
           [] => [decor]
           _ => []
-    outOfOrderHighlightingList = toList $ semHigh `union` ((fromList aliases) `union` (fromList defaults))
-    overlappingHighlightingList = ensureParentFirst $ outOfOrderHighlightingList
+
+    overlappingHighlightingList = toList $ semHigh `union` ((fromList aliases) `union` (fromList defaults))
     multilineSemanticHighlightingList = removeOverlap (0, 0) [] $ overlappingHighlightingList
     singlelineSemanticHighlightingList = foldMap (processToken getLineLength) $ multilineSemanticHighlightingList
     encodedTokens = encode (0, 0) singlelineSemanticHighlightingList
-    in MkSemanticTokens Nothing encodedTokens
+  in MkSemanticTokens Nothing encodedTokens

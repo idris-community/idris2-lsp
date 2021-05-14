@@ -42,6 +42,8 @@ import Server.Response
 import Server.Utils
 import System
 import System.Clock
+import System.Path
+import System.Directory
 
 import Data.List1
 import Libraries.Data.List.Extra
@@ -97,9 +99,28 @@ loadURI conf uri version = do
   modify LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
   resetContext "(interactive)"
   let fpath = uri.path
-  fname <- fromMaybe fpath <$> findIpkg (Just fpath)
+  let Just (startFolder, startFile) = splitParent fpath | _ => do
+    logString Error "Error in loadURI expected valid uri"
+    sendUnknownResponseMessage (invalidParams "Expected valid file uri")
+  logString Warning $ "start folder: " ++ startFolder
+  logString Warning $ "start file: " ++ startFile
+  True <- coreLift $ changeDir {io=IO} startFolder | False => do
+    logString Error "Error in loadURI expected valid uri"
+    sendUnknownResponseMessage (invalidParams "Expected valid file uri")
+  Just fname <- findIpkg (Just startFile) | _ => do
+    logString Error "Unable to find ipkg"
+    sendUnknownResponseMessage (invalidParams "Unable to find ipkg")
+  logString Warning $ "fname: " ++ fname
+  logString Warning $ "directory: " ++ show !(coreLift currentDir)
+
   errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
                           --        a compiler change.
+  Right res <- coreLift (readFile fname) | Left err => do
+    setSource ""
+    logString Error "Unable to read uri"
+    sendUnknownResponseMessage (invalidParams "Unable to read uri")
+  setSource res
+  logString Warning $ "Source set too: " ++ show res
   resetProofState
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   modify LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
@@ -136,11 +157,13 @@ processMessage Initialize msg@(MkRequestMessage id Initialize params) = do
   let response = Success (getResponseId msg) (MkInitializeResult serverCapabilities (Just serverInfo))
   -- The compiler does not work with the same root directory model that LSP operates with,
   -- may be a point of friction in particular with the location of generated binary files.
+  {-
   let Just fpath = path <$> toMaybe params.rootUri
     | _ => do logString Error "Error in initialize expected valid root uri"
               sendUnknownResponseMessage (invalidParams "Expected valid root uri")
   fname <- fromMaybe fpath <$> findIpkg (Just fpath)
-  setSourceDir (Just fname)
+  -}
+  --setSourceDir (Just fname) -- TODO Not needed
 
   case params.initializationOptions of
        Just (JObject xs) => do
@@ -293,16 +316,17 @@ processMessage TextDocumentDocumentLink msg@(MkRequestMessage id TextDocumentDoc
   whenNotShutdown $ whenInitialized $ \conf =>
     sendResponseMessage TextDocumentDocumentLink (Success (getResponseId msg) (make MkNull))
 
-processMessage TextDocumentSemanticTokensFull m@(MkRequestMessage id TextDocumentSemanticTokensFull params) = do
+processMessage TextDocumentSemanticTokensFull msg@(MkRequestMessage id TextDocumentSemanticTokensFull params) = do
   whenNotShutdown $ whenInitialized $ \conf => do
-    -- TODO load if needed waiting on ShinKage
-    -- TODO check if dirty ShinKage
-    md <- get MD
-    src <- getSource
-    let srcLines = forget $ lines src
-    let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
-    let tokens = getSemanticTokens md getLineLength
-    sendResponseMessage TextDocumentSemanticTokensFull $ Success (getResponseId m) (make $ tokens)
+    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $ do
+      loadIfNeeded conf params.textDocument.uri Nothing
+      md <- get MD
+      src <- getSource
+      logString Warning $ "MySrc: " ++ src
+      let srcLines = forget $ lines src
+      let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
+      let tokens = getSemanticTokens md getLineLength
+      sendResponseMessage TextDocumentSemanticTokensFull $ Success (getResponseId msg) (make $ tokens)
 
 processMessage {type = Request} method msg =
   whenNotShutdown $ whenInitialized $ \conf => do
