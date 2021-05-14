@@ -33,6 +33,7 @@ import Language.LSP.DocumentSymbol
 import Language.LSP.SignatureHelp
 import Language.LSP.Message
 import Libraries.Data.PosMap
+import Libraries.Utils.Path
 import Server.Capabilities
 import Server.Configuration
 import Server.Log
@@ -40,8 +41,9 @@ import Server.QuickFix
 import Server.Response
 import Server.Utils
 import System
-import System.File
 import System.Clock
+import System.Directory
+import System.File
 
 displayType : {auto c : Ref Ctxt Defs} ->
               {auto s : Ref Syn SyntaxInfo} ->
@@ -89,15 +91,27 @@ loadURI : Ref LSPConf LSPConfiguration
        => Ref Syn SyntaxInfo
        => Ref MD Metadata
        => Ref ROpts REPLOpts
-       => InitializeParams -> URI -> Maybe Int -> Core Bool
+       => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
   modify LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
   resetContext "(interactive)"
   let fpath = uri.path
-  fname <- fromMaybe fpath <$> findIpkg (Just fpath)
+  let Just (startFolder, startFile) = splitParent fpath
+    | Nothing => do let msg = "Cannot find the parent folder for \{show uri}"
+                    logString Error msg
+                    pure $ Left msg
+  True <- coreLift $ changeDir startFolder
+    | False => do let msg = "Cannot change current directory to \{show startFolder}, folder of \{show startFile}"
+                  logString Error msg
+                  pure $ Left msg
+  Just fname <- findIpkg (Just fpath)
+    | Nothing => do let msg = "Cannot find ipkg file for \{show uri}"
+                    logString Error msg
+                    pure $ Left msg
   Right res <- coreLift $ File.readFile fname
-    | Left err => do logString Error "Cannot read file at \{show uri}"
-                     pure False
+    | Left err => do let msg = "Cannot read file at \{show uri}"
+                     logString Error msg
+                     pure $ Left msg
   setSource res
   errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
                           --        a compiler change.
@@ -106,7 +120,7 @@ loadURI conf uri version = do
   modify LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
   traverse_ (findQuickfix caps uri) errs
   sendDiagnostics caps uri version errs
-  pure True
+  pure $ Right ()
 
 loadIfNeeded : Ref LSPConf LSPConfiguration
             => Ref Ctxt Defs
@@ -114,12 +128,12 @@ loadIfNeeded : Ref LSPConf LSPConfiguration
             => Ref Syn SyntaxInfo
             => Ref MD Metadata
             => Ref ROpts REPLOpts
-            => InitializeParams -> URI -> Maybe Int -> Core Bool
+            => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadIfNeeded conf uri version = do
   Just (oldUri, oldVersion) <- gets LSPConf openFile
     | Nothing => loadURI conf uri version
   if (oldUri == uri && (isNothing version || (Just oldVersion) == version))
-     then pure True
+     then pure $ Right ()
      else loadURI conf uri version
 
 withURI : Ref LSPConf LSPConfiguration
@@ -131,9 +145,10 @@ withURI : Ref LSPConf LSPConfiguration
        => InitializeParams -> Method Client Request -> OneOf [Int, String, Null]
        -> URI -> Maybe Int -> Core () -> Core ()
 withURI conf method id uri version k = do
-  if !(loadIfNeeded conf uri version)
-     then k
-     else sendResponseMessage method (Failure id (MkResponseError (Custom 3) "File \{show uri} cannot be read on disk" JNull))
+  case !(loadIfNeeded conf uri version) of
+       Right () => k
+       Left err =>
+         sendResponseMessage method (Failure id (MkResponseError (Custom 3) err JNull))
 
 ||| Process a parsed LSP message received from a client.
 export
@@ -257,8 +272,10 @@ processMessage TextDocumentDefinition msg@(MkRequestMessage id TextDocumentDefin
 
 processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $
-    withURI conf TextDocumentCodeAction (getResponseId msg) params.textDocument.uri Nothing $ do
+    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $ do
+      Right () <- loadIfNeeded conf params.textDocument.uri Nothing
+        | Left err => sendResponseMessage TextDocumentCodeAction
+                                          (Success (getResponseId msg) (make MkNull))
 
       quickfixActions <- map Just <$> gets LSPConf quickfixes
       exprSearchAction <- map Just <$> exprSearch params
@@ -290,8 +307,10 @@ processMessage TextDocumentSignatureHelp msg@(MkRequestMessage id TextDocumentSi
 
 processMessage TextDocumentDocumentSymbol msg@(MkRequestMessage id TextDocumentDocumentSymbol params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentDocumentSymbol (getResponseId msg) params.textDocument.uri $
-    withURI conf TextDocumentDocumentSymbol (getResponseId msg) params.textDocument.uri Nothing $ do
+    whenNotDirty TextDocumentDocumentSymbol (getResponseId msg) params.textDocument.uri $ do
+      Right () <- loadIfNeeded conf params.textDocument.uri Nothing
+        | Left err => sendResponseMessage TextDocumentDocumentSymbol
+                                          (Success (getResponseId msg) (make MkNull))
 
       documentSymbolData <- documentSymbol params
       sendResponseMessage TextDocumentDocumentSymbol $ Success (getResponseId msg) $ make documentSymbolData
