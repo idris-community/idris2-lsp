@@ -71,20 +71,25 @@ writeResponse msg = do
 export
 sendNotificationMessage : Ref LSPConf LSPConfiguration
                        => (method : Method Server Notification)
-                       -> NotificationMessage method
+                       -> (params : MessageParams method)
                        -> Core ()
-sendNotificationMessage method msg = do
-  writeResponse (toJSON msg)
+sendNotificationMessage method params = do
+  let msg = MkNotificationMessage method params
+  writeResponse $ toJSON msg
   logString Info ("Sent notification message for method " ++ stringify (toJSON method))
   logString Debug (stringify (toJSON msg))
 
 ||| Sends a request from the server to the client ignoring the result
+||| TODO when client sends response we fail to parse it
 export
 sendRequestMessage_ : Ref LSPConf LSPConfiguration
                        => (method : Method Server Request)
-                       -> RequestMessage method
+                        -> (params : MessageParams method)
                        -> Core ()
-sendRequestMessage_ method msg = do
+sendRequestMessage_ method params = do
+  requestId <- gets LSPConf nextRequestId
+  let msg = MkRequestMessage (make $ cast {to=Int} requestId) method params
+  modify LSPConf (record {nextRequestId = requestId + 1})
   writeResponse (toJSON msg)
   logString Info ("Sent request message for method " ++ stringify (toJSON method))
   logString Debug (stringify (toJSON msg))
@@ -128,5 +133,4 @@ sendDiagnostics : Ref LSPConf LSPConfiguration
 sendDiagnostics caps uri version errs = do
   diagnostics <- traverse (toDiagnostic caps uri) errs
   let params = MkPublishDiagnosticsParams uri version diagnostics
-  let message = MkNotificationMessage TextDocumentPublishDiagnostics params
-  sendNotificationMessage TextDocumentPublishDiagnostics message
+  sendNotificationMessage TextDocumentPublishDiagnostics params

@@ -209,9 +209,7 @@ processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSav
     modify LSPConf (record { dirtyFiles $= delete params.textDocument.uri })
     ignore $ loadURI conf params.textDocument.uri Nothing
     when (fromMaybe False $ conf.capabilities.workspace >>= semanticTokens >>= refreshSupport) $
-      -- TODO proper ID and response handling
-      -- Can we just send it as a notification?
-      sendRequestMessage_ WorkspaceSemanticTokensRefresh (MkRequestMessage (make $ the Int 1) WorkspaceSemanticTokensRefresh Nothing)
+      sendRequestMessage_ WorkspaceSemanticTokensRefresh Nothing
 
 processMessage TextDocumentDidChange msg@(MkNotificationMessage TextDocumentDidChange params) =
   whenNotShutdown $ whenInitialized $ \conf =>
