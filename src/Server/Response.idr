@@ -78,6 +78,17 @@ sendNotificationMessage method msg = do
   logString Info ("Sent notification message for method " ++ stringify (toJSON method))
   logString Debug (stringify (toJSON msg))
 
+||| Sends a request from the server to the client ignoring the result
+export
+sendRequestMessage_ : Ref LSPConf LSPConfiguration
+                       => (method : Method Server Request)
+                       -> RequestMessage method
+                       -> Core ()
+sendRequestMessage_ method msg = do
+  writeResponse (toJSON msg)
+  logString Info ("Sent request message for method " ++ stringify (toJSON method))
+  logString Debug (stringify (toJSON msg))
+
 ||| Sends a response message to a request received from the client.
 export
 sendResponseMessage : Ref LSPConf LSPConfiguration

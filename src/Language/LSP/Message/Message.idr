@@ -262,6 +262,57 @@ findNotificationImpl TextDocumentPublishDiagnostics = %search
 findNotificationImpl CancelRequest = %search
 findNotificationImpl Progress = %search
 
+findRequestImpl : (method : Method from Request) -> ToJSON (MessageParams method)
+findRequestImpl Initialize = %search
+findRequestImpl Shutdown = %search
+findRequestImpl WorkspaceSymbol = %search
+findRequestImpl WorkspaceExecuteCommand = %search
+findRequestImpl WorkspaceWillCreateFiles = %search
+findRequestImpl TextDocumentWillSaveWaitUntil = %search
+findRequestImpl CompletionItemResolve = %search
+findRequestImpl TextDocumentHover = %search
+findRequestImpl TextDocumentSignatureHelp = %search
+findRequestImpl TextDocumentDeclaration = %search
+findRequestImpl TextDocumentDefinition = %search
+findRequestImpl TextDocumentTypeDefinition = %search
+findRequestImpl TextDocumentImplementation = %search
+findRequestImpl TextDocumentReferences = %search
+findRequestImpl TextDocumentDocumentHighlight = %search
+findRequestImpl TextDocumentDocumentSymbol = %search
+findRequestImpl TextDocumentCodeAction = %search
+findRequestImpl CodeActionResolve = %search
+findRequestImpl TextDocumentCodeLens = %search
+findRequestImpl CodeLensResolve = %search
+findRequestImpl TextDocumentDocumentLink = %search
+findRequestImpl DocumentLinkResolve = %search
+findRequestImpl TextDocumentDocumentColor = %search
+findRequestImpl TextDocumentFormatting = %search
+findRequestImpl TextDocumentRangeFormatting = %search
+findRequestImpl TextDocumentOnTypeFormatting = %search
+findRequestImpl TextDocumentRename = %search
+findRequestImpl TextDocumentPrepareRename = %search
+findRequestImpl TextDocumentFoldingRange = %search
+findRequestImpl TextDocumentSelectionRange = %search
+findRequestImpl TextDocumentPrepareCallHierarchy = %search
+findRequestImpl CallHierarchyIncomingCalls = %search
+findRequestImpl CallHierarchyOutgoingCalls = %search
+findRequestImpl TextDocumentSemanticTokensFull = %search
+findRequestImpl TextDocumentSemanticTokensFullDelta = %search
+findRequestImpl TextDocumentSemanticTokensRange = %search
+findRequestImpl WorkspaceSemanticTokensRefresh = %search
+findRequestImpl TextDocumentLinkedEditingRange = %search
+findRequestImpl TextDocumentMoniker = %search
+findRequestImpl WindowShowMessageRequest = %search
+findRequestImpl WindowShowDocument = %search
+findRequestImpl WindowWorkDoneProgressCreate = %search
+findRequestImpl ClientRegisterCapability = %search
+findRequestImpl ClientUnregisterCapability = %search
+findRequestImpl WorkspaceWorkspaceFolders = %search
+findRequestImpl WorkspaceConfiguration = %search
+findRequestImpl WorkspaceApplyEdit = %search
+findRequestImpl TextDocumentCompletion = %search
+findRequestImpl WorkspaceCodeLensRefresh = %search
+
 findResultImpl : (method : Method from Request) -> ToJSON (ResponseResult method)
 findResultImpl Initialize = %search
 findResultImpl Shutdown = %search
@@ -355,9 +406,9 @@ data RequestMessage : Method from Request -> Type where
                   -> RequestMessage method
 
 export
-ToJSON (MessageParams method) => ToJSON (RequestMessage method) where
+{method : Method from Request} -> ToJSON (RequestMessage method) where
   toJSON (MkRequestMessage id method params) =
-    JObject ([("jsonrpc", JString "2.0"), ("id", toJSON id), ("method", toJSON method), ("params", toJSON params)])
+    JObject ([("jsonrpc", JString "2.0"), ("id", toJSON id), ("method", toJSON method), ("params", toJSON @{findRequestImpl method} params)])
 
 export
 FromJSON (from ** method : Method from Request ** RequestMessage method) where
