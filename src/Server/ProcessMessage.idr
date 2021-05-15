@@ -272,11 +272,9 @@ processMessage TextDocumentDefinition msg@(MkRequestMessage id TextDocumentDefin
 
 processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentCodeAction (getResponseId msg) params.textDocument.uri $ do
-      Right () <- loadIfNeeded conf params.textDocument.uri Nothing
-        | Left err => sendResponseMessage TextDocumentCodeAction
-                                          (Success (getResponseId msg) (make MkNull))
-
+    False <- gets LSPConf (contains params.textDocument.uri . dirtyFiles)
+      | True => sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make MkNull))
+    withURI conf TextDocumentCodeAction (getResponseId msg) params.textDocument.uri Nothing $ do
       quickfixActions <- map Just <$> gets LSPConf quickfixes
       exprSearchAction <- map Just <$> exprSearch params
       splitAction <- caseSplit params
@@ -307,11 +305,9 @@ processMessage TextDocumentSignatureHelp msg@(MkRequestMessage id TextDocumentSi
 
 processMessage TextDocumentDocumentSymbol msg@(MkRequestMessage id TextDocumentDocumentSymbol params) =
   whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentDocumentSymbol (getResponseId msg) params.textDocument.uri $ do
-      Right () <- loadIfNeeded conf params.textDocument.uri Nothing
-        | Left err => sendResponseMessage TextDocumentDocumentSymbol
-                                          (Success (getResponseId msg) (make MkNull))
-
+    False <- gets LSPConf (contains params.textDocument.uri . dirtyFiles)
+      | True => sendResponseMessage TextDocumentDocumentSymbol (Success (getResponseId msg) (make MkNull))
+    withURI conf TextDocumentDocumentSymbol (getResponseId msg) params.textDocument.uri Nothing $ do
       documentSymbolData <- documentSymbol params
       sendResponseMessage TextDocumentDocumentSymbol $ Success (getResponseId msg) $ make documentSymbolData
 
