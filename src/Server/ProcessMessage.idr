@@ -66,11 +66,11 @@ displayTerm defs tm
     = do ptm <- resugar [] !(normaliseHoles defs [] tm)
          pure (prettyTerm ptm)
 
-whenNotDirty : Ref LSPConf LSPConfiguration
-            => DocumentURI -> Core (Either ResponseError a) -> Core (Either ResponseError a)
-whenNotDirty uri k = do
+whenClean : Ref LSPConf LSPConfiguration
+            => DocumentURI -> Core (Either ResponseError a) -> Core (Either ResponseError a) -> Core (Either ResponseError a)
+whenClean uri d k = do
   if !(gets LSPConf (contains uri . dirtyFiles))
-    then pure $ Left (MkResponseError (Custom 2) "File has changes that were not saved" JNull)
+    then d
     else k
 
 loadURI : Ref LSPConf LSPConfiguration
@@ -215,8 +215,8 @@ handleRequest Shutdown params = do
   update LSPConf (record {isShutdown = True})
   pure $ pure $ (the (Maybe Null) Nothing)
 
-handleRequest TextDocumentHover params = whenActiveRequest $ \conf =>
-    whenNotDirty params.textDocument.uri $
+handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
+    whenClean params.textDocument.uri (pure $ pure $ make $ MkNull) $
     withURI conf params.textDocument.uri Nothing $ do
       Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
         | Just hover => do logString Debug "hover: found cached action"
@@ -246,14 +246,13 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf =>
       pure $ pure (make hover)
 
 handleRequest TextDocumentDefinition params = whenActiveRequest $ \conf => do
-    whenNotDirty params.textDocument.uri $
+    whenClean params.textDocument.uri (pure $ pure $ make $ MkNull) $
     withURI conf params.textDocument.uri Nothing $ do
       Just link <- gotoDefinition params | Nothing => pure $ pure $ make MkNull
       pure $ pure $ make link
 
 handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
-    False <- gets LSPConf (contains params.textDocument.uri . dirtyFiles)
-      | True => pure $ pure $ make MkNull
+    whenClean params.textDocument.uri (pure $ pure $ make $ MkNull) $
     withURI conf params.textDocument.uri Nothing $ do
       quickfixActions <- map Just <$> gets LSPConf quickfixes
       exprSearchAction <- map Just <$> exprSearch params
@@ -274,14 +273,13 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
         flatten ((Just x) :: xs) = make x :: flatten xs
 
 handleRequest TextDocumentSignatureHelp params = whenActiveRequest $ \conf => do
-    whenNotDirty params.textDocument.uri $
+    whenClean params.textDocument.uri (pure $ pure $ make $ MkNull) $
     withURI conf params.textDocument.uri Nothing $ do
       Just signatureHelpData <- signatureHelp params | Nothing => pure $ pure $ make MkNull
       pure $ pure $ make signatureHelpData
 
 handleRequest TextDocumentDocumentSymbol params = whenActiveRequest $ \conf => do
-    False <- gets LSPConf (contains params.textDocument.uri . dirtyFiles)
-      | True => pure $ pure $ make MkNull
+    whenClean params.textDocument.uri (pure $ pure $ make $ MkNull) $
     withURI conf params.textDocument.uri Nothing $ do
       documentSymbolData <- documentSymbol params
       pure $ pure $ make documentSymbolData
@@ -295,8 +293,8 @@ handleRequest TextDocumentCompletion params = whenActiveRequest $ \conf =>
 handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf =>
     pure $ pure $ make MkNull
 
-handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf =>
-    whenNotDirty params.textDocument.uri $
+handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf => do
+    whenClean params.textDocument.uri (pure $ pure $ make $ MkNull) $
     withURI conf params.textDocument.uri Nothing $ do
       md <- get MD
       src <- getSource
