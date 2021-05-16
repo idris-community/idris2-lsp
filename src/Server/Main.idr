@@ -96,17 +96,22 @@ runServer = do
                     runServer
   logString Info $ "Received message for method " ++ show (toJSON method)
   -- TODO handle response from client to server requests
-  flip catch (\err => do logString Error (show err); resetContext "(interactive)") $
-    case type of
-      Notification => do
-        let (MkNotificationMessage _ params) = msg
-        handleNotification method params
-      Request => do
-        let (MkRequestMessage id _ params) = msg
-        result <- handleRequest method params
-        sendResponseMessage method $ case result of
-          Left error => Failure (extend id) error
-          Right result => Success (extend id) result
+  case type of
+    Notification => do
+      let (MkNotificationMessage _ params) = msg
+      catch (handleNotification method params) $ \err => do
+        logString Error (show err)
+        resetContext "(interactive)"
+    Request => do
+      let (MkRequestMessage id _ params) = msg
+      -- handleRequest can be modified to use a callback if needed
+      result <- catch (handleRequest method params) $ \err => do
+        logString Error (show err)
+        resetContext "(interactive)"
+        pure $ Left (MkResponseError (Custom 4) (show err) JNull)
+      sendResponseMessage method $ case result of
+        Left error => Failure (extend id) error
+        Right result => Success (extend id) result
   runServer
 
 main : IO ()
