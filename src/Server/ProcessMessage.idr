@@ -66,26 +66,11 @@ displayTerm defs tm
     = do ptm <- resugar [] !(normaliseHoles defs [] tm)
          pure (prettyTerm ptm)
 
-||| Guard for messages that requires a successful initialization before being allowed.
-whenInitialized : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
-whenInitialized k =
-  case !(gets LSPConf initialized) of
-       Just conf => k conf
-       Nothing => sendUnknownResponseMessage serverNotInitialized
-
-||| Guard for messages that cannot be sent after the shutdown protocol.
-whenNotShutdown : Ref LSPConf LSPConfiguration => Core () -> Core ()
-whenNotShutdown k =
-  if !(gets LSPConf isShutdown)
-     then sendUnknownResponseMessage (invalidRequest "Server has been shutdown")
-     else k
-
 whenNotDirty : Ref LSPConf LSPConfiguration
-            => Method Client Request -> OneOf [Int, String, Null] -> DocumentURI -> Core () -> Core ()
-whenNotDirty method id uri k = do
+            => DocumentURI -> Core (Either ResponseError a) -> Core (Either ResponseError a)
+whenNotDirty uri k = do
   if !(gets LSPConf (contains uri . dirtyFiles))
-    then let response = Failure id (MkResponseError (Custom 2) "File has changes that were not saved" JNull)
-          in sendResponseMessage method response
+    then pure $ Left (MkResponseError (Custom 2) "File has changes that were not saved" JNull)
     else k
 
 loadURI : Ref LSPConf LSPConfiguration
@@ -145,29 +130,64 @@ withURI : Ref LSPConf LSPConfiguration
        => Ref Syn SyntaxInfo
        => Ref MD Metadata
        => Ref ROpts REPLOpts
-       => InitializeParams -> Method Client Request -> OneOf [Int, String, Null]
-       -> URI -> Maybe Int -> Core () -> Core ()
-withURI conf method id uri version k = do
+       => InitializeParams
+       -> URI -> Maybe Int -> Core (Either ResponseError a) -> Core (Either ResponseError a)
+withURI conf uri version k = do
   case !(loadIfNeeded conf uri version) of
        Right () => k
        Left err =>
-         sendResponseMessage method (Failure id (MkResponseError (Custom 3) err JNull))
+         pure $ Left (MkResponseError (Custom 3) err JNull)
 
-||| Process a parsed LSP message received from a client.
+||| Guard for requests that requires a successful initialization before being allowed.
+whenInitializedRequest : Ref LSPConf LSPConfiguration => (InitializeParams -> Core (Either ResponseError a)) -> Core (Either ResponseError a)
+whenInitializedRequest k =
+  case !(gets LSPConf initialized) of
+       Just conf => k conf
+       Nothing => pure $ Left $ serverNotInitialized
+
+||| Guard for requests that cannot be sent after the shutdown protocol.
+whenNotShutdownRequest : Ref LSPConf LSPConfiguration => Core (Either ResponseError a) -> Core (Either ResponseError a)
+whenNotShutdownRequest k =
+  if !(gets LSPConf isShutdown)
+     then pure $ Left $ (invalidRequest "Server has been shutdown")
+     else k
+
+||| whenInitializedRequest + whenNotShutdownRequest
+whenActiveRequest : Ref LSPConf LSPConfiguration => (InitializeParams -> Core (Either ResponseError a)) -> Core (Either ResponseError a)
+whenActiveRequest = whenNotShutdownRequest . whenInitializedRequest
+
+||| Guard for notifications that requires a successful initialization before being allowed.
+whenInitializedNotification : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
+whenInitializedNotification k =
+  case !(gets LSPConf initialized) of
+       Just conf => k conf
+       Nothing => sendUnknownResponseMessage $ serverNotInitialized
+
+||| Guard for notifications that cannot be sent after the shutdown protocol.
+whenNotShutdownNotification : Ref LSPConf LSPConfiguration => Core () -> Core ()
+whenNotShutdownNotification k =
+  if !(gets LSPConf isShutdown)
+     then sendUnknownResponseMessage $ (invalidRequest "Server has been shutdown")
+     else k
+
+||| whenInitializedNotification + whenNotShutdownNotification
+whenActiveNotification : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
+whenActiveNotification = whenNotShutdownNotification . whenInitializedNotification
+
 export
-processMessage : Ref LSPConf LSPConfiguration
-              => Ref Ctxt Defs
-              => Ref UST UState
-              => Ref Syn SyntaxInfo
-              => Ref MD Metadata
-              => Ref ROpts REPLOpts
-              => {type : MethodType}
-              -> (method : Method Client type)
-              -> Message type method
-              -> Core ()
-processMessage Initialize msg@(MkRequestMessage id Initialize params) = do
+handleRequest :
+       Ref LSPConf LSPConfiguration
+    => Ref Ctxt Defs
+    => Ref UST UState
+    => Ref Syn SyntaxInfo
+    => Ref MD Metadata
+    => Ref ROpts REPLOpts
+    => (method : Method Client Request)
+    -> (params : MessageParams method)
+    -> Core (Either ResponseError (ResponseResult method))
+
+handleRequest Initialize params = do
   -- TODO: Here we should analyze the client capabilities.
-  let response = Success (getResponseId msg) (MkInitializeResult serverCapabilities (Just serverInfo))
 
   case params.initializationOptions of
        Just (JObject xs) => do
@@ -187,59 +207,26 @@ processMessage Initialize msg@(MkRequestMessage id Initialize params) = do
        Just _ => logString Error "Incorrect type for initialization options"
        Nothing => pure ()
 
-  sendResponseMessage Initialize response
   modify LSPConf (record {initialized = Just params})
+  pure $ pure $ MkInitializeResult serverCapabilities (Just serverInfo)
 
-processMessage Shutdown msg@(MkRequestMessage _ Shutdown _) = do
+handleRequest Shutdown params = do
   -- In a future multithreaded model, we must guarantee that all pending request are still executed.
-  let response = Success (getResponseId msg) (the (Maybe Null) Nothing)
-  sendResponseMessage Shutdown response
   update LSPConf (record {isShutdown = True})
+  pure $ pure $ (the (Maybe Null) Nothing)
 
-processMessage Exit (MkNotificationMessage Exit _) = do
-  let status = if !(gets LSPConf isShutdown) then ExitSuccess else ExitFailure 1
-  coreLift $ exitWith status
-
-processMessage TextDocumentDidOpen msg@(MkNotificationMessage TextDocumentDidOpen params) =
-  whenNotShutdown $ whenInitialized $ \conf =>
-    ignore $ loadURI conf params.textDocument.uri (Just params.textDocument.version)
-
-processMessage TextDocumentDidSave msg@(MkNotificationMessage TextDocumentDidSave params) =
-  whenNotShutdown $ whenInitialized $ \conf => do
-    modify LSPConf (record { dirtyFiles $= delete params.textDocument.uri })
-    ignore $ loadURI conf params.textDocument.uri Nothing
-    when (fromMaybe False $ conf.capabilities.workspace >>= semanticTokens >>= refreshSupport) $
-      sendRequestMessage_ WorkspaceSemanticTokensRefresh Nothing
-
-processMessage TextDocumentDidChange msg@(MkNotificationMessage TextDocumentDidChange params) =
-  whenNotShutdown $ whenInitialized $ \conf =>
-    modify LSPConf (record { dirtyFiles $= insert params.textDocument.uri })
-
-processMessage TextDocumentDidClose msg@(MkNotificationMessage TextDocumentDidClose params) =
-  whenNotShutdown $ whenInitialized $ \conf => do
-    modify LSPConf (record { openFile = Nothing
-                           , quickfixes = []
-                           , cachedActions = empty
-                           , cachedHovers = empty
-                           , dirtyFiles $= delete params.textDocument.uri
-                           })
-    logString Info $ "File \{params.textDocument.uri.path} closed"
-
-processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover params) =
-  whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentHover (getResponseId msg) params.textDocument.uri $
-    withURI conf TextDocumentHover (getResponseId msg) params.textDocument.uri Nothing $ do
+handleRequest TextDocumentHover params = whenActiveRequest $ \conf =>
+    whenNotDirty params.textDocument.uri $
+    withURI conf params.textDocument.uri Nothing $ do
       Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
         | Just hover => do logString Debug "hover: found cached action"
-                           let response = Success (getResponseId msg) (make hover)
-                           sendResponseMessage TextDocumentHover response
+                           pure $ pure $ make hover
 
       defs <- get Ctxt
       nameLocs <- gets MD nameLocMap
 
       let Just (loc, name) = findPointInTreeLoc (params.position.line, params.position.character) nameLocs
-        | Nothing => do let response = Success (getResponseId msg) (make $ MkHover (make $ MkMarkupContent PlainText "") Nothing)
-                        sendResponseMessage TextDocumentHover response
+        | Nothing => pure $ pure $ (make $ MkHover (make $ MkMarkupContent PlainText "") Nothing)
       -- Lookup the name globally
       globals <- lookupCtxtName name (gamma defs)
       globalResult <- the (Core $ Maybe $ Doc IdrisAnn) $ case globals of
@@ -256,23 +243,18 @@ processMessage TextDocumentHover msg@(MkRequestMessage id TextDocumentHover para
       let markupContent = the MarkupContent $ if supportsMarkup then MkMarkupContent Markdown $ "```idris\n" ++ line ++ "\n```" else MkMarkupContent PlainText line
       let hover = MkHover (make markupContent) Nothing
       modify LSPConf (record { cachedHovers $= insert (cast loc, hover) })
-      let response = Success (getResponseId msg) (make hover)
-      sendResponseMessage TextDocumentHover response
+      pure $ pure (make hover)
 
-processMessage TextDocumentDefinition msg@(MkRequestMessage id TextDocumentDefinition params) =
-  whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentDefinition (getResponseId msg) params.textDocument.uri $
-    withURI conf TextDocumentDefinition (getResponseId msg) params.textDocument.uri Nothing $ do
-      link <- gotoDefinition params
-      ignore $ traverseOpt
-                 (sendResponseMessage TextDocumentDefinition . Success (getResponseId msg) . make)
-                 link
+handleRequest TextDocumentDefinition params = whenActiveRequest $ \conf => do
+    whenNotDirty params.textDocument.uri $
+    withURI conf params.textDocument.uri Nothing $ do
+      Just link <- gotoDefinition params | Nothing => pure $ pure $ make MkNull
+      pure $ pure $ make link
 
-processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeAction params) =
-  whenNotShutdown $ whenInitialized $ \conf => do
+handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
     False <- gets LSPConf (contains params.textDocument.uri . dirtyFiles)
-      | True => sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make MkNull))
-    withURI conf TextDocumentCodeAction (getResponseId msg) params.textDocument.uri Nothing $ do
+      | True => pure $ pure $ make MkNull
+    withURI conf params.textDocument.uri Nothing $ do
       quickfixActions <- map Just <$> gets LSPConf quickfixes
       exprSearchAction <- map Just <$> exprSearch params
       splitAction <- caseSplit params
@@ -280,63 +262,89 @@ processMessage TextDocumentCodeAction msg@(MkRequestMessage id TextDocumentCodeA
       withAction <- makeWith params
       clauseAction <- addClause params
       makeCaseAction <- handleMakeCase params
-      generateDefAction <- map Just <$> generateDef (getResponseId msg) params
+      generateDefAction <- map Just <$> generateDef params
       let resp = flatten $ quickfixActions
                              ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
                              ++ generateDefAction ++ exprSearchAction
-      sendResponseMessage TextDocumentCodeAction (Success (getResponseId msg) (make resp))
+      pure $ pure $ make resp
       where
         flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
         flatten [] = []
         flatten (Nothing :: xs) = flatten xs
         flatten ((Just x) :: xs) = make x :: flatten xs
 
-processMessage TextDocumentSignatureHelp msg@(MkRequestMessage id TextDocumentSignatureHelp params) =
-  whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentSignatureHelp (getResponseId msg) params.textDocument.uri $
-    withURI conf TextDocumentSignatureHelp (getResponseId msg) params.textDocument.uri Nothing $ do
+handleRequest TextDocumentSignatureHelp params = whenActiveRequest $ \conf => do
+    whenNotDirty params.textDocument.uri $
+    withURI conf params.textDocument.uri Nothing $ do
+      Just signatureHelpData <- signatureHelp params | Nothing => pure $ pure $ make MkNull
+      pure $ pure $ make signatureHelpData
 
-      signatureHelpData <- signatureHelp params
-      ignore $ traverseOpt
-                 (sendResponseMessage TextDocumentSignatureHelp . Success (getResponseId msg) . make)
-                 signatureHelpData
-
-processMessage TextDocumentDocumentSymbol msg@(MkRequestMessage id TextDocumentDocumentSymbol params) =
-  whenNotShutdown $ whenInitialized $ \conf => do
+handleRequest TextDocumentDocumentSymbol params = whenActiveRequest $ \conf => do
     False <- gets LSPConf (contains params.textDocument.uri . dirtyFiles)
-      | True => sendResponseMessage TextDocumentDocumentSymbol (Success (getResponseId msg) (make MkNull))
-    withURI conf TextDocumentDocumentSymbol (getResponseId msg) params.textDocument.uri Nothing $ do
+      | True => pure $ pure $ make MkNull
+    withURI conf params.textDocument.uri Nothing $ do
       documentSymbolData <- documentSymbol params
-      sendResponseMessage TextDocumentDocumentSymbol $ Success (getResponseId msg) $ make documentSymbolData
+      pure $ pure $ make documentSymbolData
 
-processMessage TextDocumentCodeLens msg@(MkRequestMessage id TextDocumentCodeLens params) =
-  whenNotShutdown $ whenInitialized $ \conf =>
-    sendResponseMessage TextDocumentCodeLens (Success (getResponseId msg) (make MkNull))
+handleRequest TextDocumentCodeLens params = whenActiveRequest $ \conf =>
+    pure $ pure $ make MkNull
 
-processMessage TextDocumentCompletion msg@(MkRequestMessage id TextDocumentCompletion params) =
-  whenNotShutdown $ whenInitialized $ \conf =>
-    sendResponseMessage TextDocumentCompletion (Success (getResponseId msg) (make MkNull))
+handleRequest TextDocumentCompletion params = whenActiveRequest $ \conf =>
+    pure $ pure $ make MkNull
 
-processMessage TextDocumentDocumentLink msg@(MkRequestMessage id TextDocumentDocumentLink params) =
-  whenNotShutdown $ whenInitialized $ \conf =>
-    sendResponseMessage TextDocumentDocumentLink (Success (getResponseId msg) (make MkNull))
+handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf =>
+    pure $ pure $ make MkNull
 
-processMessage TextDocumentSemanticTokensFull msg@(MkRequestMessage id TextDocumentSemanticTokensFull params) = do
-  whenNotShutdown $ whenInitialized $ \conf => do
-    whenNotDirty TextDocumentSemanticTokensFull (getResponseId msg) params.textDocument.uri $
-    withURI conf TextDocumentSemanticTokensFull (getResponseId msg) params.textDocument.uri Nothing $ do
+handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf =>
+    whenNotDirty params.textDocument.uri $
+    withURI conf params.textDocument.uri Nothing $ do
       md <- get MD
       src <- getSource
       let srcLines = forget $ lines src
       let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
       let tokens = getSemanticTokens md getLineLength
-      sendResponseMessage TextDocumentSemanticTokensFull $ Success (getResponseId msg) (make $ tokens)
+      pure $ pure $ (make $ tokens)
 
-processMessage {type = Request} method msg =
-  whenNotShutdown $ whenInitialized $ \conf => do
+handleRequest method params = whenActiveRequest $ \conf => do
     logString Warning $ "received a not supported \{show (toJSON method)} request"
-    sendResponseMessage method (methodNotFound msg)
+    pure $ Left methodNotFound
 
-processMessage {type = Notification} method msg =
-  whenNotShutdown $ whenInitialized $ \conf =>
-    logString Warning "unhandled notification"
+export
+handleNotification :
+       Ref LSPConf LSPConfiguration
+    => Ref Ctxt Defs
+    => Ref UST UState
+    => Ref Syn SyntaxInfo
+    => Ref MD Metadata
+    => Ref ROpts REPLOpts
+    => (method : Method Client Notification)
+    -> (params : MessageParams method)
+    -> Core ()
+
+handleNotification Exit params = do
+  let status = if !(gets LSPConf isShutdown) then ExitSuccess else ExitFailure 1
+  coreLift $ exitWith status
+
+handleNotification TextDocumentDidOpen params = whenActiveNotification $ \conf =>
+    ignore $ loadURI conf params.textDocument.uri (Just params.textDocument.version)
+
+handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf => do
+    modify LSPConf (record { dirtyFiles $= delete params.textDocument.uri })
+    ignore $ loadURI conf params.textDocument.uri Nothing
+    when (fromMaybe False $ conf.capabilities.workspace >>= semanticTokens >>= refreshSupport) $
+      sendRequestMessage_ WorkspaceSemanticTokensRefresh Nothing
+
+handleNotification TextDocumentDidChange params = whenActiveNotification $ \conf => do
+    modify LSPConf (record { dirtyFiles $= insert params.textDocument.uri })
+
+handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf => do
+    modify LSPConf (record { openFile = Nothing
+                           , quickfixes = []
+                           , cachedActions = empty
+                           , cachedHovers = empty
+                           , dirtyFiles $= delete params.textDocument.uri
+                           })
+    logString Info $ "File \{params.textDocument.uri.path} closed"
+
+handleNotification method params = whenActiveNotification $ \conf => 
+  logString Warning "unhandled notification"

@@ -29,8 +29,8 @@ header l = "Content-Length: " ++ show l ++ "\r\n\r\n"
 
 ||| Response message for method not found or not implemented yet.
 export
-methodNotFound : RequestMessage method -> ResponseMessage method
-methodNotFound msg = Failure (getResponseId msg) (MkResponseError MethodNotFound "Method not implemented yet" JNull)
+methodNotFound : ResponseError
+methodNotFound = MkResponseError MethodNotFound "Method not implemented yet" JNull
 
 ||| Response message for error while parsing a new message received.
 export

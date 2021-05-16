@@ -95,10 +95,18 @@ runServer = do
                     sendUnknownResponseMessage parseError
                     runServer
   logString Info $ "Received message for method " ++ show (toJSON method)
-  catch (processMessage method msg)
-        (\err => do
-          logString Error (show err)
-          resetContext "(interactive)")
+  -- TODO handle response from client to server requests
+  flip catch (\err => do logString Error (show err); resetContext "(interactive)") $
+    case type of
+      Notification => do
+        let (MkNotificationMessage _ params) = msg
+        handleNotification method params
+      Request => do
+        let (MkRequestMessage id _ params) = msg
+        result <- handleRequest method params
+        sendResponseMessage method $ case result of
+          Left error => Failure (extend id) error
+          Right result => Success (extend id) result
   runServer
 
 main : IO ()
