@@ -367,6 +367,8 @@ findResultImpl WorkspaceCodeLensRefresh = %search
 ||| TODO hacky replace with something better
 export
 fromMaybeJSONParameters : (method : Method from type) -> Maybe JSON -> Maybe (MessageParams method)
+fromMaybeJSONParameters Exit arg =
+  pure $ join $ arg >>= (fromJSON @{findParamsImpl Exit})
 fromMaybeJSONParameters Shutdown arg =
   pure $ join $ arg >>= (fromJSON @{findParamsImpl Shutdown})
 fromMaybeJSONParameters WorkspaceSemanticTokensRefresh arg =
