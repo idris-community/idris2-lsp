@@ -58,7 +58,7 @@ removeOverlap last stack (current@((fileName, start, end), decoration, name)::re
   let (output, newStack) = processStack last (Just start) stack
   in output ++ removeOverlap start (current :: newStack) rest
 
-||| Get the semantic tokens from the Metadata 
+||| Get the semantic tokens from the Metadata
 export
 getSemanticTokens : Metadata -> (getLineLength : Int -> Int) -> SemanticTokens
 getSemanticTokens md getLineLength =

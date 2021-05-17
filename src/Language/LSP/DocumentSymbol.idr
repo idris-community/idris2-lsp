@@ -67,4 +67,3 @@ documentSymbol params = do
     $ map snd
     $ sortBy (\(n1, _), (n2, _) => compare n1 n2)
     $ localDocSymbols ++ localTypeDecSymbols
-

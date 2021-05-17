@@ -31,4 +31,3 @@ export covering
 FromJSON v => FromJSON (SortedMap URI v) where
   fromJSON (JObject xs) = fromList <$> traverse (\(k, v) => (,) <$> fromJSON (JString k) <*> fromJSON v) xs
   fromJSON _ = neutral
-

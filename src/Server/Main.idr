@@ -64,16 +64,6 @@ parseHeaderPart h = do
     Just StartContent => pure $ Right Nothing
     Nothing => pure $ Right Nothing
 
-parseFail : Ref LSPConf LSPConfiguration => String -> Core ()
-parseFail err = do
-  logString Error err
-  sendUnknownResponseMessage parseError
-
-parseFailWithId : Ref LSPConf LSPConfiguration => OneOf [Int, String] -> String -> Core ()
-parseFailWithId id err = do
-  logString Error err
-  sendResponseMessage Initialize (Failure (extend id) parseError) -- method does not matter
-
 handleMessage : Ref LSPConf LSPConfiguration
             => Ref Ctxt Defs
             => Ref UST UState
@@ -84,26 +74,29 @@ handleMessage : Ref LSPConf LSPConfiguration
 handleMessage = do
   inputHandle <- gets LSPConf inputHandle
   Right (Just l) <- parseHeaderPart inputHandle
-    | _ => parseFail "Error while parsing header part"
+    | _ => sendUnknownResponseMessage parseError
   Right msg <- coreLift $ fGetChars inputHandle l
     | Left err => do
       logShow Error (show err)
       sendUnknownResponseMessage (internalError "Error while recovering the content part of a message")
   logString Debug msg
-  let Just msg = parse msg | _ => parseFail "Content not valid JSON"
-  let JObject fields = msg | _ => parseFail "Content not JSON object"
-  let Just (JString "2.0") = lookup "jsonrpc" fields | _ => parseFail "Property jsonrpc is not \"2.0\""
+  let Just msg = parse msg
+    | _ => sendUnknownResponseMessage parseError
+  let JObject fields = msg
+    | _ => sendUnknownResponseMessage (invalidRequest "Message is not object")
+  let Just (JString "2.0") = lookup "jsonrpc" fields
+    | _ => sendUnknownResponseMessage (invalidRequest "jsonrpc is not \"2.0\"")
   case lookup "method" fields of
     Just methodJSON => do -- request or notification
       case lookup "id" fields of
         Just idJSON => do -- request
           let Just id = fromJSON {a=OneOf [Int, String]} idJSON
-            | _ => parseFail "Property id is not a Int or String"
+            | _ => sendUnknownResponseMessage (invalidRequest "id is not int or string")
           let Just method = fromJSON {a=Method Client Request} methodJSON
-            | _ => parseFailWithId id "Method not recognized as valid request to client"
+            | _ => sendResponseMessage Initialize $ Failure (extend id) methodNotFound
           logString Info $ "Received request for method " ++ show (toJSON method)
           let Just params = fromMaybeJSONParameters method (lookup "params" fields)
-            | _ => parseFailWithId id "Method called with invalid params"
+            | _ => sendResponseMessage method $ Failure (extend id) (invalidParams "Invalid params for send \{show methodJSON}")
           -- handleRequest can be modified to use a callback if needed
           result <- catch (handleRequest method params) $ \err => do
             logString Error (show err)
@@ -114,15 +107,18 @@ handleMessage = do
             Right result => Success (extend id) result
           
         Nothing => do -- notification
-          let Just method = fromJSON {a=Method Client Notification} methodJSON | _ => parseFail "Method not recognized as valid notification to client"
+          let Just method = fromJSON {a=Method Client Notification} methodJSON
+            | _ => sendUnknownResponseMessage methodNotFound
           logString Info $ "Received notification for method " ++ show (toJSON method)
-          let Just params = fromMaybeJSONParameters method (lookup "params" fields) | _ => parseFail "Method called with invalid params"
+          let Just params = fromMaybeJSONParameters method (lookup "params" fields)
+            | _ => sendUnknownResponseMessage (invalidParams "Invalid params for send \{show methodJSON}")
           catch (handleNotification method params) $ \err => do
             logString Error (show err)
             resetContext "(interactive)"
 
     Nothing => do -- response
-      let Just idJSON = lookup "id" fields | _ => parseFail "Message does not have id or method"
+      let Just idJSON = lookup "id" fields
+        | _ => sendUnknownResponseMessage (invalidRequest "Message does not have method or id")
       logString Warning "Ignoring response with id \{show idJSON}"
 
 runServer : Ref LSPConf LSPConfiguration

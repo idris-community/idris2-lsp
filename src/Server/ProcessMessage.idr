@@ -66,9 +66,11 @@ displayTerm defs tm
     = do ptm <- resugar [] !(normaliseHoles defs [] tm)
          pure (prettyTerm ptm)
 
-isDirty : Ref LSPConf LSPConfiguration
-            => DocumentURI -> Core Bool
+isDirty : Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
 isDirty uri = gets LSPConf (contains uri . dirtyFiles)
+
+isError : Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
+isError uri = gets LSPConf (contains uri . errorFiles)
 
 loadURI : Ref LSPConf LSPConfiguration
        => Ref Ctxt Defs
@@ -131,9 +133,9 @@ withURI : Ref LSPConf LSPConfiguration
        => Ref MD Metadata
        => Ref ROpts REPLOpts
        => InitializeParams
-       -> URI -> Maybe Int -> a -> Core (Either ResponseError a) -> Core (Either ResponseError a)
+       -> URI -> Maybe Int -> Core (Either ResponseError a) -> Core (Either ResponseError a) -> Core (Either ResponseError a)
 withURI conf uri version d k = do
-  False <- gets LSPConf (contains uri . errorFiles) | _ => pure $ pure d
+  False <- isError uri | _ => d
   case !(loadIfNeeded conf uri version) of
        Right () => k
        Left err =>
@@ -219,7 +221,7 @@ handleRequest Shutdown params = do
 handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
+    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
       Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
         | Just hover => do logString Debug "hover: found cached action"
                            pure $ pure $ make hover
@@ -250,14 +252,14 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
 handleRequest TextDocumentDefinition params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
+    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
       Just link <- gotoDefinition params | Nothing => pure $ pure $ make MkNull
       pure $ pure $ make link
 
 handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
+    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
       quickfixActions <- map Just <$> gets LSPConf quickfixes
       exprSearchAction <- map Just <$> exprSearch params
       splitAction <- caseSplit params
@@ -279,14 +281,14 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
 handleRequest TextDocumentSignatureHelp params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
+    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
       Just signatureHelpData <- signatureHelp params | Nothing => pure $ pure $ make MkNull
       pure $ pure $ make signatureHelpData
 
 handleRequest TextDocumentDocumentSymbol params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
+    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
       documentSymbolData <- documentSymbol params
       pure $ pure $ make documentSymbolData
 
@@ -301,13 +303,16 @@ handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf =>
 
 handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
-      | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
+      | True => pure $ Left (MkResponseError RequestCancelled "Document Dirty" JNull)
+    False <- gets LSPConf (contains params.textDocument.uri . semanticTokensSentFiles)
+      | True => pure $ Left (MkResponseError RequestCancelled "Semantic tokens already sent" JNull)
+    withURI conf params.textDocument.uri Nothing (pure $ Left (MkResponseError RequestCancelled "Document Errors" JNull)) $ do
       md <- get MD
       src <- getSource
       let srcLines = forget $ lines src
       let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
       let tokens = getSemanticTokens md getLineLength
+      modify LSPConf (record { semanticTokensSentFiles $= insert params.textDocument.uri })
       pure $ pure $ (make $ tokens)
 
 handleRequest method params = whenActiveRequest $ \conf => do
@@ -337,6 +342,7 @@ handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf =
     modify LSPConf (record
       { dirtyFiles $= delete params.textDocument.uri
       , errorFiles $= delete params.textDocument.uri
+      , semanticTokensSentFiles $= delete params.textDocument.uri
       })
     ignore $ loadURI conf params.textDocument.uri Nothing
     when (fromMaybe False $ conf.capabilities.workspace >>= semanticTokens >>= refreshSupport) $
@@ -351,6 +357,8 @@ handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf 
                            , cachedActions = empty
                            , cachedHovers = empty
                            , dirtyFiles $= delete params.textDocument.uri
+                           , errorFiles $= delete params.textDocument.uri
+                           , semanticTokensSentFiles $= delete params.textDocument.uri
                            })
     logString Info $ "File \{params.textDocument.uri.path} closed"
 
