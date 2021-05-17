@@ -364,6 +364,19 @@ findResultImpl WorkspaceApplyEdit = %search
 findResultImpl TextDocumentCompletion = %search
 findResultImpl WorkspaceCodeLensRefresh = %search
 
+||| TODO hacky replace with something better
+export
+fromMaybeJSONParameters : (method : Method from type) -> Maybe JSON -> Maybe (MessageParams method)
+fromMaybeJSONParameters Shutdown arg =
+  pure $ join $ arg >>= (fromJSON @{findParamsImpl Shutdown})
+fromMaybeJSONParameters WorkspaceSemanticTokensRefresh arg =
+  pure $ join $ arg >>= (fromJSON @{findParamsImpl WorkspaceSemanticTokensRefresh})
+fromMaybeJSONParameters WorkspaceWorkspaceFolders arg =
+  pure $ join $ arg >>= (fromJSON @{findParamsImpl WorkspaceWorkspaceFolders})
+fromMaybeJSONParameters WorkspaceCodeLensRefresh arg =
+  pure $ join $ arg >>= (fromJSON @{findParamsImpl WorkspaceCodeLensRefresh})
+fromMaybeJSONParameters method arg = arg >>= (fromJSON @{findParamsImpl method})
+
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#notificationMessage
 public export
 data NotificationMessage : Method from Notification -> Type where

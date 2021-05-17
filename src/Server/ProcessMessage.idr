@@ -100,6 +100,9 @@ loadURI conf uri version = do
   setSource res
   errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
                           --        a compiler change.
+  case errs of
+    [] => pure ()
+    (_::_) => modify LSPConf (record { errorFiles $= insert uri })
   resetProofState
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   modify LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
@@ -128,8 +131,9 @@ withURI : Ref LSPConf LSPConfiguration
        => Ref MD Metadata
        => Ref ROpts REPLOpts
        => InitializeParams
-       -> URI -> Maybe Int -> Core (Either ResponseError a) -> Core (Either ResponseError a)
-withURI conf uri version k = do
+       -> URI -> Maybe Int -> a -> Core (Either ResponseError a) -> Core (Either ResponseError a)
+withURI conf uri version d k = do
+  False <- gets LSPConf (contains uri . errorFiles) | _ => pure $ pure d
   case !(loadIfNeeded conf uri version) of
        Right () => k
        Left err =>
@@ -215,7 +219,7 @@ handleRequest Shutdown params = do
 handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing $ do
+    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
       Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
         | Just hover => do logString Debug "hover: found cached action"
                            pure $ pure $ make hover
@@ -246,14 +250,14 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
 handleRequest TextDocumentDefinition params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing $ do
+    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
       Just link <- gotoDefinition params | Nothing => pure $ pure $ make MkNull
       pure $ pure $ make link
 
 handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing $ do
+    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
       quickfixActions <- map Just <$> gets LSPConf quickfixes
       exprSearchAction <- map Just <$> exprSearch params
       splitAction <- caseSplit params
@@ -275,14 +279,14 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
 handleRequest TextDocumentSignatureHelp params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing $ do
+    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
       Just signatureHelpData <- signatureHelp params | Nothing => pure $ pure $ make MkNull
       pure $ pure $ make signatureHelpData
 
 handleRequest TextDocumentDocumentSymbol params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing $ do
+    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
       documentSymbolData <- documentSymbol params
       pure $ pure $ make documentSymbolData
 
@@ -298,7 +302,7 @@ handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf =>
 handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing $ do
+    withURI conf params.textDocument.uri Nothing (make $ MkNull) $ do
       md <- get MD
       src <- getSource
       let srcLines = forget $ lines src
@@ -330,7 +334,10 @@ handleNotification TextDocumentDidOpen params = whenActiveNotification $ \conf =
     ignore $ loadURI conf params.textDocument.uri (Just params.textDocument.version)
 
 handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf => do
-    modify LSPConf (record { dirtyFiles $= delete params.textDocument.uri })
+    modify LSPConf (record
+      { dirtyFiles $= delete params.textDocument.uri
+      , errorFiles $= delete params.textDocument.uri
+      })
     ignore $ loadURI conf params.textDocument.uri Nothing
     when (fromMaybe False $ conf.capabilities.workspace >>= semanticTokens >>= refreshSupport) $
       sendRequestMessage_ WorkspaceSemanticTokensRefresh Nothing

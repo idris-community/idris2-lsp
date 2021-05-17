@@ -64,6 +64,67 @@ parseHeaderPart h = do
     Just StartContent => pure $ Right Nothing
     Nothing => pure $ Right Nothing
 
+parseFail : Ref LSPConf LSPConfiguration => String -> Core ()
+parseFail err = do
+  logString Error err
+  sendUnknownResponseMessage parseError
+
+parseFailWithId : Ref LSPConf LSPConfiguration => OneOf [Int, String] -> String -> Core ()
+parseFailWithId id err = do
+  logString Error err
+  sendResponseMessage Initialize (Failure (extend id) parseError) -- method does not matter
+
+handleMessage : Ref LSPConf LSPConfiguration
+            => Ref Ctxt Defs
+            => Ref UST UState
+            => Ref Syn SyntaxInfo
+            => Ref MD Metadata
+            => Ref ROpts REPLOpts
+            => Core ()
+handleMessage = do
+  inputHandle <- gets LSPConf inputHandle
+  Right (Just l) <- parseHeaderPart inputHandle
+    | _ => parseFail "Error while parsing header part"
+  Right msg <- coreLift $ fGetChars inputHandle l
+    | Left err => do
+      logShow Error (show err)
+      sendUnknownResponseMessage (internalError "Error while recovering the content part of a message")
+  logString Debug msg
+  let Just msg = parse msg | _ => parseFail "Content not valid JSON"
+  let JObject fields = msg | _ => parseFail "Content not JSON object"
+  let Just (JString "2.0") = lookup "jsonrpc" fields | _ => parseFail "Property jsonrpc is not \"2.0\""
+  case lookup "method" fields of
+    Just methodJSON => do -- request or notification
+      case lookup "id" fields of
+        Just idJSON => do -- request
+          let Just id = fromJSON {a=OneOf [Int, String]} idJSON
+            | _ => parseFail "Property id is not a Int or String"
+          let Just method = fromJSON {a=Method Client Request} methodJSON
+            | _ => parseFailWithId id "Method not recognized as valid request to client"
+          logString Info $ "Received request for method " ++ show (toJSON method)
+          let Just params = fromMaybeJSONParameters method (lookup "params" fields)
+            | _ => parseFailWithId id "Method called with invalid params"
+          -- handleRequest can be modified to use a callback if needed
+          result <- catch (handleRequest method params) $ \err => do
+            logString Error (show err)
+            resetContext "(interactive)"
+            pure $ Left (MkResponseError (Custom 4) (show err) JNull)
+          sendResponseMessage method $ case result of
+            Left error => Failure (extend id) error
+            Right result => Success (extend id) result
+          
+        Nothing => do -- notification
+          let Just method = fromJSON {a=Method Client Notification} methodJSON | _ => parseFail "Method not recognized as valid notification to client"
+          logString Info $ "Received notification for method " ++ show (toJSON method)
+          let Just params = fromMaybeJSONParameters method (lookup "params" fields) | _ => parseFail "Method called with invalid params"
+          catch (handleNotification method params) $ \err => do
+            logString Error (show err)
+            resetContext "(interactive)"
+
+    Nothing => do -- response
+      let Just idJSON = lookup "id" fields | _ => parseFail "Message does not have id or method"
+      logString Warning "Ignoring response with id \{show idJSON}"
+
 runServer : Ref LSPConf LSPConfiguration
          => Ref Ctxt Defs
          => Ref UST UState
@@ -72,46 +133,7 @@ runServer : Ref LSPConf LSPConfiguration
          => Ref ROpts REPLOpts
          => Core ()
 runServer = do
-  inputHandle <- gets LSPConf inputHandle
-  Right (Just l) <- parseHeaderPart inputHandle
-    | _ => do logString Error "Error while parsing header part"
-              sendUnknownResponseMessage parseError
-              runServer
-  Right msg <- coreLift $ fGetChars inputHandle l
-    | Left err => do logShow Error (show err)
-                     sendUnknownResponseMessage (internalError "Error while recovering the content part of a message")
-                     runServer
-  logString Debug msg
-  let Just msg = parse msg
-    | Nothing => do logString Error "Error while parsing content"
-                    sendUnknownResponseMessage parseError
-                    runServer
-  let Just (Client ** type ** method ** msg) = the (Maybe (from ** type ** method : Method from type ** Message type method)) $ fromJSON msg
-    | Just (Server ** type ** method ** msg) => do
-        logString Warning "Received server message"
-        sendUnknownResponseMessage (invalidRequest "Received a message meant to be sent by the server")
-        runServer
-    | Nothing => do logString Error "Error while parsing message"
-                    sendUnknownResponseMessage parseError
-                    runServer
-  logString Info $ "Received message for method " ++ show (toJSON method)
-  -- TODO handle response from client to server requests
-  case type of
-    Notification => do
-      let (MkNotificationMessage _ params) = msg
-      catch (handleNotification method params) $ \err => do
-        logString Error (show err)
-        resetContext "(interactive)"
-    Request => do
-      let (MkRequestMessage id _ params) = msg
-      -- handleRequest can be modified to use a callback if needed
-      result <- catch (handleRequest method params) $ \err => do
-        logString Error (show err)
-        resetContext "(interactive)"
-        pure $ Left (MkResponseError (Custom 4) (show err) JNull)
-      sendResponseMessage method $ case result of
-        Left error => Failure (extend id) error
-        Right result => Success (extend id) result
+  handleMessage
   runServer
 
 main : IO ()

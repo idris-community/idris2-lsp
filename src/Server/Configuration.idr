@@ -40,6 +40,8 @@ record LSPConfiguration where
   openFile : Maybe (DocumentURI, Int)
   ||| Files with modification not saved. Command will fail on these files.
   dirtyFiles : SortedSet DocumentURI
+  ||| Files with errors
+  errorFiles : SortedSet DocumentURI
   ||| Limit for multiple search results
   searchLimit : Nat
   ||| List of quickfixes to be send in addition to other code actions
@@ -66,6 +68,7 @@ defaultConfig =
     , isShutdown        = False
     , openFile          = Nothing
     , dirtyFiles        = empty
+    , errorFiles        = empty
     , searchLimit       = 5
     , quickfixes        = []
     , cachedActions     = empty
