@@ -110,15 +110,11 @@ handleMessage = do
           let Just method = fromJSON {a=Method Client Notification} methodJSON
             | _ => sendUnknownResponseMessage methodNotFound
           logString Info $ "Received notification for method " ++ show (toJSON method)
-          case method of
-               Exit => catch (handleNotification Exit Nothing) $ \err => do
-                         logString Error (show err)
-                         resetContext "(interactive)"
-               _ => do let Just params = fromMaybeJSONParameters method (lookup "params" fields)
-                         | _ => sendUnknownResponseMessage (invalidParams "Invalid params for send \{show methodJSON}")
-                       catch (handleNotification method params) $ \err => do
-                         logString Error (show err)
-                         resetContext "(interactive)"
+          let Just params = fromMaybeJSONParameters method (lookup "params" fields)
+            | _ => sendUnknownResponseMessage (invalidParams "Invalid params for send \{show methodJSON}")
+          catch (handleNotification method params) $ \err => do
+            logString Error (show err)
+            resetContext "(interactive)"
 
     Nothing => do -- response
       let Just idJSON = lookup "id" fields
