@@ -13,15 +13,64 @@ env:
   SCHEME: scheme
 
 jobs:
-  build:
+  build-idris2-with-api: 
     runs-on: ubuntu-latest
     env:
       IDRIS2_CG: chez
       IDRIS2_TESTS_CG: chez
-    container: snazzybucket/idris2api:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Get Idris2 commit
+        id: get-idris2-commit
+        run: echo "::set-output idris2-commit=commit::$(git rev-parse @:./Idris2)"
+      - name: Cache Idris2 with API
+        id: cache-idris2-with-api
+        uses: actions/cache@v2
+        with:
+          path: ~/.idris2/
+          key: ${{ steps.get-idris2-commit.outputs.idris2-commit }}-idris2-with-api
+      - name: Get Idris2 Submodule
+        if: steps.cache-idris2-with-api.outputs.cache-hit != 'true'
+        run: |
+          git submodule update --init Idris2
+      - name: Install build dependencies
+        if: steps.cache-idris2-with-api.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install -y chezscheme
+          echo "::add-path::$HOME/.idris2/bin"
+      - name: Build Idris2 with API
+        if: steps.cache-idris2-with-api.outputs.cache-hit != 'true'
+        working-directory: Idris2
+        run: |
+          make bootstrap && make install
+          make clean
+          make all && make install
+          make install-api
+      - name: Artifact Idris2 with API
+        uses: actions/upload-artifact@v2
+        with:
+          name: installed-idris2-with-api
+          path: ~/.idris2/
+  build:
+    runs-on: ubuntu-latest
+    needs: build-idris2-with-api
+    env:
+      IDRIS2_CG: chez
+      IDRIS2_TESTS_CG: chez
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Download Idris2 with API Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: installed-idris2-with-api
+          path: ~/.idris2/
+      - name: Install build dependencies
+        run: |
+          sudo apt-get install -y chezscheme
+          echo "::add-path::$HOME/.idris2/bin"
+          chmod +x $HOME/.idris2/bin/idris2 $HOME/.idris2/bin/idris2_app/*
       - name: build and test
         run: |
           make build && make test INTERACTIVE=''
