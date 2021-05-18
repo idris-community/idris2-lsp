@@ -76,8 +76,8 @@ generateDef : Ref LSPConf LSPConfiguration
             => Ref UST UState
             => Ref Syn SyntaxInfo
             => Ref ROpts REPLOpts
-            => OneOf [Int, String, Null] -> CodeActionParams -> Core (List CodeAction)
-generateDef msgId params = do
+            => CodeActionParams -> Core (List CodeAction)
+generateDef params = do
   defs <- branch
   let True = params.range.start.line == params.range.end.line
       | _ => do

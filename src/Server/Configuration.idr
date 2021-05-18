@@ -5,6 +5,7 @@
 module Server.Configuration
 
 import Core.FC
+import Data.SortedSet
 import Language.LSP.CodeAction
 import Language.LSP.Message.CodeAction
 import Language.LSP.Message.Initialize
@@ -37,6 +38,12 @@ record LSPConfiguration where
   isShutdown : Bool
   ||| The currently loaded file, if any, and its version.
   openFile : Maybe (DocumentURI, Int)
+  ||| Files with modification not saved. Command will fail on these files.
+  dirtyFiles : SortedSet DocumentURI
+  ||| Files with errors
+  errorFiles : SortedSet DocumentURI
+  ||| Semantic tokens have been sent
+  semanticTokensSentFiles : SortedSet DocumentURI
   ||| Limit for multiple search results
   searchLimit : Nat
   ||| List of quickfixes to be send in addition to other code actions
@@ -48,6 +55,8 @@ record LSPConfiguration where
   ||| Timeout in ms for long operations (currently stops multiple commands, e.g. ExprSearch)
   ||| TODO: extend it to any operation and report the timeout, making it overridable
   longActionTimeout : Clock Duration
+  ||| next id for requests to the server
+  nextRequestId : Nat
 
 ||| Server default configuration. Uses standard input and standard output for input/output.
 export
@@ -60,9 +69,13 @@ defaultConfig =
     , initialized       = Nothing
     , isShutdown        = False
     , openFile          = Nothing
+    , dirtyFiles        = empty
+    , errorFiles        = empty
+    , semanticTokensSentFiles = empty
     , searchLimit       = 5
     , quickfixes        = []
     , cachedActions     = empty
     , cachedHovers      = empty
     , longActionTimeout = makeDuration 5 0
+    , nextRequestId     = 0
     }

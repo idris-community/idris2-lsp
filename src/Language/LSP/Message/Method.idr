@@ -66,7 +66,6 @@ data Method : MethodFrom -> MethodType -> Type where
   TextDocumentSemanticTokensFull      : Method Client Request
   TextDocumentSemanticTokensFullDelta : Method Client Request
   TextDocumentSemanticTokensRange     : Method Client Request
-  WorkspaceSemanticTokensRefresh      : Method Client Request
   TextDocumentLinkedEditingRange      : Method Client Request
   TextDocumentMoniker                 : Method Client Request
 
@@ -84,6 +83,7 @@ data Method : MethodFrom -> MethodType -> Type where
   WorkspaceApplyEdit                  : Method Server Request
   TextDocumentPublishDiagnostics      : Method Server Notification
   WorkspaceCodeLensRefresh            : Method Server Request
+  WorkspaceSemanticTokensRefresh      : Method Server Request
 
   CancelRequest                       : Method from   Notification
   Progress                            : Method from   Notification
@@ -287,7 +287,6 @@ FromJSON (Method Client Request) where
   fromJSON (JString "textDocument/semanticTokens/full")       = pure TextDocumentSemanticTokensFull
   fromJSON (JString "textDocument/semanticTokens/full/delta") = pure TextDocumentSemanticTokensFullDelta
   fromJSON (JString "textDocument/semanticTokens/range")      = pure TextDocumentSemanticTokensRange
-  fromJSON (JString "workspace/semanticTokens/refresh")       = pure WorkspaceSemanticTokensRefresh
   fromJSON (JString "textDocument/linkedEditingRange")        = pure TextDocumentLinkedEditingRange
   fromJSON (JString "textDocument/moniker")                   = pure TextDocumentMoniker
   fromJSON _ = neutral
@@ -305,15 +304,16 @@ FromJSON (Method Server Notification) where
 
 export
 FromJSON (Method Server Request) where
-  fromJSON (JString "window/showMessageRequest")      = pure WindowShowMessageRequest
-  fromJSON (JString "window/showDocument")            = pure WindowShowDocument
-  fromJSON (JString "window/workDoneProgress/create") = pure WindowWorkDoneProgressCreate
-  fromJSON (JString "client/registerCapability")      = pure ClientRegisterCapability
-  fromJSON (JString "client/unregisterCapability")    = pure ClientUnregisterCapability
-  fromJSON (JString "workspace/workspaceFolders")     = pure WorkspaceWorkspaceFolders
-  fromJSON (JString "workspace/configuration")        = pure WorkspaceConfiguration
-  fromJSON (JString "workspace/applyEdit")            = pure WorkspaceApplyEdit
-  fromJSON (JString "workspace/codeLens/refresh")     = pure WorkspaceCodeLensRefresh
+  fromJSON (JString "window/showMessageRequest")        = pure WindowShowMessageRequest
+  fromJSON (JString "window/showDocument")              = pure WindowShowDocument
+  fromJSON (JString "window/workDoneProgress/create")   = pure WindowWorkDoneProgressCreate
+  fromJSON (JString "client/registerCapability")        = pure ClientRegisterCapability
+  fromJSON (JString "client/unregisterCapability")      = pure ClientUnregisterCapability
+  fromJSON (JString "workspace/workspaceFolders")       = pure WorkspaceWorkspaceFolders
+  fromJSON (JString "workspace/configuration")          = pure WorkspaceConfiguration
+  fromJSON (JString "workspace/applyEdit")              = pure WorkspaceApplyEdit
+  fromJSON (JString "workspace/codeLens/refresh")       = pure WorkspaceCodeLensRefresh
+  fromJSON (JString "workspace/semanticTokens/refresh") = pure WorkspaceSemanticTokensRefresh
   fromJSON _ = neutral
 
 export
