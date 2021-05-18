@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Get Idris2 commit
         id: get-idris2-commit
-        run: echo "::set-output idris2-commit=commit::$(git rev-parse @:./Idris2)"
+        run: echo "::set-output name=idris2-commit::$(git rev-parse @:./Idris2)"
       - name: Cache Idris2 with API
         id: cache-idris2-with-api
         uses: actions/cache@v2
