@@ -364,6 +364,8 @@ findResultImpl WorkspaceApplyEdit = %search
 findResultImpl TextDocumentCompletion = %search
 findResultImpl WorkspaceCodeLensRefresh = %search
 
+||| Parse parameters
+||| Since the params are sometimes optional we must parse Maybe JSON
 ||| TODO hacky replace with something better
 export
 fromMaybeJSONParameters : (method : Method from type) -> Maybe JSON -> Maybe (MessageParams method)
