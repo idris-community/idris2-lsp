@@ -52,6 +52,7 @@ jobs:
         with:
           name: installed-idris2-with-api
           path: ~/.idris2/
+          retention-days: 1
   build:
     runs-on: ubuntu-latest
     needs: build-idris2-with-api
