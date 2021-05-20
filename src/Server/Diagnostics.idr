@@ -21,6 +21,20 @@ import System.File
 keyword : Doc IdrisAnn -> Doc IdrisAnn
 keyword = annotate (Syntax SynKeyword)
 
+buildDiagnostic : Maybe FC -> Doc IdrisAnn -> Maybe (List DiagnosticRelatedInformation) -> Diagnostic
+buildDiagnostic loc error related =
+  MkDiagnostic
+    { range = cast $ fromMaybe toplevelFC loc
+    , severity = Just Error
+    , code = Nothing
+    , codeDescription = Nothing
+    , source = Just "idris2"
+    , message = renderString $ unAnnotateS $ layoutUnbounded error
+    , tags = Nothing
+    , relatedInformation = related
+    , data_ = Nothing
+    }
+
 buildRelatedInformation : URI -> FC -> String -> DiagnosticRelatedInformation
 buildRelatedInformation uri fc msg = MkDiagnosticRelatedInformation (MkLocation uri (cast fc)) msg
 
@@ -381,13 +395,9 @@ toDiagnostic : Ref Ctxt Defs
             -> Core Diagnostic
 toDiagnostic caps uri err = do
   error <- perror err
-  pure $ MkDiagnostic { range = cast (fromMaybe toplevelFC $ getErrorLoc err)
-                      , severity = Just Error
-                      , code = Nothing
-                      , codeDescription = Nothing
-                      , source = Just "idris2"
-                      , message = renderString $ unAnnotateS $ layoutUnbounded error
-                      , tags = Nothing
-                      , relatedInformation = (flip toMaybe (getRelatedErrors uri err) <=< relatedInformation) =<< caps
-                      , data_ = Nothing
-                      }
+  let loc = getErrorLoc err
+  let p = maybe uri.path file (isNonEmptyFC =<< loc)
+  if uri.path == p
+     then do let related = (flip toMaybe (getRelatedErrors uri err) <=< relatedInformation) =<< caps
+             pure $ buildDiagnostic loc error related
+     else pure $ buildDiagnostic (toStart <$> loc) ("In" <++> pretty p <+> colon <++> error) Nothing
