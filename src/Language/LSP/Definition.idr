@@ -2,8 +2,10 @@ module Language.LSP.Definition
 
 import Core.Context
 import Core.Core
+import Core.Directory
 import Core.Env
 import Core.Metadata
+import Core.Options
 import Data.List
 import Data.String
 import Data.String.Parser
@@ -13,35 +15,43 @@ import Server.Configuration
 import Server.Log
 import Server.Utils
 import System.File
+import System.Path
+
+import Libraries.Data.PosMap
+
+-- Return the name of the first file available in the list
+firstAvailable : {auto c : Ref Ctxt Defs} ->
+                 List String -> Core (Maybe String)
+firstAvailable [] = pure Nothing
+firstAvailable (f :: fs)
+    = do Right ok <- coreLift $ openFile f Read
+               | Left err => firstAvailable fs
+         coreLift $ closeFile ok
+         pure (Just f)
 
 mkLocation : Ref Ctxt Defs
           => Ref LSPConf LSPConfiguration
-          => String -> (Int, Int) -> (Int, Int) -> Core (Maybe Location)
-mkLocation fname (sline, scol) (eline, ecol) = do
-  Just (Just (Here path)) <- map rootPath <$> gets LSPConf initialized
+          => OriginDesc -> (Int, Int) -> (Int, Int) -> Core (Maybe Location)
+mkLocation origin (sline, scol) (eline, ecol) = do
+  defs <- get Ctxt
+  let PhysicalIdrSrc modIdent = origin
     | _ => do
-        logString Debug "gotoDefinition: Root path was not set."
-        pure Nothing
+       logString Debug "gotoDefinition: Origin doesn't have an Idris file attached to it \{show origin}"
+       pure Nothing
+  let pkg_dirs = filter (/= ".") defs.options.dirs.extra_dirs
+  Just fname <- catch
+      (Just <$> nsToSource (justFC defaultFC) modIdent) -- Try local source first
+      -- if not found, try looking for the file amonst the loaded packages.
+      (const $ Definition.firstAvailable $ map (</> ModuleIdent.toPath modIdent <.> "idr") pkg_dirs)
+    | _ => do
+      logString Debug "gotoDefinition: Can't find file for module \{show modIdent}"
+      pure Nothing
 
-  -- URIs can refer relative or absolute paths, also they can refer modules
-  -- out of the current project.
-  mSourceStr <-
-    if path `isPrefixOf` fname
-       then pure $ Just $ "file://" ++ fname
-       else do
-         let concatedName = path ++ "/" ++ fname
-         if !(coreLift $ exists concatedName)
-            then pure $ Just $ "file://" ++ concatedName
-            else pure Nothing
+  let fname = "file://" ++ fname
 
-  let Just sourceStr = mSourceStr
-      | Nothing => do
-          logString Debug "gotoDefinition: \{fname} referring module out of project."
-          pure Nothing
-
-  let Right (uri, _) = parse uriReferenceParser sourceStr
+  let Right (uri, _) = parse uriReferenceParser fname
       | Left err => do
-          logString Debug "gotoDefinition: URI parse error: \{err} \{show (sourceStr, sline, scol)}"
+          logString Debug "gotoDefinition: URI parse error: \{err} \{show (fname, sline, scol)}"
           pure Nothing
 
   pure $ Just $ MkLocation uri (MkRange (MkPosition sline scol) (MkPosition eline ecol))

@@ -21,13 +21,14 @@ import Idris.Resugar
 import Idris.Syntax
 import Idris.IDEMode.Holes
 import Language.JSON
+import Language.LSP.CodeAction
 import Language.LSP.CodeAction.AddClause
 import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
 import Language.LSP.CodeAction.GenerateDef
+import Language.LSP.CodeAction.MakeCase
 import Language.LSP.CodeAction.MakeLemma
 import Language.LSP.CodeAction.MakeWith
-import Language.LSP.CodeAction.MakeCase
 import Language.LSP.Definition
 import Language.LSP.DocumentSymbol
 import Language.LSP.SignatureHelp
@@ -81,7 +82,7 @@ loadURI : Ref LSPConf LSPConfiguration
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
   modify LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
-  resetContext "(interactive)"
+  resetContext (Left Interactive)
   let fpath = uri.path
   let Just (startFolder, startFile) = splitParent fpath
     | Nothing => do let msg = "Cannot find the parent folder for \{show uri}"
@@ -362,5 +363,5 @@ handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf 
                            })
     logString Info $ "File \{params.textDocument.uri.path} closed"
 
-handleNotification method params = whenActiveNotification $ \conf => 
+handleNotification method params = whenActiveNotification $ \conf =>
   logString Warning "unhandled notification"

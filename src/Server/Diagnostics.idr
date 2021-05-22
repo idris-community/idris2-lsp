@@ -2,6 +2,7 @@ module Server.Diagnostics
 
 import Core.Context
 import Core.Core
+import Core.Directory
 import Core.Env
 import Core.FC
 import Data.OneOf
@@ -17,6 +18,7 @@ import Server.Configuration
 import Server.Log
 import Server.Utils
 import System.File
+import System.Path
 
 keyword : Doc IdrisAnn -> Doc IdrisAnn
 keyword = annotate (Syntax SynKeyword)
@@ -24,7 +26,7 @@ keyword = annotate (Syntax SynKeyword)
 buildDiagnostic : Maybe FC -> Doc IdrisAnn -> Maybe (List DiagnosticRelatedInformation) -> Diagnostic
 buildDiagnostic loc error related =
   MkDiagnostic
-    { range = cast $ fromMaybe toplevelFC loc
+    { range = cast $ fromMaybe (justFC defaultFC) loc
     , severity = Just Error
     , code = Nothing
     , codeDescription = Nothing
@@ -389,14 +391,18 @@ export
 toDiagnostic : Ref Ctxt Defs
             => Ref Syn SyntaxInfo
             => Ref ROpts REPLOpts
+            => Ref LSPConf LSPConfiguration
             => (caps : Maybe PublishDiagnosticsClientCapabilities)
             -> (uri : URI)
             -> (error : Error)
             -> Core Diagnostic
 toDiagnostic caps uri err = do
+  defs <- get Ctxt
   error <- perror err
   let loc = getErrorLoc err
-  let p = maybe uri.path file (isNonEmptyFC =<< loc)
+  let wdir = defs.options.dirs.working_dir
+  p <- maybe (pure uri.path) (pure . (wdir </>) <=< nsToSource (justFC defaultFC))
+         ((\case PhysicalIdrSrc ident => Just ident; _ => Nothing) . fst <=< isNonEmptyFC =<< loc)
   if uri.path == p
      then do let related = (flip toMaybe (getRelatedErrors uri err) <=< relatedInformation) =<< caps
              pure $ buildDiagnostic loc error related
