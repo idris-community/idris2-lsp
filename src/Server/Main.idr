@@ -8,6 +8,7 @@ import Core.Core
 import Core.InitPrimitives
 import Core.Metadata
 import Core.UnifyState
+import Compiler.Common
 import Data.List1
 import Data.Strings
 import Idris.CommandLine

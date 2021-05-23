@@ -21,6 +21,7 @@ import Idris.Resugar
 import Idris.Syntax
 import Idris.IDEMode.Holes
 import Language.JSON
+import Language.LSP.CodeAction
 import Language.LSP.CodeAction.AddClause
 import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
@@ -362,5 +363,5 @@ handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf 
                            })
     logString Info $ "File \{params.textDocument.uri.path} closed"
 
-handleNotification method params = whenActiveNotification $ \conf => 
+handleNotification method params = whenActiveNotification $ \conf =>
   logString Warning "unhandled notification"
