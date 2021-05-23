@@ -5,6 +5,7 @@ import Core.Core
 import Core.Env
 import Core.Metadata
 import Data.List
+import Idris.Doc.String
 import Language.LSP.Message
 import Server.Configuration
 import Server.Utils
