@@ -82,7 +82,7 @@ loadURI : Ref LSPConf LSPConfiguration
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
   modify LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
-  resetContext (Left Interactive)
+  resetContext (Virtual Interactive)
   let fpath = uri.path
   let Just (startFolder, startFile) = splitParent fpath
     | Nothing => do let msg = "Cannot find the parent folder for \{show uri}"

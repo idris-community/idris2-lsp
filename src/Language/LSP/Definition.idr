@@ -19,16 +19,6 @@ import System.Path
 
 import Libraries.Data.PosMap
 
--- Return the name of the first file available in the list
-firstAvailable : {auto c : Ref Ctxt Defs} ->
-                 List String -> Core (Maybe String)
-firstAvailable [] = pure Nothing
-firstAvailable (f :: fs)
-    = do Right ok <- coreLift $ openFile f Read
-               | Left err => firstAvailable fs
-         coreLift $ closeFile ok
-         pure (Just f)
-
 mkLocation : Ref Ctxt Defs
           => Ref LSPConf LSPConfiguration
           => OriginDesc -> (Int, Int) -> (Int, Int) -> Core (Maybe Location)
@@ -42,7 +32,7 @@ mkLocation origin (sline, scol) (eline, ecol) = do
   Just fname <- catch
       (Just <$> nsToSource (justFC defaultFC) modIdent) -- Try local source first
       -- if not found, try looking for the file amonst the loaded packages.
-      (const $ Definition.firstAvailable $ map (</> ModuleIdent.toPath modIdent <.> "idr") pkg_dirs)
+      (const $ firstAvailable $ map (</> ModuleIdent.toPath modIdent <.> "idr") pkg_dirs)
     | _ => do
       logString Debug "gotoDefinition: Can't find file for module \{show modIdent}"
       pure Nothing
