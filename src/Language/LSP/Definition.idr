@@ -11,6 +11,7 @@ import Data.String
 import Data.String.Parser
 import Data.URI
 import Language.LSP.Message
+import Libraries.Data.PosMap
 import Server.Configuration
 import Server.Log
 import Server.Utils
