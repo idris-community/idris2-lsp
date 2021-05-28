@@ -30,10 +30,14 @@ mkLocation origin (sline, scol) (eline, ecol) = do
        logString Debug "gotoDefinition: Origin doesn't have an Idris file attached to it \{show origin}"
        pure Nothing
   let pkg_dirs = filter (/= ".") defs.options.dirs.extra_dirs
+  let exts = map show listOfExtensions
   Just fname <- catch
-      (Just <$> nsToSource (justFC defaultFC) modIdent) -- Try local source first
+      (Just <$> nsToSource replFC modIdent) -- Try local source first
       -- if not found, try looking for the file amonst the loaded packages.
-      (const $ firstAvailable $ map (</> ModuleIdent.toPath modIdent <.> "idr") pkg_dirs)
+      (const $ firstAvailable $ do
+        pkg_dir <- pkg_dirs
+        ext <- exts
+        pure (pkg_dir </> ModuleIdent.toPath modIdent <.> ext))
     | _ => do
       logString Debug "gotoDefinition: Can't find file for module \{show modIdent}"
       pure Nothing
