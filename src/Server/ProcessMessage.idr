@@ -80,7 +80,7 @@ loadURI : Ref LSPConf LSPConfiguration
        => Ref MD Metadata
        => Ref ROpts REPLOpts
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
-loadURI conf uri version = logDuration "Loading \{uri.path}" $ do
+loadURI conf uri version = logDuration "loadURI \{uri.path}" $ do
   modify LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
   resetContext "(interactive)"
   let fpath = uri.path
@@ -101,8 +101,9 @@ loadURI conf uri version = logDuration "Loading \{uri.path}" $ do
                      logString Error msg
                      pure $ Left msg
   setSource res
-  errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
-                          --        a compiler change.
+  errs <- logDuration "buildDeps \{fname}" $ buildDeps fname
+  -- FIXME: the compiler always dumps the errors on stdout,
+  -- requires a compiler change.
   case errs of
     [] => pure ()
     (_::_) => modify LSPConf (record { errorFiles $= insert uri })
