@@ -30,6 +30,10 @@ modify : (l : label) -> Ref l a => (a -> a) -> Core ()
 modify l f = put l . f =<< get l
 
 export
+foldlM : Foldable t => (a -> b -> Core a) -> a -> t b -> Core a
+foldlM f init = foldl (\ma, b => flip f b =<< ma) (pure init)
+
+export
 uncons' : List a -> Maybe (a, List a)
 uncons' [] = Nothing
 uncons' (x :: xs) = Just (x, xs)
@@ -188,3 +192,19 @@ searchCache r type = do
   cache <- gets LSPConf cachedActions
   let inRange = dominators (cast r.start, cast r.end) cache
   pure $ concatMap (snd . snd) $ filter (\(_, t, _) => type == t) inRange
+
+export
+pathToURI : String -> URI
+pathToURI path =
+  MkURI { scheme = "file"
+        , authority = Just (MkURIAuthority Nothing "" Nothing)
+        , path = path
+        , query = ""
+        , fragment = ""
+        }
+
+export
+toStart : FC -> FC
+toStart (MkFC f _ _) = MkFC f (0, 0) (0, 0)
+toStart (MkVirtualFC f _ _) = MkVirtualFC f (0, 0) (0, 0)
+toStart EmptyFC = EmptyFC

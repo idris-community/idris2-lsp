@@ -21,6 +21,20 @@ import System.File
 keyword : Doc IdrisAnn -> Doc IdrisAnn
 keyword = annotate (Syntax SynKeyword)
 
+buildDiagnostic : Maybe FC -> Doc IdrisAnn -> Maybe (List DiagnosticRelatedInformation) -> Diagnostic
+buildDiagnostic loc error related =
+  MkDiagnostic
+    { range = cast $ fromMaybe toplevelFC loc
+    , severity = Just Error
+    , code = Nothing
+    , codeDescription = Nothing
+    , source = Just "idris2"
+    , message = renderString $ unAnnotateS $ layoutUnbounded error
+    , tags = Nothing
+    , relatedInformation = related
+    , data_ = Nothing
+    }
+
 buildRelatedInformation : URI -> FC -> String -> DiagnosticRelatedInformation
 buildRelatedInformation uri fc msg = MkDiagnosticRelatedInformation (MkLocation uri (cast fc)) msg
 
@@ -84,6 +98,23 @@ pshowNoNorm env tm
 
 ploc : FC -> Doc IdrisAnn
 ploc fc = annotate FileCtxt (pretty fc)
+
+pwarning : Ref Ctxt Defs
+        => Ref Syn SyntaxInfo
+        => Ref ROpts REPLOpts
+        => Warning
+        -> Core (Doc IdrisAnn)
+pwarning (UnreachableClause fc env tm) =
+  pure $ errorDesc (reflow "Unreachable clause:" <++> code !(pshow env tm))
+pwarning (ShadowingGlobalDefs _ ns) =
+  pure $ vcat $
+    reflow "We are about to implicitly bind the following lowercase names."
+      :: reflow "You may be unintentionally shadowing the associated global definitions:"
+      :: map (\ (n, ns) => indent 2 $ hsep $ pretty n
+                             :: reflow "is shadowing"
+                             :: punctuate comma (map pretty (forget ns)))
+             (forget ns)
+pwarning (Deprecated s) = pure $ pretty "Deprecation warning:" <++> pretty s
 
 perror : Ref Ctxt Defs
       => Ref Syn SyntaxInfo
@@ -365,6 +396,7 @@ perror (MaybeMisspelling err ns) = pure $ !(perror err) <++> case ns of
        reflow "Did you mean any of:"
        <++> concatWith (surround (comma <+> space)) (map pretty xs)
        <+> comma <++> reflow "or" <++> pretty x <+> "?"
+perror (WarningAsError warn) = pwarning warn
 
 ||| Computes a LSP `Diagnostic` from a compiler error.
 |||
@@ -381,13 +413,9 @@ toDiagnostic : Ref Ctxt Defs
             -> Core Diagnostic
 toDiagnostic caps uri err = do
   error <- perror err
-  pure $ MkDiagnostic { range = cast (fromMaybe toplevelFC $ getErrorLoc err)
-                      , severity = Just Error
-                      , code = Nothing
-                      , codeDescription = Nothing
-                      , source = Just "idris2"
-                      , message = renderString $ unAnnotateS $ layoutUnbounded error
-                      , tags = Nothing
-                      , relatedInformation = (flip toMaybe (getRelatedErrors uri err) <=< relatedInformation) =<< caps
-                      , data_ = Nothing
-                      }
+  let loc = getErrorLoc err
+  let p = maybe uri.path file (isNonEmptyFC =<< loc)
+  if uri.path == p
+     then do let related = (flip toMaybe (getRelatedErrors uri err) <=< relatedInformation) =<< caps
+             pure $ buildDiagnostic loc error related
+     else pure $ buildDiagnostic (toStart <$> loc) ("In" <++> pretty p <+> colon <++> error) Nothing

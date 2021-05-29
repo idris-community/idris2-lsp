@@ -6,10 +6,11 @@ import Core.Env
 import Core.Metadata
 import Data.List
 import Data.String
-import Idris.DocString
+import Idris.Doc.String
 import Idris.REPL.Opts
 import Idris.Syntax
 import Language.LSP.Message
+import Libraries.Data.PosMap
 import Server.Configuration
 import Server.Utils
 import Server.Log
