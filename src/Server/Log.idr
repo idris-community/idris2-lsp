@@ -10,6 +10,8 @@ import Server.Utils
 import System.Directory
 import System.File
 import System.Path
+import System.Clock
+import Data.String.Extra
 
 %default total
 
@@ -60,6 +62,25 @@ logString severity msg = do
 export
 logShow : Ref LSPConf LSPConfiguration => Show a => Severity -> a -> Core ()
 logShow severity = logString severity . show
+
+export
+logDuration : Ref LSPConf LSPConfiguration => String -> Core a -> Core a
+logDuration desc action = do
+  logDurationIndent <- gets LSPConf logDurationIndent
+  let nano = 1000000000
+  logHandle <- gets LSPConf logHandle
+  startClock <- coreLift (clockTime Process)
+  let indent = replicate (logDurationIndent * 2) ' '
+  ignore $ coreLift $ fPutStrLn logHandle ("TIMING:  \{indent}\{desc} started")
+  modify LSPConf (record { logDurationIndent = logDurationIndent + 1 })
+  result <- action
+  modify LSPConf (record { logDurationIndent = logDurationIndent })
+  endClock <- coreLift (clockTime Process)
+  let duration = endClock `timeDifference` startClock
+  let nanoseconds = seconds duration * nano + nanoseconds duration
+  let milliseconds = nanoseconds `div` 1000000
+  ignore $ coreLift $ fPutStrLn logHandle ("TIMING:  \{indent}\{desc} took \{show milliseconds} ms")
+  pure result
 
 ||| Changes the log file location, if possible.
 export covering
