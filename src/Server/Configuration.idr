@@ -57,6 +57,8 @@ record LSPConfiguration where
   longActionTimeout : Clock Duration
   ||| next id for requests to the server
   nextRequestId : Nat
+  ||| indent for duration
+  logDurationIndent : Nat
 
 ||| Server default configuration. Uses standard input and standard output for input/output.
 export
@@ -78,4 +80,5 @@ defaultConfig =
     , cachedHovers      = empty
     , longActionTimeout = makeDuration 5 0
     , nextRequestId     = 0
+    , logDurationIndent = 0
     }

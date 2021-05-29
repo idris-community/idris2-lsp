@@ -80,7 +80,7 @@ loadURI : Ref LSPConf LSPConfiguration
        => Ref MD Metadata
        => Ref ROpts REPLOpts
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
-loadURI conf uri version = do
+loadURI conf uri version = logDuration "loadURI \{uri.path}" $ do
   modify LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
   resetContext "(interactive)"
   let fpath = uri.path
@@ -101,8 +101,9 @@ loadURI conf uri version = do
                      logString Error msg
                      pure $ Left msg
   setSource res
-  errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
-                          --        a compiler change.
+  errs <- logDuration "buildDeps \{fname}" $ buildDeps fname
+  -- FIXME: the compiler always dumps the errors on stdout,
+  -- requires a compiler change.
   case errs of
     [] => pure ()
     (_::_) => modify LSPConf (record { errorFiles $= insert uri })
@@ -222,7 +223,8 @@ handleRequest Shutdown params = do
 handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
+    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $
+    logDuration "Hover for loaded file \{params.textDocument.uri.path}" $ do
       Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
         | Just hover => do logString Debug "hover: found cached action"
                            pure $ pure $ make hover
@@ -260,7 +262,8 @@ handleRequest TextDocumentDefinition params = whenActiveRequest $ \conf => do
 handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
+    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $
+    logDuration "Code actions for loaded file \{params.textDocument.uri.path}" $ do
       quickfixActions <- map Just <$> gets LSPConf quickfixes
       exprSearchAction <- map Just <$> exprSearch params
       splitAction <- caseSplit params
@@ -289,7 +292,8 @@ handleRequest TextDocumentSignatureHelp params = whenActiveRequest $ \conf => do
 handleRequest TextDocumentDocumentSymbol params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
+    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $
+    logDuration "Document symbols for loaded file \{params.textDocument.uri.path}" $ do
       documentSymbolData <- documentSymbol params
       pure $ pure $ make documentSymbolData
 
@@ -307,7 +311,8 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
       | True => pure $ Left (MkResponseError RequestCancelled "Document Dirty" JNull)
     False <- gets LSPConf (contains params.textDocument.uri . semanticTokensSentFiles)
       | True => pure $ Left (MkResponseError RequestCancelled "Semantic tokens already sent" JNull)
-    withURI conf params.textDocument.uri Nothing (pure $ Left (MkResponseError RequestCancelled "Document Errors" JNull)) $ do
+    withURI conf params.textDocument.uri Nothing (pure $ Left (MkResponseError RequestCancelled "Document Errors" JNull)) $
+    logDuration "Highlighing for loaded file \{params.textDocument.uri.path}" $ do
       md <- get MD
       src <- getSource
       let srcLines = forget $ lines src

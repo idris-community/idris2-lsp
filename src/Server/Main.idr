@@ -65,21 +65,16 @@ parseHeaderPart h = do
     Just StartContent => pure $ Right Nothing
     Nothing => pure $ Right Nothing
 
-handleMessage : Ref LSPConf LSPConfiguration
-            => Ref Ctxt Defs
-            => Ref UST UState
-            => Ref Syn SyntaxInfo
-            => Ref MD Metadata
-            => Ref ROpts REPLOpts
-            => Core ()
-handleMessage = do
-  inputHandle <- gets LSPConf inputHandle
-  Right (Just l) <- parseHeaderPart inputHandle
-    | _ => sendUnknownResponseMessage parseError
-  Right msg <- coreLift $ fGetChars inputHandle l
-    | Left err => do
-      logShow Error (show err)
-      sendUnknownResponseMessage (internalError "Error while recovering the content part of a message")
+handleMessageString
+  :  Ref LSPConf LSPConfiguration
+  => Ref Ctxt Defs
+  => Ref UST UState
+  => Ref Syn SyntaxInfo
+  => Ref MD Metadata
+  => Ref ROpts REPLOpts
+  => String
+  -> Core ()
+handleMessageString msg = logDuration "handleMessageString" $ do
   logString Debug msg
   let Just msg = parse msg
     | _ => sendUnknownResponseMessage parseError
@@ -122,13 +117,32 @@ handleMessage = do
         | _ => sendUnknownResponseMessage (invalidRequest "Message does not have method or id")
       logString Warning "Ignoring response with id \{show idJSON}"
 
-runServer : Ref LSPConf LSPConfiguration
-         => Ref Ctxt Defs
-         => Ref UST UState
-         => Ref Syn SyntaxInfo
-         => Ref MD Metadata
-         => Ref ROpts REPLOpts
-         => Core ()
+handleMessage
+  : Ref LSPConf LSPConfiguration
+  => Ref Ctxt Defs
+  => Ref UST UState
+  => Ref Syn SyntaxInfo
+  => Ref MD Metadata
+  => Ref ROpts REPLOpts
+  => Core ()
+handleMessage = do
+  inputHandle <- gets LSPConf inputHandle
+  Right (Just l) <- parseHeaderPart inputHandle
+    | _ => sendUnknownResponseMessage parseError
+  Right msg <- coreLift $ fGetChars inputHandle l
+    | Left err => do
+      logShow Error (show err)
+      sendUnknownResponseMessage (internalError "Error while recovering the content part of a message")
+  handleMessageString msg
+
+runServer
+  :  Ref LSPConf LSPConfiguration
+  => Ref Ctxt Defs
+  => Ref UST UState
+  => Ref Syn SyntaxInfo
+  => Ref MD Metadata
+  => Ref ROpts REPLOpts
+  => Core ()
 runServer = do
   handleMessage
   runServer
