@@ -15,3 +15,7 @@ Server options that can be set via the `initializationOptions` object in the ini
 |----------|----|-----------|
 |`logFile`|`string`|Absolute location of the log file for the server (default: stderr)|
 |`longActionTimeout`|`number`|Timeout in ms for long actions, e.g. expression search (default: 5000)|
+
+## Examples
+
+Some examples can be found in the `test/lsp/example` directory. Many of the existing functionality still needs to be documented.
