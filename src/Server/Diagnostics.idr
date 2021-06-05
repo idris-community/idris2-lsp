@@ -101,24 +101,22 @@ pshowNoNorm env tm
 ploc : FC -> Doc IdrisAnn
 ploc fc = annotate FileCtxt (pretty fc)
 
-export
-pwarning : {auto c : Ref Ctxt Defs} ->
-           {auto s : Ref Syn SyntaxInfo} ->
-           {auto o : Ref ROpts REPLOpts} ->
-           Warning -> Core (Doc IdrisAnn)
-pwarning (UnreachableClause fc env tm)
-    = pure $ errorDesc (reflow "Unreachable clause:"
-        <++> code !(pshow env tm))
-pwarning (ShadowingGlobalDefs _ ns)
-    = pure $ vcat
-    $ reflow "We are about to implicitly bind the following lowercase names."
-   :: reflow "You may be unintentionally shadowing the associated global definitions:"
-   :: map (\ (n, ns) => indent 2 $ hsep $ pretty n
-                            :: reflow "is shadowing"
-                            :: punctuate comma (map pretty (forget ns)))
-          (forget ns)
-pwarning (Deprecated s)
-    = pure $ pretty "Deprecation warning:" <++> pretty s
+pwarning : Ref Ctxt Defs
+        => Ref Syn SyntaxInfo
+        => Ref ROpts REPLOpts
+        => Warning
+        -> Core (Doc IdrisAnn)
+pwarning (UnreachableClause fc env tm) =
+  pure $ errorDesc (reflow "Unreachable clause:" <++> code !(pshow env tm))
+pwarning (ShadowingGlobalDefs _ ns) =
+  pure $ vcat $
+    reflow "We are about to implicitly bind the following lowercase names."
+      :: reflow "You may be unintentionally shadowing the associated global definitions:"
+      :: map (\ (n, ns) => indent 2 $ hsep $ pretty n
+                             :: reflow "is shadowing"
+                             :: punctuate comma (map pretty (forget ns)))
+             (forget ns)
+pwarning (Deprecated s) = pure $ pretty "Deprecation warning:" <++> pretty s
 
 perror : Ref Ctxt Defs
       => Ref Syn SyntaxInfo
