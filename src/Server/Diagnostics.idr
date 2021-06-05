@@ -26,7 +26,7 @@ keyword = annotate (Syntax SynKeyword)
 buildDiagnostic : Maybe FC -> Doc IdrisAnn -> Maybe (List DiagnosticRelatedInformation) -> Diagnostic
 buildDiagnostic loc error related =
   MkDiagnostic
-    { range = cast $ fromMaybe (justFC defaultFC) loc
+    { range = cast $ fromMaybe replFC loc
     , severity = Just Error
     , code = Nothing
     , codeDescription = Nothing
@@ -409,7 +409,6 @@ export
 toDiagnostic : Ref Ctxt Defs
             => Ref Syn SyntaxInfo
             => Ref ROpts REPLOpts
-            => Ref LSPConf LSPConfiguration
             => (caps : Maybe PublishDiagnosticsClientCapabilities)
             -> (uri : URI)
             -> (error : Error)
@@ -419,7 +418,7 @@ toDiagnostic caps uri err = do
   error <- perror err
   let loc = getErrorLoc err
   let wdir = defs.options.dirs.working_dir
-  p <- maybe (pure uri.path) (pure . (wdir </>) <=< nsToSource (justFC defaultFC))
+  p <- maybe (pure uri.path) (pure . (wdir </>) <=< nsToSource replFC)
          ((\case PhysicalIdrSrc ident => Just ident; _ => Nothing) . fst <=< isNonEmptyFC =<< loc)
   if uri.path == p
      then do let related = (flip toMaybe (getRelatedErrors uri err) <=< relatedInformation) =<< caps

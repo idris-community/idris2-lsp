@@ -15,8 +15,6 @@ import Server.Configuration
 import Server.Utils
 import Server.Log
 
-import Libraries.Data.PosMap
-
 -- Color codes in JSON messages makes the JSON parser fail, we have to
 -- turn temporarly the syntax highlight and coloring off when asking for
 -- for documentation.

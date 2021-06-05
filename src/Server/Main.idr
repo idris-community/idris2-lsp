@@ -3,7 +3,6 @@
 ||| (C) The Idris Community, 2021
 module Server.Main
 
-import Compiler.Common
 import Core.Context
 import Core.Core
 import Core.InitPrimitives

@@ -18,8 +18,6 @@ import Server.Utils
 import System.File
 import System.Path
 
-import Libraries.Data.PosMap
-
 mkLocation : Ref Ctxt Defs
           => Ref LSPConf LSPConfiguration
           => OriginDesc -> (Int, Int) -> (Int, Int) -> Core (Maybe Location)
