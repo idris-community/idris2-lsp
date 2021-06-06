@@ -26,9 +26,9 @@ import Language.LSP.CodeAction.AddClause
 import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
 import Language.LSP.CodeAction.GenerateDef
+import Language.LSP.CodeAction.MakeCase
 import Language.LSP.CodeAction.MakeLemma
 import Language.LSP.CodeAction.MakeWith
-import Language.LSP.CodeAction.MakeCase
 import Language.LSP.Definition
 import Language.LSP.DocumentSymbol
 import Language.LSP.SignatureHelp
@@ -82,7 +82,7 @@ loadURI : Ref LSPConf LSPConfiguration
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
   modify LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
-  resetContext "(interactive)"
+  resetContext (Virtual Interactive)
   let fpath = uri.path
   let Just (startFolder, startFile) = splitParent fpath
     | Nothing => do let msg = "Cannot find the parent folder for \{show uri}"

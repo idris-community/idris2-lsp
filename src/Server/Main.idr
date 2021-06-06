@@ -101,7 +101,7 @@ handleMessage = do
           -- handleRequest can be modified to use a callback if needed
           result <- catch (handleRequest method params) $ \err => do
             logString Error (show err)
-            resetContext "(interactive)"
+            resetContext (Virtual Interactive)
             pure $ Left (MkResponseError (Custom 4) (show err) JNull)
           sendResponseMessage method $ case result of
             Left error => Failure (extend id) error
@@ -115,7 +115,7 @@ handleMessage = do
             | _ => sendUnknownResponseMessage (invalidParams "Invalid params for send \{show methodJSON}")
           catch (handleNotification method params) $ \err => do
             logString Error (show err)
-            resetContext "(interactive)"
+            resetContext (Virtual Interactive)
 
     Nothing => do -- response
       let Just idJSON = lookup "id" fields
@@ -150,7 +150,7 @@ main = do
               addLibDir cwd
               o <- newRef ROpts (Opts.defaultOpts Nothing (REPL False) [])
               u <- newRef UST initUState
-              m <- newRef MD (initMetadata "(interactive)")
+              m <- newRef MD (initMetadata (Virtual Interactive))
               runServer)
     (\err => fPutStrLn stderr ("CRITICAL UNCAUGHT ERROR " ++ show err) *> exitWith (ExitFailure 1))
     (\res => pure ())
