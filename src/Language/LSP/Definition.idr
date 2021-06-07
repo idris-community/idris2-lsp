@@ -7,6 +7,7 @@ import Core.Env
 import Core.Metadata
 import Core.Options
 import Data.List
+import Data.List.Lazy
 import Data.String
 import Data.String.Parser
 import Data.URI
@@ -40,14 +41,33 @@ mkLocation origin (sline, scol) (eline, ecol) = do
       logString Debug "gotoDefinition: Can't find file for module \{show modIdent}"
       pure Nothing
 
-  let fname = "file://" ++ fname
+  -- URIs can refer relative or absolute paths, also they can refer modules
+  -- out of the current project.
+  Just (Just (Here path)) <- map rootPath <$> gets LSPConf initialized
+    | _ => do
+        logString Debug "gotoDefinition: Root path was not set."
+        pure Nothing
 
-  let Right (uri, _) = parse uriReferenceParser fname
+  mFileURI <- pure $ choice
+    [ check !(coreLift (exists (path </> fname))) $ "file://" ++ (path </> fname)
+    , check !(coreLift (exists fname))            $ "file://" ++ fname
+    ]
+
+  let Just fileURI = mFileURI
+      | Nothing => do
+          logString Debug "gotoDefinition: Could not create URI of path \{path} and file \{fname}."
+          pure Nothing
+
+  let Right (uri, _) = parse uriReferenceParser fileURI
       | Left err => do
           logString Debug "gotoDefinition: URI parse error: \{err} \{show (fname, sline, scol)}"
           pure Nothing
 
   pure $ Just $ MkLocation uri (MkRange (MkPosition sline scol) (MkPosition eline ecol))
+  where
+    check : Bool -> Lazy a -> Maybe a
+    check True  a = Just a
+    check False _ = Nothing
 
 export
 gotoDefinition : Ref Ctxt Defs
