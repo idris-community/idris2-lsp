@@ -13,6 +13,8 @@
 *~   # Vim swap file
 # VS Code
 .vscode/*
+# Nix
+result
 
 **/build
 /tests/**/output
