@@ -9,7 +9,7 @@ data IdrisAction
   | MakeClause
   | MakeLemma
   | MakeWith
-  | FillHole
+  | RefineHole
 
 export
 Eq IdrisAction where
@@ -20,7 +20,7 @@ Eq IdrisAction where
   MakeClause  == MakeClause  = True
   MakeLemma   == MakeLemma   = True
   MakeWith    == MakeWith    = True
-  FillHole    == FillHole    = True
+  RefineHole  == RefineHole  = True
   _ == _ = False
 
 export
@@ -32,4 +32,4 @@ Show IdrisAction where
   show MakeClause  = "MakeClause"
   show MakeLemma   = "MakeLemma"
   show MakeWith    = "MakeWith"
-  show FillHole    = "FillHole"
+  show RefineHole  = "RefineHole"

@@ -1,9 +1,10 @@
-module Language.LSP.CodeAction.FillHole
+module Language.LSP.CodeAction.RefineHole
 
 import Core.Context
 import Core.Core
 import Core.Env
 import Core.Metadata
+import Core.Unify
 import Core.UnifyState
 import Core.Value
 import Data.Nat
@@ -16,6 +17,10 @@ import Language.LSP.CodeAction
 import Language.LSP.Message
 import Libraries.Data.NameMap
 import Libraries.Data.PosMap
+import TTImp.Elab.App
+import TTImp.Elab.Check
+import TTImp.TTImp
+import TTImp.Unelab
 import Server.Configuration
 import Server.Log
 import Server.Response
@@ -180,8 +185,8 @@ fcToRange (MkVirtualFC x (sline,scol) (eline, ecol))
 fcToRange EmptyFC = Nothing
 
 ||| Create a CodeAction with string to replace the hole, insert (!) if the substituition possibly non-well-typed.
-fillHoleWith : Bool -> FC -> CodeActionParams -> String -> CodeAction
-fillHoleWith maybeNonTypesafe holeLoc params nameString =
+refineHoleWith : Bool -> FC -> CodeActionParams -> String -> CodeAction
+refineHoleWith maybeNonTypesafe holeLoc params nameString =
   MkCodeAction
     { title       = "Fill Hole ~ \{strSubstr 0 50 nameString}" ++ if maybeNonTypesafe then " (!)" else ""
     , kind        = Just RefactorRewrite
@@ -199,7 +204,7 @@ fillHoleWith maybeNonTypesafe holeLoc params nameString =
     }
   where
     range : Range
-    range = fromMaybe params.range $ fcToRange holeLoc 
+    range = fromMaybe params.range $ fcToRange holeLoc
 
 isHole : Defs -> Name -> Core Bool
 isHole defs n = do
@@ -210,9 +215,10 @@ isHole defs n = do
     _        => False
 
 ||| Check if the name has the exact type
-nameHasType
-  :  Ref LSPConf LSPConfiguration
+nameHasType : Ref LSPConf LSPConfiguration
   => Ref Ctxt Defs
+  => Ref MD Metadata
+  => Ref UST UState
   => Name -> Name -> Term [] -> Core Bool
 nameHasType holeName nameRef expected = do
   defs <- get Ctxt
@@ -236,12 +242,14 @@ findFirstN (S k) f (x :: xs) = case !(f x) of
 typeMatchingNames
   :  Ref LSPConf LSPConfiguration
   => Ref Ctxt Defs
+  => Ref MD Metadata
+  => Ref UST UState
   => Name -> Term [] -> Nat -> Core (List String)
 typeMatchingNames holeName ty limit = do
   defs <- get Ctxt
   let hn = userNameRoot holeName
   findFirstN limit
-      (\funcName => 
+      (\funcName =>
         let sn = userNameRoot funcName
         in if hn /= sn && !(nameHasType holeName funcName ty)
               then pure (userNameRoot funcName)
@@ -250,7 +258,7 @@ typeMatchingNames holeName ty limit = do
     $ namesResolvedAs defs.gamma
 
 export
-fillHole
+refineHole
   :  Ref LSPConf LSPConfiguration
   => Ref MD Metadata
   => Ref Ctxt Defs
@@ -258,12 +266,12 @@ fillHole
   => Ref Syn SyntaxInfo
   => Ref ROpts REPLOpts
   => CodeActionParams -> Core (List CodeAction)
-fillHole params = do
+refineHole params = do
   let True = params.range.start.line == params.range.end.line
     | _ => pure []
 
-  [] <- searchCache params.range FillHole
-    | actions => do logString Debug "fillHole: found cached action"
+  [] <- searchCache params.range RefineHole
+    | actions => do logString Debug "refineHole: found cached action"
                     pure actions
 
   meta <- get MD
@@ -272,23 +280,23 @@ fillHole params = do
   let Just (loc, name) = findPointInTreeLoc (line, col) (nameLocMap meta)
     | Nothing =>
         do logString Debug $
-             "fillHole: couldn't find name in tree for position (\{show line},\{show col})"
+             "refineHole: couldn't find name in tree for position (\{show line},\{show col})"
            pure []
 
   -- The name is a hole
   defs <- get Ctxt
-  let True = !(isHole defs name) -- should only work on holes
-    | _ => do logString Debug $ "fillHole: \(show name) is not a hole"
+  True <- (isHole defs name) -- should only work on holes
+    | _ => do logString Debug $ "refineHole: \(show name) is not a hole"
               pure []
 
   -- Find the type information at this hole
   [(holeName, (x, holeGlobalDef))] <- lookupCtxtName name (gamma defs)
     | _ => do
-      logString Debug "fillHole: Non-unique context entries for \{show name}"
+      logString Debug "refineHole: Non-unique context entries for \{show name}"
       pure []
-  
+
   -- Try to find some constructors
-  constructorStrings <- 
+  constructorStrings <-
     -- If the type is a datatype find its definition
     case !(resolveTypeName holeGlobalDef.type) of
       Nothing => pure []
@@ -312,16 +320,16 @@ fillHole params = do
   let limit = cfg.searchLimit
 
   similarNames <- getSimilarNames name
-  typesafeNames <- typeMatchingNames holeName (GlobalDef.type holeGlobalDef) limit
+  typesafeNames <- typeMatchingNames holeName holeGlobalDef.type 1000
 
   -- Render code actions that inject constructors or similar names
   let fillerStrings = nub (constructorStrings ++ typesafeNames)
-  let safeFillers = map (fillHoleWith False holeGlobalDef.location params) fillerStrings
+  let safeFillers = map (refineHoleWith False holeGlobalDef.location params) fillerStrings
   let nonSafeFillerStrings = take limit $ filter (\x => elemBy (/=) x fillerStrings) similarNames
-  let nonSafeFillers = map (fillHoleWith True holeGlobalDef.location params) nonSafeFillerStrings
+  let nonSafeFillers = map (refineHoleWith True holeGlobalDef.location params) nonSafeFillerStrings
   let fillers = safeFillers ++ nonSafeFillers
 
   -- Cache the fillers
-  modify LSPConf (record { cachedActions $= insert (cast loc, FillHole, fillers) })
+  modify LSPConf (record { cachedActions $= insert (cast loc, RefineHole, fillers) })
 
   pure fillers
