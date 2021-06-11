@@ -25,6 +25,7 @@ import Language.LSP.CodeAction
 import Language.LSP.CodeAction.AddClause
 import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
+import Language.LSP.CodeAction.RefineHole
 import Language.LSP.CodeAction.GenerateDef
 import Language.LSP.CodeAction.MakeCase
 import Language.LSP.CodeAction.MakeLemma
@@ -269,7 +270,8 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
       clauseAction <- addClause params
       makeCaseAction <- handleMakeCase params
       generateDefAction <- map Just <$> generateDef params
-      let resp = flatten $ quickfixActions
+      refineHoleAction <- map Just <$> refineHole params
+      let resp = flatten $ quickfixActions ++ refineHoleAction
                              ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
                              ++ generateDefAction ++ exprSearchAction
       pure $ pure $ make resp
