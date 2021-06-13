@@ -12,6 +12,7 @@ import Compiler.Common
 import Data.List1
 import Data.Strings
 import Idris.CommandLine
+import Idris.Env
 import Idris.REPL.Opts
 import Idris.REPL.Common
 import Idris.Package.Types
@@ -140,7 +141,14 @@ main = do
               c <- newRef Ctxt defs
               s <- newRef Syn initSyntax
               addPrimitives
-              setPrefix yprefix
+              bprefix <- coreLift $ idrisGetEnv "IDRIS2_PREFIX"
+              the (Core ()) $ case bprefix of
+                   Just p => setPrefix p
+                   Nothing => setPrefix yprefix
+              pdirs <- coreLift $ idrisGetEnv "IDRIS2_PACKAGE_PATH"
+              the (Core ()) $ case pdirs of
+                   Just path => do traverseList1_ addPackageDir (map trim (split (==pathSeparator) path))
+                   Nothing => pure ()
               addPkgDir "prelude" anyBounds
               addPkgDir "base" anyBounds
               addDataDir (prefix_dir (dirs (options defs)) </> ("idris2-" ++ showVersion False version) </> "support")
