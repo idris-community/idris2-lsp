@@ -149,9 +149,23 @@ main = do
               the (Core ()) $ case bpath of
                    Just path => do traverseList1_ addExtraDir (map trim (split (==pathSeparator) path))
                    Nothing => pure ()
+              bdata <- coreLift $ idrisGetEnv "IDRIS2_DATA"
+              the (Core ()) $ case bdata of
+                   Just path => do traverseList1_ addDataDir (map trim (split (==pathSeparator) path))
+                   Nothing => pure ()
+              blibs <- coreLift $ idrisGetEnv "IDRIS2_LIBS"
+              the (Core ()) $ case blibs of
+                   Just path => do traverseList1_ addLibDir (map trim (split (==pathSeparator) path))
+                   Nothing => pure ()
               pdirs <- coreLift $ idrisGetEnv "IDRIS2_PACKAGE_PATH"
               the (Core ()) $ case pdirs of
                    Just path => do traverseList1_ addPackageDir (map trim (split (==pathSeparator) path))
+                   Nothing => pure ()
+              cg <- coreLift $ idrisGetEnv "IDRIS2_CG"
+              the (Core ()) $ case cg of
+                   Just e => case getCG (options defs) e of
+                                  Just cg => setCG cg
+                                  Nothing => throw (InternalError ("Unknown code generator " ++ show e))
                    Nothing => pure ()
               addPkgDir "prelude" anyBounds
               addPkgDir "base" anyBounds
