@@ -366,10 +366,10 @@ perror (CyclicImports ns)
 perror ForceNeeded = pure $ errorDesc (reflow "Internal error when resolving implicit laziness")
 perror (InternalError str) = pure $ errorDesc (reflow "INTERNAL ERROR" <+> colon) <++> pretty str
 perror (UserError str) = pure $ errorDesc (pretty "Error" <+> colon) <++> pretty str
-perror (NoForeignCC fc) = do
+perror (NoForeignCC fc specs) = do
     let cgs = fst <$> availableCGs (options !(get Ctxt))
-    let res = vsep [ errorDesc (reflow "The given specifier was not accepted by any backend. Available backends" <+> colon)
-                   , indent 2 (concatWith (\x,y => x <+> ", " <+> y) (map reflow cgs))
+    let res = vsep [ errorDesc (reflow ("The given specifier '" ++ show specs ++ "' was not accepted by any backend. Available backends") <+> colon)
+                   , indent 2 (concatWith (\ x, y => x <+> ", " <+> y) (map reflow cgs))
                    , reflow "Some backends have additional specifier rules, refer to their documentation."
                    ]
     pure res
