@@ -20,10 +20,10 @@ semanticTokensLegend : SemanticTokensLegend
 semanticTokensLegend = MkSemanticTokensLegend
   -- ``type``: type constructors       ==> ``type``
   -- ``function``: defined functions   ==> ``function``
-  -- ``data``: data constructors       ==> ``struct``
+  -- ``data``: data constructors       ==> ``enumMember``
   -- ``bound``: bound variables, or    ==> ``variable``
   -- ``keyword``                       ==> ``keyword``
-  ["type", "function", "struct", "variable", "keyword"]
+  ["type", "function", "enumMember", "variable", "keyword"]
   []
 
 semanticTokensOptions : SemanticTokensOptions
