@@ -399,6 +399,7 @@ perror (MaybeMisspelling err ns) = pure $ !(perror err) <++> case ns of
        <++> concatWith (surround (comma <+> space)) (map pretty xs)
        <+> comma <++> reflow "or" <++> pretty x <+> "?"
 perror (WarningAsError warn) = pwarning warn
+perror (Timeout str) = pure $ errorDesc (reflow "Timeout in" <++> pretty str)
 
 ||| Computes a LSP `Diagnostic` from a compiler error.
 |||
