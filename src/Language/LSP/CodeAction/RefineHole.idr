@@ -111,7 +111,7 @@ constructors holeName typeName = do
   let (TCon tag arity parampos detpos flags mutwith datacons detagabbleBy) = gdef.definition
     | _ => do
         pure Nothing
-  -- Possible constructor informations, is something is not a constructor (for some reason)
+  -- Possible constructor informations, if something is not a constructor (for some reason)
   -- it is marked as Nothing
   mConsInfo
     <- traverse
@@ -257,6 +257,22 @@ typeMatchingNames holeName ty limit = do
     $ keys
     $ namesResolvedAs defs.gamma
 
+keepNonHoleNames : Ref Ctxt Defs => List String -> Core (List String)
+keepNonHoleNames = map catMaybes . traverse nonHoleName
+  where
+    -- If the name is uniquely determines a hole filter out from the list
+    -- if the name is not unique keep it around.
+    nonHoleName : String -> Core (Maybe String)
+    nonHoleName name = do
+      -- Find the type information at this hole
+      defs <- get Ctxt
+      [(_, (_, holeGlobalDef))] <- lookupCtxtName (UN name) (gamma defs)
+        | _ => do
+          pure $ Just name
+      pure $ case holeGlobalDef.definition of
+        Hole{} => Nothing
+        _      => Just name
+
 export
 refineHole
   :  Ref LSPConf LSPConfiguration
@@ -319,8 +335,8 @@ refineHole params = do
   cfg <- get LSPConf
   let limit = cfg.searchLimit
 
-  similarNames <- getSimilarNames name
-  typesafeNames <- typeMatchingNames holeName holeGlobalDef.type 1000
+  typesafeNames <- keepNonHoleNames !(typeMatchingNames holeName holeGlobalDef.type 1000)
+  similarNames <- keepNonHoleNames (filter (\n => not (elem n typesafeNames)) !(getSimilarNames name))
 
   -- Render code actions that inject constructors or similar names
   let fillerStrings = nub (constructorStrings ++ typesafeNames)
