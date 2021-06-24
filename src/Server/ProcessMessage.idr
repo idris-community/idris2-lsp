@@ -102,8 +102,15 @@ loadURI conf uri version = do
                      logString Error msg
                      pure $ Left msg
   setSource res
-  errs <- buildDeps fname -- FIXME: the compiler always dumps the errors on stdout, requires
-                          --        a compiler change.
+  errs <- catch
+            (buildDeps fname)
+            (\err => do
+              logString Debug "loadURI: caught error which shouldn't be leaked: \{show err}"
+              pure [err])
+  -- FIXME: the compiler always dumps the errors on stdout, requires
+  --        a compiler change.
+  -- NOTE on catch: It seems the compiler sometimes throws errors instead
+  -- of accumulating them in the buildDeps.
   case errs of
     [] => pure ()
     (_::_) => modify LSPConf (record { errorFiles $= insert uri })
