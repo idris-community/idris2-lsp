@@ -208,12 +208,7 @@ handleRequest Initialize params = do
               Just _ => logString Error "Incorrect type for log file location, expected string"
               Nothing => pure ()
          case lookup "longActionTimeout" xs of
-              Just (JNumber v) => do
-                let n = 1000000 * cast v
-                let scale       = 1000000000
-                let seconds     = n `div` scale
-                let nanoseconds = n `mod` scale
-                modify LSPConf (record {longActionTimeout = makeDuration seconds nanoseconds})
+              Just (JNumber v) => setSearchTimeout $ cast v
               Just _ => logString Error "Incorrect type for long action timeout, expected number"
               Nothing => pure ()
        Just _ => logString Error "Incorrect type for initialization options"

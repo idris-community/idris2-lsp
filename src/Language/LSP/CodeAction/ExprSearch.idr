@@ -18,7 +18,6 @@ import Libraries.Data.PosMap
 import Server.Configuration
 import Server.Log
 import Server.Utils
-import System.Clock
 import TTImp.TTImp
 import TTImp.Interactive.ExprSearch
 
@@ -31,33 +30,6 @@ dropLamsTm : {vars : _} -> Nat -> Env Term vars -> Term vars -> (vars' ** (Env T
 dropLamsTm Z env tm = (_ ** (env, tm))
 dropLamsTm (S k) env (Bind _ _ b sc) = dropLamsTm k (b :: env) sc
 dropLamsTm _ env tm = (_ ** (env, tm))
-
-nextProofSearch : Ref Ctxt Defs
-               => Ref UST UState
-               => Ref ROpts REPLOpts
-               => Core (Maybe (Name, RawImp))
-nextProofSearch = do
-  opts <- get ROpts
-  let Just (n, res) = psResult opts
-    | Nothing => pure Nothing
-  Just (res, next) <- nextResult res
-    | Nothing => do put ROpts (record { psResult = Nothing } opts)
-                    pure Nothing
-  put ROpts (record { psResult = Just (n, next) } opts)
-  pure (Just (n, res))
-
-fueledTimedRepeat : Ref LSPConf LSPConfiguration
-                 => Nat -> Clock Monotonic -> Clock Duration -> List a -> Core (Maybe a) -> Core (List a)
-fueledTimedRepeat Z _ _ acc _ = pure (reverse acc)
-fueledTimedRepeat (S k) start timeout acc f = do
-  Just res <- f
-    | Nothing => pure (reverse acc)
-  time <- coreLift $ clockTime Monotonic
-  let diff = timeDifference time start
-  if diff < timeout
-     then fueledTimedRepeat k start timeout (res :: acc) f
-     else do logString Info "ExprSearch timed out - timeout \{show timeout} - delta \{show diff}"
-             pure (reverse acc)
 
 buildCodeAction : Name -> URI -> Range -> String -> CodeAction
 buildCodeAction name uri range str =
@@ -99,30 +71,23 @@ exprSearch params = do
     | Nothing => pure []
 
   context <- gets Ctxt gamma
-  toBeBracketed <- gets Syn bracketholes
-  let toBrack = elemBy (\x, y => dropNS x == dropNS y) name toBeBracketed
-  solutions <- case !(lookupDefName name context) of
-                    [(n, nidx, Hole locs _)] => do
-                      let searchtm = exprSearch replFC name []
-                      ropts <- get ROpts
-                      put ROpts (record { psResult = Just (name, searchtm) } ropts)
-                      timeout <- gets LSPConf longActionTimeout
-                      start <- coreLift $ clockTime Monotonic
-                      fueledTimedRepeat fuel start timeout []
-                        (do Just (_, restm) <- nextProofSearch
-                              | Nothing => pure Nothing
-                            let tm' = dropLams locs restm
-                            itm <- pterm tm'
-                            let itm' : PTerm = if toBrack then addBracket replFC itm else itm
-                            pure $ Just (show itm'))
-                    [(n, nidx, PMDef pi [] (STerm _ tm) _ _)] => case holeInfo pi of
-                      NotHole => pure []
-                      SolvedHole locs => do
-                        let (_ ** (env, tm')) = dropLamsTm locs [] tm
-                        itm <- resugar env tm'
-                        let itm' : PTerm = if toBrack then addBracket replFC itm else itm
-                        pure [show itm']
-                    _ => pure []
+  toBrack <- gets Syn (elemBy (\x, y => dropNS x == dropNS y) name . bracketholes)
+  let bracket = the (PTerm -> PTerm) $ if toBrack then addBracket replFC else id
+  solutions <-
+    case !(lookupDefName name context) of
+         [(n, nidx, Hole locs _)] =>
+           catch (do searchtms <- exprSearchN replFC fuel name []
+                     traverse (map (show . bracket) . pterm . dropLams locs) searchtms)
+                 (\case Timeout _ => pure []
+                        err => do logString Debug "exprSearch: unexpected error while searching"
+                                  throw err)
+         [(n, nidx, PMDef pi [] (STerm _ tm) _ _)] => case holeInfo pi of
+           NotHole => pure []
+           SolvedHole locs => do
+             let (_ ** (env, tm')) = dropLamsTm locs [] tm
+             itm <- resugar env tm'
+             pure [show $ bracket itm]
+         _ => pure []
 
   let range = MkRange (uncurry MkPosition nstart) (uncurry MkPosition nend)
   let actions = map (buildCodeAction name params.textDocument.uri range) solutions
