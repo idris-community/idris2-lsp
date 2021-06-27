@@ -21,6 +21,7 @@ Server options that can be set via the `initializationOptions` object in the ini
 |----------|----|-----------|
 |`logFile`|`string`|Absolute location of the log file for the server (default: stderr)|
 |`longActionTimeout`|`number`|Timeout in ms for long actions, e.g. expression search (default: 5000)|
+|`maxCodeActionResults`|`number`|Maximum number of multiple code actions for a single command, e.g. expression search (default: 5)|
 
 ## Examples
 

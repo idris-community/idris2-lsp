@@ -211,6 +211,10 @@ handleRequest Initialize params = do
               Just (JNumber v) => setSearchTimeout $ cast v
               Just _ => logString Error "Incorrect type for long action timeout, expected number"
               Nothing => pure ()
+         case lookup "maxCodeActionResults" xs of
+              Just (JNumber v) => modify LSPConf (record { searchLimit = integerToNat $ cast v })
+              Just _ => logString Error "Incorrect type for max code action results, expected number"
+              Nothing => pure ()
        Just _ => logString Error "Incorrect type for initialization options"
        Nothing => pure ()
 
