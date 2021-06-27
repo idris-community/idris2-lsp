@@ -12,7 +12,7 @@ import Idris.IDEMode.CaseSplit
 import Idris.Pretty
 import Idris.REPL
 import Idris.REPL.Opts
-import Idris.Syntax
+import Idris.Resugar
 import Idris.Syntax
 import Language.JSON
 import Language.LSP.CodeAction
@@ -31,19 +31,26 @@ import TTImp.TTImp
 import TTImp.Interactive.ExprSearch
 import Parser.Unlit
 
--- forked from Language.LSP.CodeAction.ExprSearch
-fueledTimedRepeat : Ref LSPConf LSPConfiguration
-                 => Nat -> Clock Monotonic -> Clock Duration -> List a -> (Nat -> Core (Maybe a)) -> Core (List a)
-fueledTimedRepeat Z _ _ acc _ = pure (reverse acc)
-fueledTimedRepeat (S k) start timeout acc f = do
-  Just res <- f k
-    | Nothing => pure (reverse acc)
-  time <- coreLift $ clockTime Monotonic
-  let diff = timeDifference time start
-  if diff < timeout
-     then fueledTimedRepeat k start timeout (res :: acc) f
-     else do logString Info "GeneratedDef timed out"
-             pure (reverse acc)
+printClause : Ref Ctxt Defs
+           => Ref Syn SyntaxInfo
+           => Maybe String -> Nat -> ImpClause -> Core String
+printClause l i (PatClause _ lhsraw rhsraw) = do
+  lhs <- pterm lhsraw
+  rhs <- pterm rhsraw
+  pure (relit l (pack (replicate i ' ') ++ show lhs ++ " = " ++ show rhs))
+printClause l i (WithClause _ lhsraw wvraw prf flags csraw) = do
+  lhs <- pterm lhsraw
+  wval <- pterm wvraw
+  cs <- traverse (printClause l (i + 2)) csraw
+  pure (relit l ((pack (replicate i ' ')
+         ++ show lhs
+         ++ " with (" ++ show wval ++ ")"
+         ++ maybe "" (\ nm => " proof " ++ show nm) prf
+         ++ "\n"))
+         ++ showSep "\n" cs)
+printClause l i (ImpossibleClause _ lhsraw) = do
+  do lhs <- pterm lhsraw
+     pure (relit l (pack (replicate i ' ') ++ show lhs ++ " impossible"))
 
 number : Nat -> List a -> List (Nat, a)
 number n [] = []
@@ -90,50 +97,40 @@ generateDef params = do
 
   let line = params.range.start.line
   let col = params.range.start.character
-  Just name <- guessName (line, col)
-    | Nothing => do
-        logString Debug "generateDef: couldn't find name at: \{show (line, col)}"
-        pure []
 
-  timeout <- gets LSPConf longActionTimeout
-  start <- coreLift $ clockTime Monotonic
+  defs <- get Ctxt
+  Just (_, n, _, _) <- findTyDeclAt (\p, n => onLine line p)
+    | Nothing => do logString Debug "generateDef: couldn't find type declaration at line \{show line}"
+                    pure []
 
-  Edited (DisplayEdit block)
-    <- Idris.REPL.process
-        (Editing (GenerateDef False (fromInteger (cast (line + 1))) name 0)) -- off-by-one
-    | Edited (EditError err) => do
-        logString Debug "generateDef: had an EditError \{show err}"
-        pure []
-    | other => do
-        logString Debug "generateDef: return unexpected REPL result."
-        pure []
-
-  time <- coreLift $ clockTime Monotonic
-  let diff = timeDifference time start
-  blocks <- case diff < timeout of
-    False => do logString Info "GeneratedDef timed out"
-                pure []
-    True => do
-      fuel <- gets LSPConf searchLimit
-      fueledTimedRepeat (pred fuel) start timeout [] $ \k => do
-        Edited (DisplayEdit block) <- Idris.REPL.process (Editing GenerateDefNext)
-          | Edited (EditError err) => do
-              logString Debug "generateDef next: had an EditError in \{show k}: \{show err}"
-              pure Nothing
-          | other => do
-              logString Debug "generateDef next: returned unexpected REPL result in \{show k}"
-              pure Nothing
-        pure (Just block)
+  fuel <- gets LSPConf searchLimit
+  solutions <- case !(lookupDefExact n defs.gamma) of
+    Just None => do
+       catch (do searchdefs@((fc, _) :: _) <- makeDefN (\p, n => onLine line p) fuel n
+                   | _ => pure []
+                 let l : Nat = integerToNat $ cast $ startCol (toNonEmptyFC fc)
+                 Just srcLine <- getSourceLine (line + 1)
+                   | Nothing => do logString Error "generateDef: source line \{show line} not found"
+                                   pure []
+                 let (markM, srcLineUnlit) = isLitLine srcLine
+                 for searchdefs $ \(_, cs) => do
+                   traverse (printClause markM l) cs)
+             (\case Timeout _ => pure []
+                    err => do logString Debug "generateDef: unexpected error while searching"
+                              throw err)
+    Just _ => do logString Debug "generateDef: there is already a definition for \{show n}"
+                 pure []
+    Nothing => do logString Debug "generateDef: couldn't find type declaration at line \{show line}"
+                  pure []
 
   put Ctxt defs
 
   let docURI = params.textDocument.uri
   let rng = MkRange (MkPosition (line + 1) 0) (MkPosition (line + 1) 0) -- insert
 
-  actions <- for (number 1 (block :: blocks)) $ \(i,b) => do
-    let funcDef = show b
-    let lastLine = last (String.lines funcDef)
-    let edit = MkTextEdit rng (funcDef ++ "\n") -- extra newline
+  actions <- for (number 1 solutions) $ \(i,funcDef) => do
+    let lastLine = fromMaybe "" (last' funcDef)
+    let edit = MkTextEdit rng (String.unlines funcDef ++ "\n") -- extra newline
     let workspaceEdit = MkWorkspaceEdit
           { changes           = Just (singleton docURI [edit])
           , documentChanges   = Nothing

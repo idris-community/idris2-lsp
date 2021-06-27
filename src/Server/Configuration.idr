@@ -14,7 +14,6 @@ import Language.LSP.Message.Location
 import Language.LSP.Message.URI
 import Libraries.Data.PosMap
 import System.File
-import System.Clock
 
 ||| Label for the configuration reference.
 public export
@@ -52,9 +51,6 @@ record LSPConfiguration where
   cachedActions : PosMap (Range, IdrisAction, List CodeAction)
   ||| Cached hovers
   cachedHovers : PosMap (Range, Hover)
-  ||| Timeout in ms for long operations (currently stops multiple commands, e.g. ExprSearch)
-  ||| TODO: extend it to any operation and report the timeout, making it overridable
-  longActionTimeout : Clock Duration
   ||| next id for requests to the server
   nextRequestId : Nat
 
@@ -76,6 +72,5 @@ defaultConfig =
     , quickfixes        = []
     , cachedActions     = empty
     , cachedHovers      = empty
-    , longActionTimeout = makeDuration 5 0
     , nextRequestId     = 0
     }

@@ -8,6 +8,9 @@ To compile `idris2-lsp` you need `Idris2-0.4.0` (available [here](https://github
 
 **NOTE: The version of the Idris2 compiler available as submodule is the only tested version. The main branch will be synced with the latest Idris2 release. Visit the nightly branch for more cutting-edge support, we will try to keep up with the Idris2 master branch.**
 
+## Install
+Run `make install` to install the server, by default it will be placed in the same default directory of the Idris2 compiler, i.e. `~/.idris2/bin`.
+
 ## Go to commands and package dependencies
 The server provides support for some go to commands, e.g. go to definition, however to reach modules declared in other packages you must install packages with `idris2 --install-with-src` instead of `idris2 --install`. To access the standard library run `make install-with-src-libs` after building the compiler and `make install-with-src-api` if you also want to access to the `idris2api` package.
 
@@ -18,6 +21,7 @@ Server options that can be set via the `initializationOptions` object in the ini
 |----------|----|-----------|
 |`logFile`|`string`|Absolute location of the log file for the server (default: stderr)|
 |`longActionTimeout`|`number`|Timeout in ms for long actions, e.g. expression search (default: 5000)|
+|`maxCodeActionResults`|`number`|Maximum number of multiple code actions for a single command, e.g. expression search (default: 5)|
 
 ## Examples
 

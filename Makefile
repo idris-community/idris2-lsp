@@ -1,10 +1,18 @@
+include config.mk
+
+# Idris 2 executable we're building
+NAME = idris2-lsp
+TARGETDIR = ${CURDIR}/build/exec
+TARGET = ${TARGETDIR}/${NAME}
+
 .PHONY: build
+
 build:
 	idris2 --build lsp.ipkg
 
 clean:
 	idris2 --clean lsp.ipkg
-	rm -r build
+	$(RM) -r build
 
 repl:
 	rlwrap idris2 --repl lsp.ipkg
@@ -17,3 +25,12 @@ test-only:
 	${MAKE} -C tests only=$(only)
 
 test: build testbin test-only
+
+install: build
+	mkdir -p ${PREFIX}/bin/
+	install ${TARGET} ${PREFIX}/bin
+ifeq ($(OS), windows)
+	-install ${TARGET}.cmd ${PREFIX}/bin
+endif
+	mkdir -p ${PREFIX}/bin/${NAME}_app
+	install ${TARGETDIR}/${NAME}_app/* ${PREFIX}/bin/${NAME}_app
