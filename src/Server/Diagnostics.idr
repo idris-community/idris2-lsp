@@ -117,6 +117,7 @@ pwarning (ShadowingGlobalDefs _ ns) =
                              :: punctuate comma (map pretty (forget ns)))
              (forget ns)
 pwarning (Deprecated s) = pure $ pretty "Deprecation warning:" <++> pretty s
+pwarning (GenericWarn s) = pure $ pretty s
 
 perror : Ref Ctxt Defs
       => Ref Syn SyntaxInfo

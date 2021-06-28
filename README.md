@@ -4,9 +4,9 @@ Language Server for Idris2.
 Refer to the [project wiki](https://github.com/idris-community/idris2-lsp/wiki) for editor-specific configurations.
 
 ## Compile
-To compile `idris2-lsp` you need `Idris2-0.4.0` (available [here](https://github.com/idris-lang/Idris2/releases/tag/v0.4.0)) and you also need the `idris2api` package. See the [install guide](https://github.com/idris-lang/Idris2/blob/master/INSTALL.md) how to build the `idris2api` package.
+To compile `idris2-lsp` you need a working installation of the Idris2 compiler (available [here](https://github.com/idris-lang/Idris2)) and you also need the `idris2api` package. See the [install guide](https://github.com/idris-lang/Idris2/blob/master/INSTALL.md) how to build the `idris2api` package.
 
-**NOTE: The version of the Idris2 compiler available as submodule is the only tested version. The main branch will be synced with the latest Idris2 release. Visit the nightly branch for more cutting-edge support, we will try to keep up with the Idris2 master branch.**
+**NOTE: The version of the Idris2 compiler available as submodule is the only tested version, we will try to keep in sync with the latest master.**
 
 ## Install
 Run `make install` to install the server, by default it will be placed in the same default directory of the Idris2 compiler, i.e. `~/.idris2/bin`.
