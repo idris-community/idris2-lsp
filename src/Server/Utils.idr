@@ -10,7 +10,7 @@ import Core.Name
 import Core.Metadata
 import Data.Bits
 import Data.List
-import Data.Strings
+import Data.String
 import Idris.Pretty
 import Idris.Syntax
 import Language.JSON

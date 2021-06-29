@@ -1,6 +1,8 @@
 package lsp
 version = 0.4.0
 
+opts = "-Wno-shadowing"
+
 depends = idris2, prelude, contrib
 
 sourcedir = "src"

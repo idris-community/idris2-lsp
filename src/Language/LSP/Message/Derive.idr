@@ -9,7 +9,7 @@ module Language.LSP.Message.Derive
 -- location.
 import public Data.Maybe
 import public Data.SortedMap
-import Data.Strings
+import Data.String
 import Language.JSON
 import public Language.JSON.Interfaces
 import Language.Reflection
