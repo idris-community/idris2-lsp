@@ -12,7 +12,7 @@ module Data.URI
 import Data.List
 import Data.List1
 import Data.Maybe
-import Data.Strings
+import Data.String
 import Data.String.Extra
 import Data.String.Parser
 import Data.Vect

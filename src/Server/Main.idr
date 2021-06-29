@@ -10,7 +10,7 @@ import Core.Metadata
 import Core.UnifyState
 import Compiler.Common
 import Data.List1
-import Data.Strings
+import Data.String
 import Idris.CommandLine
 import Idris.Env
 import Idris.REPL.Opts

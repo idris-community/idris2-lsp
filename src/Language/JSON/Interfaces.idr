@@ -4,7 +4,7 @@
 module Language.JSON.Interfaces
 
 import Data.SortedMap
-import Data.Strings
+import Data.String
 import Language.JSON.Lexer
 import Language.JSON.Parser
 
@@ -140,7 +140,7 @@ FromJSON String where
 
 export
 ToJSON Char where
-  toJSON = toJSON . Strings.singleton
+  toJSON = toJSON . String.singleton
 
 export
 FromJSON Char where

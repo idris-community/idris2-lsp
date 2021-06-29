@@ -6,7 +6,7 @@ import Core.Directory
 import Core.Env
 import Core.FC
 import Data.OneOf
-import Data.Strings
+import Data.String
 import Idris.Pretty
 import Idris.REPL.Opts
 import Idris.Resugar
