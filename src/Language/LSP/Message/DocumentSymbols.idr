@@ -121,14 +121,14 @@ namespace DocumentSymbolClientCapabilities
   record DocumentSymbolKind where
     constructor MkDocumentSymbolKind
     valueSet : Maybe (List SymbolKind)
-  %runElab deriveJSON defaultOpts `{{DocumentSymbolKind}}
+  %runElab deriveJSON defaultOpts `{DocumentSymbolKind}
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
   public export
   record DocumentSymbolTag where
     constructor MkDocumentSymbolTag
     valueSet : Maybe (List SymbolTag)
-  %runElab deriveJSON defaultOpts `{{DocumentSymbolTag}}
+  %runElab deriveJSON defaultOpts `{DocumentSymbolTag}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -139,7 +139,7 @@ record DocumentSymbolClientCapabilities where
   hierarchicalDocumentSymbolSupport : Maybe Bool
   tagSupport                        : Maybe DocumentSymbolTag
   labelSupport                      : Maybe Bool
-%runElab deriveJSON defaultOpts `{{DocumentSymbolClientCapabilities}}
+%runElab deriveJSON defaultOpts `{DocumentSymbolClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -147,7 +147,7 @@ record DocumentSymbolOptions where
   constructor MkDocumentSymbolOptions
   workDoneProgress : Maybe Bool
   label            : Maybe String
-%runElab deriveJSON defaultOpts `{{DocumentSymbolOptions}}
+%runElab deriveJSON defaultOpts `{DocumentSymbolOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -156,7 +156,7 @@ record DocumentSymbolRegistrationOptions where
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
   label            : Maybe String
-%runElab deriveJSON defaultOpts `{{DocumentSymbolRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{DocumentSymbolRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -165,7 +165,7 @@ record DocumentSymbolParams where
   workDoneToken      : Maybe ProgressToken
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
-%runElab deriveJSON defaultOpts `{{DocumentSymbolParams}}
+%runElab deriveJSON defaultOpts `{DocumentSymbolParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -216,4 +216,4 @@ record SymbolInformation where
   deprecated    : Maybe Bool
   location      : Location
   containerName : Maybe String
-%runElab deriveJSON defaultOpts `{{SymbolInformation}}
+%runElab deriveJSON defaultOpts `{SymbolInformation}

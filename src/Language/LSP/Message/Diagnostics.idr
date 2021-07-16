@@ -52,14 +52,14 @@ record DiagnosticRelatedInformation where
   constructor MkDiagnosticRelatedInformation
   location : Location
   message  : String
-%runElab deriveJSON defaultOpts `{{DiagnosticRelatedInformation}}
+%runElab deriveJSON defaultOpts `{DiagnosticRelatedInformation}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#diagnostic
 public export
 record CodeDescription where
   constructor MkCodeDescription
   href : URI
-%runElab deriveJSON defaultOpts `{{CodeDescription}}
+%runElab deriveJSON defaultOpts `{CodeDescription}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#diagnostic
 public export
@@ -74,7 +74,7 @@ record Diagnostic where
   tags               : Maybe (List DiagnosticTag)
   relatedInformation : Maybe (List DiagnosticRelatedInformation)
   data_              : Maybe JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{{Diagnostic}}
+%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{Diagnostic}
 
 namespace PublishDiagnosticsClientCapabilities
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_publishDiagnostics
@@ -82,7 +82,7 @@ namespace PublishDiagnosticsClientCapabilities
   record TagSupport where
     constructor MkTagSupport
     valueSet : List DiagnosticTag
-  %runElab deriveJSON defaultOpts `{{TagSupport}}
+  %runElab deriveJSON defaultOpts `{TagSupport}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_publishDiagnostics
 public export
@@ -93,7 +93,7 @@ record PublishDiagnosticsClientCapabilities where
   versionSupport         : Maybe Bool
   codeDescriptionSupport : Maybe Bool
   dataSupport            : Maybe Bool
-%runElab deriveJSON defaultOpts `{{PublishDiagnosticsClientCapabilities}}
+%runElab deriveJSON defaultOpts `{PublishDiagnosticsClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_publishDiagnostics
 public export
@@ -102,4 +102,4 @@ record PublishDiagnosticsParams where
   uri         : DocumentURI
   version     : Maybe Int
   diagnostics : List Diagnostic
-%runElab deriveJSON defaultOpts `{{PublishDiagnosticsParams}}
+%runElab deriveJSON defaultOpts `{PublishDiagnosticsParams}

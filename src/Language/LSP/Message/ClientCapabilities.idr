@@ -72,7 +72,7 @@ record TextDocumentClientCapabilities where
   callHierarchy      : Maybe CallHierarchyClientCapabilities
   semanticTokens     : Maybe SemanticTokensClientCapabilities
   moniker            : Maybe MonikerClientCapabilities
-%runElab deriveJSON (record {renames = [("implementation_", "implementation")]} defaultOpts) `{{TextDocumentClientCapabilities}}
+%runElab deriveJSON (record {renames = [("implementation_", "implementation")]} defaultOpts) `{TextDocumentClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -85,7 +85,7 @@ record FileOperationsWorkspaceClientCapabilities where
   willRename          : Maybe Bool
   didDelete           : Maybe Bool
   willDelete          : Maybe Bool
-%runElab deriveJSON defaultOpts `{{FileOperationsWorkspaceClientCapabilities}}
+%runElab deriveJSON defaultOpts `{FileOperationsWorkspaceClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -102,7 +102,7 @@ record WorkspaceClientCapabilities where
   semanticTokens         : Maybe SemanticTokensWorkspaceClientCapabilities
   codeLens               : Maybe CodeLensWorkspaceClientCapabilities
   fileOperations         : Maybe FileOperationsWorkspaceClientCapabilities
-%runElab deriveJSON defaultOpts `{{WorkspaceClientCapabilities}}
+%runElab deriveJSON defaultOpts `{WorkspaceClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -111,7 +111,7 @@ record WindowClientCapabilities where
   workDoneProgress : Maybe Bool
   showMessage      : Maybe ShowMessageRequestClientCapabilities
   showDocument     : Maybe ShowDocumentClientCapabilities
-%runElab deriveJSON defaultOpts `{{WindowClientCapabilities}}
+%runElab deriveJSON defaultOpts `{WindowClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -119,7 +119,7 @@ record GeneralClientCapabilities where
   constructor MkGeneralClientCapabilities
   regularExpressions : Maybe RegularExpressionsClientCapabilities
   markdown           : Maybe MarkdownClientCapabilities
-%runElab deriveJSON defaultOpts `{{GeneralClientCapabilities}}
+%runElab deriveJSON defaultOpts `{GeneralClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -130,4 +130,4 @@ record ClientCapabilities where
   window       : Maybe WindowClientCapabilities
   general      : Maybe GeneralClientCapabilities
   experimental : Maybe JSON
-%runElab deriveJSON defaultOpts `{{ClientCapabilities}}
+%runElab deriveJSON defaultOpts `{ClientCapabilities}

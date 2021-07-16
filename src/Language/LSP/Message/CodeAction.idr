@@ -60,21 +60,21 @@ namespace CodeActionClientCapabilities
   record CodeActionKindValueSet where
     constructor MkCodeActionKindValueSet
     valueSet : List CodeActionKind
-  %runElab deriveJSON defaultOpts `{{CodeActionKindValueSet}}
+  %runElab deriveJSON defaultOpts `{CodeActionKindValueSet}
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeAction
   public export
   record CodeActionLiteralSupport where
     constructor MkCodeActionLiteralSupport
     codeActionKind : CodeActionKindValueSet
-  %runElab deriveJSON defaultOpts `{{CodeActionLiteralSupport}}
+  %runElab deriveJSON defaultOpts `{CodeActionLiteralSupport}
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeAction
   public export
   record ResolveSupport where
     constructor MkResolveSupport
     properties : List String
-  %runElab deriveJSON defaultOpts `{{ResolveSupport}}
+  %runElab deriveJSON defaultOpts `{ResolveSupport}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeAction
 public export
@@ -87,7 +87,7 @@ record CodeActionClientCapabilities where
   dataSupport              : Maybe Bool
   resolveSupport           : Maybe ResolveSupport
   honorsChangeAnnotations  : Maybe Bool
-%runElab deriveJSON defaultOpts `{{CodeActionClientCapabilities}}
+%runElab deriveJSON defaultOpts `{CodeActionClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeAction
 public export
@@ -96,7 +96,7 @@ record CodeActionOptions where
   workDoneProgress : Maybe Bool
   codeActionKinds  : Maybe (List CodeActionKind)
   resolveProvider  : Maybe Bool
-%runElab deriveJSON defaultOpts `{{CodeActionOptions}}
+%runElab deriveJSON defaultOpts `{CodeActionOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeAction
 public export
@@ -106,7 +106,7 @@ record CodeActionRegistrationOptions where
   codeActionKinds  : Maybe (List CodeActionKind)
   resolveProvider  : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{{CodeActionRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{CodeActionRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeAction
 public export
@@ -114,7 +114,7 @@ record CodeActionContext where
   constructor MkCodeActionContext
   diagnostics : List Diagnostic
   only        : Maybe (List CodeActionKind)
-%runElab deriveJSON defaultOpts `{{CodeActionContext}}
+%runElab deriveJSON defaultOpts `{CodeActionContext}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeAction
 public export
@@ -125,7 +125,7 @@ record CodeActionParams where
   textDocument       : TextDocumentIdentifier
   range              : Range
   context            : CodeActionContext
-%runElab deriveJSON defaultOpts `{{CodeActionParams}}
+%runElab deriveJSON defaultOpts `{CodeActionParams}
 
 namespace CodeAction
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeAction
@@ -133,7 +133,7 @@ namespace CodeAction
   record Disabled where
     constructor MkDisabled
     reason : String
-  %runElab deriveJSON defaultOpts `{{Disabled}}
+  %runElab deriveJSON defaultOpts `{Disabled}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_codeAction
 public export
@@ -147,4 +147,4 @@ record CodeAction where
   edit        : Maybe WorkspaceEdit
   command     : Maybe Command
   data_       : Maybe JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{{CodeAction}}
+%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{CodeAction}

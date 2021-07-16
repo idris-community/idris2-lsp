@@ -16,14 +16,14 @@ public export
 record LinkedEditingRangeClientCapabilities where
   constructor MkLinkedEditingRangeClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{{LinkedEditingRangeClientCapabilities}}
+%runElab deriveJSON defaultOpts `{LinkedEditingRangeClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_linkedEditingRange
 public export
 record LinkedEditingRangeOptions where
   constructor MkLinkedEditingRangesOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{{LinkedEditingRangeOptions}}
+%runElab deriveJSON defaultOpts `{LinkedEditingRangeOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_linkedEditingRange
 public export
@@ -32,7 +32,7 @@ record LinkedEditingRangeRegistrationOptions where
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe Bool
-%runElab deriveJSON defaultOpts `{{LinkedEditingRangeRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{LinkedEditingRangeRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_linkedEditingRange
 public export
@@ -41,7 +41,7 @@ record LinkedEditingRangeParams where
   workDoneToken : Maybe ProgressToken
   textDocument  : TextDocumentIdentifier
   position      : Position
-%runElab deriveJSON defaultOpts `{{LinkedEditingRangeParams}}
+%runElab deriveJSON defaultOpts `{LinkedEditingRangeParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_linkedEditingRange
 public export
@@ -49,4 +49,4 @@ record LinkedEditingRanges where
   constructor MkLinkedEditingRanges
   ranges      : List Range
   wordPattern : Maybe String
-%runElab deriveJSON defaultOpts `{{LinkedEditingRanges}}
+%runElab deriveJSON defaultOpts `{LinkedEditingRanges}

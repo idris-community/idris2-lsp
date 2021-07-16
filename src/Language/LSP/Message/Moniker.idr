@@ -16,14 +16,14 @@ public export
 record MonikerClientCapabilities where
   constructor MkMonikerClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{{MonikerClientCapabilities}}
+%runElab deriveJSON defaultOpts `{MonikerClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_moniker
 public export
 record MonikerOptions where
   constructor MkMonikersOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{{MonikerOptions}}
+%runElab deriveJSON defaultOpts `{MonikerOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_moniker
 public export
@@ -31,7 +31,7 @@ record MonikerRegistrationOptions where
   constructor MkMonikersRegistrationOptions
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{{MonikerRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{MonikerRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_moniker
 public export
@@ -41,7 +41,7 @@ record MonikerParams where
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
   position           : Position
-%runElab deriveJSON defaultOpts `{{MonikerParams}}
+%runElab deriveJSON defaultOpts `{MonikerParams}
 
 namespace UniquenessLevel
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_moniker
@@ -91,4 +91,4 @@ record Moniker where
   identifier : String
   unique     : UniquenessLevel
   kind       : Maybe MonikerKind
-%runElab deriveJSON defaultOpts `{{Moniker}}
+%runElab deriveJSON defaultOpts `{Moniker}

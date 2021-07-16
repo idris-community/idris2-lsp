@@ -18,7 +18,7 @@ record DocumentLinkClientCapabilities where
   constructor MkDocumentLinkClientCapabilities
   dynamicRegistration : Maybe Bool
   tooltipSupport      : Maybe Bool
-%runElab deriveJSON defaultOpts `{{DocumentLinkClientCapabilities}}
+%runElab deriveJSON defaultOpts `{DocumentLinkClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentLink
 public export
@@ -26,7 +26,7 @@ record DocumentLinkOptions where
   constructor MkDocumentLinkOptions
   workDoneProgress : Maybe Bool
   resolveProvider  : Maybe Bool
-%runElab deriveJSON defaultOpts `{{DocumentLinkOptions}}
+%runElab deriveJSON defaultOpts `{DocumentLinkOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentLink
 public export
@@ -35,7 +35,7 @@ record DocumentLinkRegistrationOptions where
   workDoneProgress : Maybe Bool
   resolveProvider  : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{{DocumentLinkRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{DocumentLinkRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentLink
 public export
@@ -44,7 +44,7 @@ record DocumentLinkParams where
   workDoneToken      : Maybe ProgressToken
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
-%runElab deriveJSON defaultOpts `{{DocumentLinkParams}}
+%runElab deriveJSON defaultOpts `{DocumentLinkParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentLink
 public export
@@ -54,4 +54,4 @@ record DocumentLink where
   target  : Maybe DocumentURI
   tooltip : Maybe String
   data_   : Maybe JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{{DocumentLink}}
+%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{DocumentLink}

@@ -153,21 +153,21 @@ namespace CompletionItemClientCapabilities
   record CompletionItemTagSupportClientCapabilities where
     constructor MkCompletionItemTagSupportClientCapabilities
     valueSet : List CompletionItemTag
-  %runElab deriveJSON defaultOpts `{{CompletionItemTagSupportClientCapabilities}}
+  %runElab deriveJSON defaultOpts `{CompletionItemTagSupportClientCapabilities}
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
   public export
   record CompletionItemResolveSupportClientCapabilities where
     constructor MkCompletionItemResolveSupportClientCapabilities
     properties : List String
-  %runElab deriveJSON defaultOpts `{{CompletionItemResolveSupportClientCapabilities}}
+  %runElab deriveJSON defaultOpts `{CompletionItemResolveSupportClientCapabilities}
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
   public export
   record InsertTextModeSupport where
     constructor MkInsertTextModeSupport
     valueSet : List InsertTextMode
-  %runElab deriveJSON defaultOpts `{{InsertTextModeSupport}}
+  %runElab deriveJSON defaultOpts `{InsertTextModeSupport}
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
   public export
@@ -182,14 +182,14 @@ namespace CompletionItemClientCapabilities
     insertReplaceSupport    : Maybe Bool
     resolveSupport          : Maybe CompletionItemResolveSupportClientCapabilities
     insertTextModeSupport   : Maybe InsertTextModeSupport
-  %runElab deriveJSON defaultOpts `{{CompletionItemClientCapabilities}}
+  %runElab deriveJSON defaultOpts `{CompletionItemClientCapabilities}
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
   public export
   record CompletionItemKindClientCapabilities where
     constructor MkCompletionItemKindClientCapabilities
     valueSet : Maybe (List CompletionItemKind)
-  %runElab deriveJSON defaultOpts `{{CompletionItemKindClientCapabilities}}
+  %runElab deriveJSON defaultOpts `{CompletionItemKindClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
 public export
@@ -199,7 +199,7 @@ record CompletionClientCapabilities where
   completionItem      : Maybe CompletionItemClientCapabilities
   completionItemKind  : Maybe CompletionItemKindClientCapabilities
   contextSupport      : Maybe Bool
-%runElab deriveJSON defaultOpts `{{CompletionClientCapabilities}}
+%runElab deriveJSON defaultOpts `{CompletionClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
 public export
@@ -209,7 +209,7 @@ record CompletionOptions where
   triggerCharacters   : Maybe (List Char)
   allCommitCharacters : Maybe (List Char)
   resolveProvider     : Maybe Bool
-%runElab deriveJSON defaultOpts `{{CompletionOptions}}
+%runElab deriveJSON defaultOpts `{CompletionOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
 public export
@@ -220,7 +220,7 @@ record CompletionRegistrationOptions where
   triggerCharacters   : Maybe (List Char)
   allCommitCharacters : Maybe (List Char)
   resolveProvider     : Maybe Bool
-%runElab deriveJSON defaultOpts `{{CompletionRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{CompletionRegistrationOptions}
 
 namespace CompletionTriggerKind
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
@@ -246,7 +246,7 @@ record CompletionContext where
   constructor MkCompletionContext
   triggerKind      : CompletionTriggerKind
   triggerCharacter : Maybe String
-%runElab deriveJSON defaultOpts `{{CompletionContext}}
+%runElab deriveJSON defaultOpts `{CompletionContext}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
 public export
@@ -257,7 +257,7 @@ record CompletionParams where
   workDoneToken      : Maybe ProgressToken
   partialResultToken : Maybe ProgressToken
   context            : Maybe CompletionContext
-%runElab deriveJSON defaultOpts `{{CompletionParams}}
+%runElab deriveJSON defaultOpts `{CompletionParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
 public export
@@ -280,7 +280,7 @@ record CompletionItem where
   commitCharacters    : Maybe (List Char)
   command             : Maybe Command
   data_               : Maybe JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{{CompletionItem}}
+%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{CompletionItem}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
 public export
@@ -288,4 +288,4 @@ record CompletionList where
   constructor MkCompletionList
   isIncomplete : Bool
   items        : List CompletionItem
-%runElab deriveJSON defaultOpts `{{CompletionList}}
+%runElab deriveJSON defaultOpts `{CompletionList}

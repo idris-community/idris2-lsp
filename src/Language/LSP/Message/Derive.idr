@@ -104,7 +104,7 @@ deriveToJSON opts n = do
     let funclaim = IClaim EmptyFC MW Export [Inline] (MkTy EmptyFC EmptyFC funName `(~(var name) -> JSON))
     let fundecl = IDef EmptyFC funName cons
     declare [funclaim, fundecl]
-    [(ifName, _)] <- getType `{{ToJSON}}
+    [(ifName, _)] <- getType `{ToJSON}
       | _ => fail "ToJSON interface must be in scope and unique"
     [NS _ (DN _ ifCon)] <- getCons ifName
       | _ => fail "Interface constructor error"
@@ -174,7 +174,7 @@ deriveFromJSON opts n = do
     let funClaim = IClaim EmptyFC MW Export [Inline] (MkTy EmptyFC EmptyFC funName `(JSON -> Maybe ~(var name)))
     let funDecl = IDef EmptyFC funName (clauses ++ [patClause `(~(var funName) ~implicit') `(Nothing)])
     declare [funClaim, funDecl]
-    [(ifName, _)] <- getType `{{FromJSON}}
+    [(ifName, _)] <- getType `{FromJSON}
       | _ => fail "FromJSON interface must be in scope and unique"
     [NS _ (DN _ ifCon)] <- getCons ifName
       | _ => fail "Interface constructor error"
