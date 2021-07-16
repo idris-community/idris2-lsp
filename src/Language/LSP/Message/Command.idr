@@ -16,14 +16,14 @@ record Command where
   title     : String
   command   : String
   arguments : Maybe (List JSON)
-%runElab deriveJSON defaultOpts `{{Command}}
+%runElab deriveJSON defaultOpts `{Command}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_executeCommand
 public export
 record ExecuteCommandClientCapabilities where
   constructor MkExecuteCommandClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{{ExecuteCommandClientCapabilities}}
+%runElab deriveJSON defaultOpts `{ExecuteCommandClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_executeCommand
 public export
@@ -31,7 +31,7 @@ record ExecuteCommandOptions where
   constructor MkExecuteCommandOptions
   workDoneProgress : Maybe Bool
   commands         : List String
-%runElab deriveJSON defaultOpts `{{ExecuteCommandOptions}}
+%runElab deriveJSON defaultOpts `{ExecuteCommandOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_executeCommand
 public export
@@ -39,7 +39,7 @@ record ExecuteCommandRegistrationOptions where
   constructor MkExecuteCommandRegistrationOptions
   workDoneProgress : Maybe Bool
   commands         : List String
-%runElab deriveJSON defaultOpts `{{ExecuteCommandRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{ExecuteCommandRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_executeCommand
 public export
@@ -48,4 +48,4 @@ record ExecuteCommandParams where
   partialResultToken : Maybe ProgressToken
   command            : String
   arguments          : Maybe (List JSON)
-%runElab deriveJSON defaultOpts `{{ExecuteCommandParams}}
+%runElab deriveJSON defaultOpts `{ExecuteCommandParams}

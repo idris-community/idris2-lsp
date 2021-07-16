@@ -16,14 +16,14 @@ public export
 record ReferenceClientCapabilities where
   constructor MkReferenceClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{{ReferenceClientCapabilities}}
+%runElab deriveJSON defaultOpts `{ReferenceClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_references
 public export
 record ReferenceOptions where
   constructor MkReferenceOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{{ReferenceOptions}}
+%runElab deriveJSON defaultOpts `{ReferenceOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_references
 public export
@@ -31,14 +31,14 @@ record ReferenceRegistrationOptions where
   constructor MkReferenceRegistrationOptions
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{{ReferenceRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{ReferenceRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_references
 public export
 record ReferenceContext where
   constructor MkReferenceContext
   includeDeclaration : Bool
-%runElab deriveJSON defaultOpts `{{ReferenceContext}}
+%runElab deriveJSON defaultOpts `{ReferenceContext}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_references
 public export
@@ -49,4 +49,4 @@ record ReferenceParams where
   textDocument       : TextDocumentIdentifier
   position           : Position
   context            : ReferenceContext
-%runElab deriveJSON defaultOpts `{{ReferenceParams}}
+%runElab deriveJSON defaultOpts `{ReferenceParams}

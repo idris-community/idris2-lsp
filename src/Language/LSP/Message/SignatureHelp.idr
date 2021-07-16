@@ -19,7 +19,7 @@ namespace SignatureHelpClientCapabilities
   record SignatureHelpParameterInformation where
     constructor MkSignatureHelpParameterInformation
     labelOffsetSupport : Maybe Bool
-  %runElab deriveJSON defaultOpts `{{SignatureHelpParameterInformation}}
+  %runElab deriveJSON defaultOpts `{SignatureHelpParameterInformation}
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
   public export
@@ -28,7 +28,7 @@ namespace SignatureHelpClientCapabilities
     documentationFormat    : Maybe (List MarkupKind)
     parameterInformation   : Maybe SignatureHelpParameterInformation
     activeParameterSupport : Maybe Bool
-  %runElab deriveJSON defaultOpts `{{SignatureHelpInformation}}
+  %runElab deriveJSON defaultOpts `{SignatureHelpInformation}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 public export
@@ -37,7 +37,7 @@ record SignatureHelpClientCapabilities where
   dynamicRegistration  : Maybe Bool
   signatureInformation : Maybe SignatureHelpInformation
   contextSupport       : Maybe Bool
-%runElab deriveJSON defaultOpts `{{SignatureHelpClientCapabilities}}
+%runElab deriveJSON defaultOpts `{SignatureHelpClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 public export
@@ -46,7 +46,7 @@ record SignatureHelpOptions where
   workDoneProgress    : Maybe Bool
   triggerCharacters   : Maybe (List Char)
   retriggerCharacters : Maybe (List Char)
-%runElab deriveJSON defaultOpts `{{SignatureHelpOptions}}
+%runElab deriveJSON defaultOpts `{SignatureHelpOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 public export
@@ -56,7 +56,7 @@ record SignatureHelpRegistrationOptions where
   triggerCharacters   : Maybe (List Char)
   retriggerCharacters : Maybe (List Char)
   documentSelector    : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{{SignatureHelpRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{SignatureHelpRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 namespace SignatureHelpTriggerKind
@@ -82,7 +82,7 @@ record ParameterInformation where
   constructor MkParameterInformation
   label         : OneOf [String, (Int, Int)]
   documentation : Maybe (OneOf [String, MarkupContent])
-%runElab deriveJSON defaultOpts `{{ParameterInformation}}
+%runElab deriveJSON defaultOpts `{ParameterInformation}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 public export
@@ -92,7 +92,7 @@ record SignatureInformation where
   documentation   : Maybe (OneOf [String, MarkupContent])
   parameters_     : Maybe (List ParameterInformation)
   activeParameter : Maybe Int
-%runElab deriveJSON (record {renames = [("parameters_", "parameters")]} defaultOpts) `{{SignatureInformation}}
+%runElab deriveJSON (record {renames = [("parameters_", "parameters")]} defaultOpts) `{SignatureInformation}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 public export
@@ -101,7 +101,7 @@ record SignatureHelp where
   signatures      : List SignatureInformation
   activeSignature : Maybe Int
   activeParameter : Maybe Int
-%runElab deriveJSON defaultOpts `{{SignatureHelp}}
+%runElab deriveJSON defaultOpts `{SignatureHelp}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 public export
@@ -111,7 +111,7 @@ record SignatureHelpContext where
   triggerCharacter    : Maybe Char
   isRetrigger         : Bool
   activeSignatureHelp : Maybe SignatureHelp
-%runElab deriveJSON defaultOpts `{{SignatureHelpContext}}
+%runElab deriveJSON defaultOpts `{SignatureHelpContext}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 public export
@@ -121,4 +121,4 @@ record SignatureHelpParams where
   textDocument  : TextDocumentIdentifier
   position      : Position
   context       : Maybe SignatureHelpContext
-%runElab deriveJSON defaultOpts `{{SignatureHelpParams}}
+%runElab deriveJSON defaultOpts `{SignatureHelpParams}

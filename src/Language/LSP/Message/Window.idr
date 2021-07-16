@@ -37,7 +37,7 @@ record ShowMessageParams where
   constructor MkShowMessageParams
   type    : MessageType
   message : String
-%runElab deriveJSON defaultOpts `{{ShowMessageParams}}
+%runElab deriveJSON defaultOpts `{ShowMessageParams}
 
 namespace ShowMessageRequestClientCapabilities
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showMessage
@@ -45,21 +45,21 @@ namespace ShowMessageRequestClientCapabilities
   record ShowMessageActionItem where
     constructor MkShowMessageActionItem
     additionalPropertiesSupport : Maybe Bool
-  %runElab deriveJSON defaultOpts `{{ShowMessageActionItem}}
+  %runElab deriveJSON defaultOpts `{ShowMessageActionItem}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showMessage
 public export
 record ShowMessageRequestClientCapabilities where
   constructor MkShowMessageRequestClientCapabilities
   messageActionItem : Maybe ShowMessageActionItem
-%runElab deriveJSON defaultOpts `{{ShowMessageRequestClientCapabilities}}
+%runElab deriveJSON defaultOpts `{ShowMessageRequestClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showMessage
 public export
 record MessageActionItem where
   constructor MkMessageActionItem
   title : String
-%runElab deriveJSON defaultOpts `{{MessageActionItem}}
+%runElab deriveJSON defaultOpts `{MessageActionItem}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showMessage
 public export
@@ -68,14 +68,14 @@ record ShowMessageRequestParams where
   type    : MessageType
   message : String
   actions : Maybe (List MessageActionItem)
-%runElab deriveJSON defaultOpts `{{ShowMessageRequestParams}}
+%runElab deriveJSON defaultOpts `{ShowMessageRequestParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showDocument
 public export
 record ShowDocumentClientCapabilities where
   constructor MkShowDocumentClientCapabilities
   support : Bool
-%runElab deriveJSON defaultOpts `{{ShowDocumentClientCapabilities}}
+%runElab deriveJSON defaultOpts `{ShowDocumentClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showDocument
 public export
@@ -85,14 +85,14 @@ record ShowDocumentParams where
   external_ : Maybe Bool
   takeFocus : Maybe Bool
   selection : Maybe Range
-%runElab deriveJSON (record {renames = [("external_", "external")]} defaultOpts) `{{ShowDocumentParams}}
+%runElab deriveJSON (record {renames = [("external_", "external")]} defaultOpts) `{ShowDocumentParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showDocument
 public export
 record ShowDocumentResult where
   constructor MkShowDocumentResult
   success : Bool
-%runElab deriveJSON defaultOpts `{{ShowDocumentResult}}
+%runElab deriveJSON defaultOpts `{ShowDocumentResult}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_logMessage
 public export
@@ -100,18 +100,18 @@ record LogMessageParams where
   constructor MkLogMessageParams
   type    : MessageType
   message : String
-%runElab deriveJSON defaultOpts `{{LogMessageParams}}
+%runElab deriveJSON defaultOpts `{LogMessageParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_workDoneProgress_create
 public export
 record WorkDoneProgressCreateParams where
   constructor MkWorkDoneProgressCreateParams
   token : ProgressToken
-%runElab deriveJSON defaultOpts `{{WorkDoneProgressCreateParams}}
+%runElab deriveJSON defaultOpts `{WorkDoneProgressCreateParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_workDoneProgress_cancel
 public export
 record WorkDoneProgressCancelParams where
   constructor MkWorkDoneProgressCancelParams
   token : ProgressToken
-%runElab deriveJSON defaultOpts `{{WorkDoneProgressCancelParams}}
+%runElab deriveJSON defaultOpts `{WorkDoneProgressCancelParams}

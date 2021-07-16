@@ -17,14 +17,14 @@ record DeclarationClientCapabilities where
   constructor MkDeclarationClientCapabilities
   dynamicRegistration : Maybe Bool
   linkSupport         : Maybe Bool
-%runElab deriveJSON defaultOpts `{{DeclarationClientCapabilities}}
+%runElab deriveJSON defaultOpts `{DeclarationClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_declaration
 public export
 record DeclarationOptions where
   constructor MkDeclarationOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{{DeclarationOptions}}
+%runElab deriveJSON defaultOpts `{DeclarationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_declaration
 public export
@@ -33,7 +33,7 @@ record DeclarationRegistrationOptions where
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe String
-%runElab deriveJSON defaultOpts `{{DeclarationRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{DeclarationRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_declaration
 public export
@@ -43,4 +43,4 @@ record DeclarationParams where
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
   position           : Position
-%runElab deriveJSON defaultOpts `{{DeclarationParams}}
+%runElab deriveJSON defaultOpts `{DeclarationParams}

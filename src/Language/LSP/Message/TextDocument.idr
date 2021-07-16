@@ -15,7 +15,7 @@ public export
 record TextDocumentIdentifier where
   constructor MkTextDocumentIdentifier
   uri : DocumentURI
-%runElab deriveJSON defaultOpts `{{TextDocumentIdentifier}}
+%runElab deriveJSON defaultOpts `{TextDocumentIdentifier}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#versionedTextDocumentIdentifier
 public export
@@ -23,7 +23,7 @@ record VersionedTextDocumentIdentifier where
   constructor MkVersionedTextDocumentIdentifier
   uri     : DocumentURI
   version : Int
-%runElab deriveJSON defaultOpts `{{VersionedTextDocumentIdentifier}}
+%runElab deriveJSON defaultOpts `{VersionedTextDocumentIdentifier}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#versionedTextDocumentIdentifier
 public export
@@ -31,7 +31,7 @@ record OptionalVersionedTextDocumentIdentifier where
   constructor MkOptionalVersionedTextDocumentIdentifier
   uri     : DocumentURI
   version : Maybe Int
-%runElab deriveJSON defaultOpts `{{OptionalVersionedTextDocumentIdentifier}}
+%runElab deriveJSON defaultOpts `{OptionalVersionedTextDocumentIdentifier}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocumentItem
 public export
@@ -41,7 +41,7 @@ record TextDocumentItem where
   languageId : String
   version    : Int
   text       : String
-%runElab deriveJSON defaultOpts `{{TextDocumentItem}}
+%runElab deriveJSON defaultOpts `{TextDocumentItem}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocumentPositionParams
 public export
@@ -49,7 +49,7 @@ record TextDocumentPositionParams where
   constructor MkTextDocumentPositionParams
   textDocument : TextDocumentIdentifier
   position     : Position
-%runElab deriveJSON defaultOpts `{{TextDocumentPositionParams}}
+%runElab deriveJSON defaultOpts `{TextDocumentPositionParams}
 
 namespace TextDocumentSyncKind
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_synchronization
@@ -74,7 +74,7 @@ public export
 record DidOpenTextDocumentParams where
   constructor MkDidOpenTextDocumentParams
   textDocument : TextDocumentItem
-%runElab deriveJSON defaultOpts `{{DidOpenTextDocumentParams}}
+%runElab deriveJSON defaultOpts `{DidOpenTextDocumentParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#documentFilter
 public export
@@ -83,7 +83,7 @@ record DocumentFilter where
   language : Maybe String
   scheme   : Maybe String
   pattern  : Maybe String
-%runElab deriveJSON defaultOpts `{{DocumentFilter}}
+%runElab deriveJSON defaultOpts `{DocumentFilter}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#documentFilter
 public export
@@ -94,14 +94,14 @@ public export
 record TextDocumentRegistrationOptions where
   constructor MkTextDocumentRegistrationOptions
   documentSelector : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{{TextDocumentRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{TextDocumentRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocumentRegistrationOptions
 public export
 record TextDocumentChangeRegistrationOptions where
   constructor MkTextDocumentChangeRegistrationOptions
   syncKind : TextDocumentSyncKind
-%runElab deriveJSON defaultOpts `{{TextDocumentChangeRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{TextDocumentChangeRegistrationOptions}
 
 namespace DidChangeTextDocumentParams
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_didChange
@@ -109,7 +109,7 @@ namespace DidChangeTextDocumentParams
   record TextDocumentContentChangeEvent where
     constructor MkTextDocumentContentChangeEvent
     text : String
-  %runElab deriveJSON defaultOpts `{{TextDocumentContentChangeEvent}}
+  %runElab deriveJSON defaultOpts `{TextDocumentContentChangeEvent}
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_didChange
   public export
@@ -118,7 +118,7 @@ namespace DidChangeTextDocumentParams
     range       : Range
     rangeLength : Maybe Int
     text        : String
-  %runElab deriveJSON defaultOpts `{{TextDocumentContentChangeEventWithRange}}
+  %runElab deriveJSON defaultOpts `{TextDocumentContentChangeEventWithRange}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_didChange
 public export
@@ -126,7 +126,7 @@ record DidChangeTextDocumentParams where
   constructor MkDidChangeTextDocumentParams
   textDocument   : VersionedTextDocumentIdentifier
   contentChanges : List (OneOf [TextDocumentContentChangeEvent, TextDocumentContentChangeEventWithRange])
-%runElab deriveJSON defaultOpts `{{DidChangeTextDocumentParams}}
+%runElab deriveJSON defaultOpts `{DidChangeTextDocumentParams}
 
 namespace TextDocumentSaveReason
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_willSave
@@ -152,14 +152,14 @@ record WillSaveTextDocumentParams where
   constructor MkWillSaveTextDocumentParams
   textDocument : TextDocumentIdentifier
   reason       : TextDocumentSaveReason
-%runElab deriveJSON defaultOpts `{{WillSaveTextDocumentParams}}
+%runElab deriveJSON defaultOpts `{WillSaveTextDocumentParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_didSave
 public export
 record SaveOptions where
   constructor MkSaveOptions
   includeText : Maybe Bool
-%runElab deriveJSON defaultOpts `{{SaveOptions}}
+%runElab deriveJSON defaultOpts `{SaveOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_didSave
 public export
@@ -167,7 +167,7 @@ record TextDocumentSaveRegistrationOptions where
   constructor MkTextDocumentSaveRegistrationOptions
   documentSelector : OneOf [DocumentSelector, Null]
   includeText      : Maybe Bool
-%runElab deriveJSON defaultOpts `{{TextDocumentSaveRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{TextDocumentSaveRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_didSave
 public export
@@ -175,14 +175,14 @@ record DidSaveTextDocumentParams where
   constructor MkDidSaveTextDocumentParams
   textDocument : TextDocumentIdentifier
   text         : Maybe String
-%runElab deriveJSON defaultOpts `{{DidSaveTextDocumentParams}}
+%runElab deriveJSON defaultOpts `{DidSaveTextDocumentParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_didClose
 public export
 record DidCloseTextDocumentParams where
   constructor MkDidCloseTextDocumentParams
   textDocument : TextDocumentIdentifier
-%runElab deriveJSON defaultOpts `{{DidCloseTextDocumentParams}}
+%runElab deriveJSON defaultOpts `{DidCloseTextDocumentParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_didClose
 public export
@@ -192,7 +192,7 @@ record TextDocumentSyncClientCapabilities where
   willSave            : Maybe Bool
   willSaveWaitUntil   : Maybe Bool
   didSave             : Maybe Bool
-%runElab deriveJSON defaultOpts `{{TextDocumentSyncClientCapabilities}}
+%runElab deriveJSON defaultOpts `{TextDocumentSyncClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_didClose
 public export
@@ -203,4 +203,4 @@ record TextDocumentSyncOptions where
   willSave          : Maybe Bool
   willSaveWaitUntil : Maybe Bool
   save              : Maybe (OneOf [Bool, SaveOptions])
-%runElab deriveJSON defaultOpts `{{TextDocumentSyncOptions}}
+%runElab deriveJSON defaultOpts `{TextDocumentSyncOptions}

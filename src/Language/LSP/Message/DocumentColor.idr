@@ -17,14 +17,14 @@ public export
 record DocumentColorClientCapabilities where
   constructor MkDocumentColorClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{{DocumentColorClientCapabilities}}
+%runElab deriveJSON defaultOpts `{DocumentColorClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentColor
 public export
 record DocumentColorOptions where
   constructor MkDocumentColorOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{{DocumentColorOptions}}
+%runElab deriveJSON defaultOpts `{DocumentColorOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentColor
 public export
@@ -33,7 +33,7 @@ record DocumentColorRegistrationOptions where
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe String
-%runElab deriveJSON defaultOpts `{{DocumentColorRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{DocumentColorRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentColor
 public export
@@ -42,7 +42,7 @@ record DocumentColorParams where
   workDoneToken      : Maybe ProgressToken
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
-%runElab deriveJSON defaultOpts `{{DocumentColorParams}}
+%runElab deriveJSON defaultOpts `{DocumentColorParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentColor
 public export
@@ -52,7 +52,7 @@ record Color where
   green : Double
   blue  : Double
   alpha : Double
-%runElab deriveJSON defaultOpts `{{Color}}
+%runElab deriveJSON defaultOpts `{Color}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentColor
 public export
@@ -60,7 +60,7 @@ record ColorInformation where
   constructor MkColorInformation
   range : Range
   color : Color
-%runElab deriveJSON defaultOpts `{{ColorInformation}}
+%runElab deriveJSON defaultOpts `{ColorInformation}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_colorPresentation
 public export
@@ -70,7 +70,7 @@ record ColorPresentationParams where
   partialResultToken : Maybe ProgressToken
   color              : Color
   range              : Range
-%runElab deriveJSON defaultOpts `{{ColorPresentationParams}}
+%runElab deriveJSON defaultOpts `{ColorPresentationParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_colorPresentation
 public export
@@ -79,4 +79,4 @@ record ColorPresentation where
   label               : String
   textEdit            : Maybe TextEdit
   additionalTextEdits : Maybe (List TextEdit)
-%runElab deriveJSON defaultOpts `{{ColorPresentation}}
+%runElab deriveJSON defaultOpts `{ColorPresentation}

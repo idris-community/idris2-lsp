@@ -17,14 +17,14 @@ record FoldingRangeClientCapabilities where
   dynamicRegistration : Maybe Bool
   rangeLimit          : Maybe Int
   lineFoldingOnly     : Maybe Bool
-%runElab deriveJSON defaultOpts `{{FoldingRangeClientCapabilities}}
+%runElab deriveJSON defaultOpts `{FoldingRangeClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_foldingRange
 public export
 record FoldingRangeOptions where
   constructor MkFoldingRangeOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{{FoldingRangeOptions}}
+%runElab deriveJSON defaultOpts `{FoldingRangeOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_foldingRange
 public export
@@ -33,7 +33,7 @@ record FoldingRangeRegistrationOptions where
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe String
-%runElab deriveJSON defaultOpts `{{FoldingRangeRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{FoldingRangeRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_foldingRange
 public export
@@ -42,7 +42,7 @@ record FoldingRangeParams where
   workDoneToken      : Maybe ProgressToken
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
-%runElab deriveJSON defaultOpts `{{FoldingRangeParams}}
+%runElab deriveJSON defaultOpts `{FoldingRangeParams}
 
 namespace FoldingRangeKind
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_foldingRange
@@ -71,4 +71,4 @@ record FoldingRange where
   endLine        : Int
   endCharacter   : Maybe Int
   kind           : Maybe String
-%runElab deriveJSON defaultOpts `{{FoldingRange}}
+%runElab deriveJSON defaultOpts `{FoldingRange}

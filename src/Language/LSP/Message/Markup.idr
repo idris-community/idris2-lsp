@@ -37,7 +37,7 @@ record MarkupContent where
   constructor MkMarkupContent
   kind : MarkupKind
   value : String
-%runElab deriveJSON defaultOpts `{{MarkupContent}}
+%runElab deriveJSON defaultOpts `{MarkupContent}
 
 namespace MarkedString
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
@@ -46,7 +46,7 @@ namespace MarkedString
     constructor MkMarkedStringWithLanguage
     language : String
     value : String
-  %runElab deriveJSON defaultOpts `{{MarkedStringWithLanguage}}
+  %runElab deriveJSON defaultOpts `{MarkedStringWithLanguage}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
@@ -59,4 +59,4 @@ record MarkdownClientCapabilities where
   constructor MkMarkdownClientCapabilities
   parser  : String
   version : Maybe String
-%runElab deriveJSON defaultOpts `{{MarkdownClientCapabilities}}
+%runElab deriveJSON defaultOpts `{MarkdownClientCapabilities}

@@ -18,21 +18,21 @@ public export
 record WorkDoneProgressOptions where
   constructor MkWorkDoneProgressOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{{WorkDoneProgressOptions}}
+%runElab deriveJSON defaultOpts `{WorkDoneProgressOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#clientInitiatedProgress
 public export
 record WorkDoneProgressParams where
   constructor MkWorkDoneProgressParams
   workDoneToken : Maybe ProgressToken
-%runElab deriveJSON defaultOpts `{{WorkDoneProgressParams}}
+%runElab deriveJSON defaultOpts `{WorkDoneProgressParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#partialResultParams
 public export
 record PartialResultParams where
   constructor MkPartialResultParams
   partialResultToken : Maybe ProgressToken
-%runElab deriveJSON defaultOpts `{{PartialResultParams}}
+%runElab deriveJSON defaultOpts `{PartialResultParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workDoneProgressBegin
 public export
@@ -42,7 +42,7 @@ record WorkDoneProgressBegin where
   cancellable : Maybe Bool
   message : Maybe String
   percentage : Maybe Int
-%runElab deriveJSON (record {staticFields = [("kind", JString "begin")]} defaultOpts) `{{WorkDoneProgressBegin}}
+%runElab deriveJSON (record {staticFields = [("kind", JString "begin")]} defaultOpts) `{WorkDoneProgressBegin}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workDoneProgressReport
 public export
@@ -51,11 +51,11 @@ record WorkDoneProgressReport where
   cancellable : Maybe Bool
   message : Maybe String
   percentage : Maybe Int
-%runElab deriveJSON (record {staticFields = [("kind", JString "report")]} defaultOpts) `{{WorkDoneProgressReport}}
+%runElab deriveJSON (record {staticFields = [("kind", JString "report")]} defaultOpts) `{WorkDoneProgressReport}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workDoneProgressEnd
 public export
 record WorkDoneProgressEnd where
   constructor MkWorkDoneProgressEnd
   message : Maybe String
-%runElab deriveJSON (record {staticFields = [("kind", JString "end")]} defaultOpts) `{{WorkDoneProgressEnd}}
+%runElab deriveJSON (record {staticFields = [("kind", JString "end")]} defaultOpts) `{WorkDoneProgressEnd}

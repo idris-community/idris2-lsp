@@ -16,14 +16,14 @@ public export
 record DocumentHighlightClientCapabilities where
   constructor MkDocumentHighlightClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{{DocumentHighlightClientCapabilities}}
+%runElab deriveJSON defaultOpts `{DocumentHighlightClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 public export
 record DocumentHighlightOptions where
   constructor MkDocumentHighlightOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{{DocumentHighlightOptions}}
+%runElab deriveJSON defaultOpts `{DocumentHighlightOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 public export
@@ -31,7 +31,7 @@ record DocumentHighlightRegistrationOptions where
   constructor MkDocumentHighlightRegistrationOptions
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{{DocumentHighlightRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{DocumentHighlightRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 public export
@@ -41,7 +41,7 @@ record DocumentHighlightParams where
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
   position           : Position
-%runElab deriveJSON defaultOpts `{{DocumentHighlightParams}}
+%runElab deriveJSON defaultOpts `{DocumentHighlightParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 namespace DocumentHighlightKind
@@ -69,4 +69,4 @@ record DocumentHighlight where
   constructor MkDocumentHighlight
   range : Range
   kind  : Maybe DocumentHighlightKind
-%runElab deriveJSON defaultOpts `{{DocumentHighlight}}
+%runElab deriveJSON defaultOpts `{DocumentHighlight}

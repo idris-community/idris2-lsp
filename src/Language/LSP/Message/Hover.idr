@@ -18,14 +18,14 @@ record HoverClientCapabilities where
   constructor MkHoverClientCapabilities
   dynamicRegistration : Maybe Bool
   contentFormat : Maybe (List MarkupKind)
-%runElab deriveJSON defaultOpts `{{HoverClientCapabilities}}
+%runElab deriveJSON defaultOpts `{HoverClientCapabilities}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
 record HoverOptions where
   constructor MkHoverOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{{HoverOptions}}
+%runElab deriveJSON defaultOpts `{HoverOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
@@ -33,7 +33,7 @@ record HoverRegistrationOptions where
   constructor MkHoverRegistrationOptions
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{{HoverRegistrationOptions}}
+%runElab deriveJSON defaultOpts `{HoverRegistrationOptions}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
@@ -42,7 +42,7 @@ record HoverParams where
   workDoneToken : Maybe ProgressToken
   textDocument : TextDocumentIdentifier
   position : Position
-%runElab deriveJSON defaultOpts `{{HoverParams}}
+%runElab deriveJSON defaultOpts `{HoverParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
@@ -50,4 +50,4 @@ record Hover where
   constructor MkHover
   contents : OneOf [MarkedString, List MarkedString, MarkupContent]
   range : Maybe Range
-%runElab deriveJSON defaultOpts `{{Hover}}
+%runElab deriveJSON defaultOpts `{Hover}
