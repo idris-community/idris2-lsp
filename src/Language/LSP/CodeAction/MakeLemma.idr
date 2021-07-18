@@ -80,7 +80,7 @@ makeLemma params = do
   papp <- pterm lapp
   let lemmaApp = show $ the PTerm $ if toBrack then addBracket replFC papp else papp
 
-  src <- forget . lines <$> getSource
+  src <- lines <$> getSource
   let Just srcLine = elemAt src (integerToNat (cast line))
     | Nothing => do logString Debug $ "makeLemma: error while fetching the referenced line"
                     pure Nothing

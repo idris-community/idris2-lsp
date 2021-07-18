@@ -110,7 +110,7 @@ findQuickfix caps uri err@(NotCovering fc n (MissingCases cs)) = do
     cases <- addMissingCases !(prettyName n) cs 1
     let startline = startLine fc
     let endline = endLine fc
-    src <- forget . String.lines <$> getSource
+    src <- String.lines <$> getSource
     let blank = findBlankLine (drop (integerToNat (cast endline)) src) endline
     diagnostic <- toDiagnostic caps uri err
     let range = MkRange (MkPosition blank 0) (MkPosition blank 0)
