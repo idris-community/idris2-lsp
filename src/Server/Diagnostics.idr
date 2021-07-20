@@ -358,8 +358,21 @@ perror (LitFail _)
     = pure $ errorDesc (reflow "Can't parse literate.")
 perror (LexFail _ msg)
     = pure $ errorDesc (pretty msg)
-perror (ParseFail msg)
-    = pure $ errorDesc (pretty msg)
+perror (ParseFail ((fc, msg) ::: Nil))
+    = pure $ errorDesc (pretty msg) <+> line
+perror (ParseFail errs)
+    = pure $ errorDesc (reflow "Couldn't parse any alternatives" <+> colon) <+> line <+> !listErrors
+  where
+    prettyErrors : Nat -> Nat -> List (FC, String) -> Core (Doc IdrisAnn)
+    prettyErrors showCount _ []   = pure emptyDoc
+    prettyErrors showCount 0 errs = pure $ meta (pretty "... (\{show $ length errs} others)")
+    prettyErrors showCount (S k) ((fc, msg) :: hs)
+        = do let idx = show $ showCount `minus` k
+             pure $ warning (pretty "\{idx}: \{msg}") <+> line <+> !(prettyErrors showCount k hs)
+
+    listErrors : Core (Doc IdrisAnn)
+    listErrors = do showCount <- logErrorCount . session . options <$> get Ctxt
+                    prettyErrors showCount showCount . nub . reverse $ forget errs
 perror (ModuleNotFound fc ns)
     = pure $ errorDesc ("Module" <++> annotate FileCtxt (pretty ns) <++> reflow "not found")
 perror (CyclicImports ns)
