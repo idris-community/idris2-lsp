@@ -87,13 +87,13 @@ signatureHelp : Ref Ctxt Defs
              => Ref Syn SyntaxInfo
              => SignatureHelpParams -> Core (Maybe SignatureHelp)
 signatureHelp params =
-  catch (do let line = params.position.line
+  catch (do logI GotoDefinition "Checking for \{show params.textDocument.uri}"
+            let line = params.position.line
             let col = params.position.character
             nameLocs <- gets MD nameLocMap
             let Just ((fname, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
-              | Nothing => do
-                  logString Debug "signatureHelp: didn't find name for \{show (line,col)}"
-                  pure Nothing
+              | Nothing => do logD SignatureHelp "No name found at \{show line}:\{show col}}"
+                              pure Nothing
 
             -- Check of the name is a local name.
             localResult <- findTypeAt $ anyWithName name $ within (line, col)

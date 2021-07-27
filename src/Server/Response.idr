@@ -74,25 +74,25 @@ sendNotificationMessage : Ref LSPConf LSPConfiguration
                        -> (params : MessageParams method)
                        -> Core ()
 sendNotificationMessage method params = do
-  let msg = MkNotificationMessage method params
-  writeResponse $ toJSON msg
-  logString Info ("Sent notification message for method " ++ stringify (toJSON method))
-  logString Debug (stringify (toJSON msg))
+  let msg = toJSON $ MkNotificationMessage method params
+  writeResponse msg
+  logI Channel "Sent notification message for method \{stringify $ toJSON method}"
+  logD Channel "Notification sent: \{stringify msg}"
 
 ||| Sends a request from the server to the client ignoring the result
 ||| TODO when client sends response we fail to parse it
 export
 sendRequestMessage_ : Ref LSPConf LSPConfiguration
-                       => (method : Method Server Request)
-                        -> (params : MessageParams method)
-                       -> Core ()
+                   => (method : Method Server Request)
+                   -> (params : MessageParams method)
+                   -> Core ()
 sendRequestMessage_ method params = do
   requestId <- gets LSPConf nextRequestId
-  let msg = MkRequestMessage (make $ cast {to=Int} requestId) method params
-  modify LSPConf (record {nextRequestId = requestId + 1})
+  let msg = toJSON $ MkRequestMessage (make $ cast {to = Int} requestId) method params
+  update LSPConf (record {nextRequestId = requestId + 1})
   writeResponse (toJSON msg)
-  logString Info ("Sent request message for method " ++ stringify (toJSON method))
-  logString Debug (stringify (toJSON msg))
+  logI Channel "Sent request message for method \{stringify $ toJSON method}"
+  logD Channel "Request sent: \{stringify msg}"
 
 ||| Sends a response message to a request received from the client.
 export
@@ -100,10 +100,11 @@ sendResponseMessage : Ref LSPConf LSPConfiguration
                    => (method : Method Client Request)
                    -> ResponseMessage method
                    -> Core ()
-sendResponseMessage method msg = do
-  writeResponse (toJSON msg)
-  logString Info ("Sent response message for method " ++ stringify (toJSON method))
-  logString Debug (stringify (toJSON msg))
+sendResponseMessage method resp = do
+  let msg = toJSON resp
+  writeResponse msg
+  logI Channel "Sent response message for method \{stringify $ toJSON method}"
+  logD Channel "Response sent: \{stringify msg}"
 
 ||| Sends an error response to an unknown method.
 export
@@ -111,7 +112,7 @@ sendUnknownResponseMessage : Ref LSPConf LSPConfiguration => ResponseError -> Co
 sendUnknownResponseMessage err = do
   -- The method type Initialize is irrelevant since the message is unknown, can use any method, the message would be the same.
   writeResponse (toJSON {a = ResponseMessage Initialize} (Failure (make MkNull) err))
-  logString Info "Sent response to unknown method"
+  logI Channel "Sent response to unknown method"
 
 ||| Sends a LSP `Diagnostic` message for a given, potentially versioned, source
 ||| that produces some errors.
@@ -133,4 +134,5 @@ sendDiagnostics : Ref LSPConf LSPConfiguration
 sendDiagnostics caps uri version errs = do
   diagnostics <- traverse (toDiagnostic caps uri) errs
   let params = MkPublishDiagnosticsParams uri version diagnostics
+  logI Diagnostic "Sending diagnostic message for \{show uri}"
   sendNotificationMessage TextDocumentPublishDiagnostics params

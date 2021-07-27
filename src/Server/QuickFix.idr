@@ -82,11 +82,11 @@ findQuickfix caps uri err@(PatternVariableUnifies fc env n tm) = do
                                   , command     = Nothing
                                   , data_       = Nothing
                                   }
-    modify LSPConf (record { quickfixes $= (codeAction ::) })
+    update LSPConf (record { quickfixes $= (codeAction ::) })
 findQuickfix caps uri err@(ValidCase fc _ (Left tm)) =
   whenJust (isNonEmptyFC fc) $ \fc => do
     Just (f, args) <- (uncons' <=< init' <=< map words) <$> (getSourceLine (startLine fc + 1))
-      | Nothing => do logString Debug "findQuickfix: error while fetching source line"
+      | Nothing => do logE QuickFix "Error while fetching source line"
                       pure ()
     let line = unwords $ f :: args ++ ["=", "?\{f}_rhs_not_impossible"]
     diagnostic <- toDiagnostic caps uri err
@@ -104,7 +104,7 @@ findQuickfix caps uri err@(ValidCase fc _ (Left tm)) =
                                   , command     = Nothing
                                   , data_       = Nothing
                                   }
-    modify LSPConf (record { quickfixes $= (codeAction ::) })
+    update LSPConf (record { quickfixes $= (codeAction ::) })
 findQuickfix caps uri err@(NotCovering fc n (MissingCases cs)) = do
   whenJust (isNonEmptyFC fc) $ \fc => do
     cases <- addMissingCases !(prettyName n) cs 1
@@ -143,7 +143,7 @@ findQuickfix caps uri err@(NotCovering fc n (MissingCases cs)) = do
                                          , command     = Nothing
                                          , data_       = Nothing
                                          }
-    modify LSPConf (record { quickfixes $= (\qf => missingCodeAction :: partialCodeAction :: qf) })
+    update LSPConf (record { quickfixes $= (\qf => missingCodeAction :: partialCodeAction :: qf) })
 findQuickfix caps uri err@(NotCovering fc n _) = do
   whenJust (isNonEmptyFC fc) $ \fc => do
     diagnostic <- toDiagnostic caps uri err
@@ -163,7 +163,7 @@ findQuickfix caps uri err@(NotCovering fc n _) = do
                                   , command     = Nothing
                                   , data_       = Nothing
                                   }
-    modify LSPConf (record { quickfixes $= (codeAction ::) })
+    update LSPConf (record { quickfixes $= (codeAction ::) })
 findQuickfix caps uri err@(NotTotal fc n _) = do
   whenJust (isNonEmptyFC fc) $ \fc => do
     diagnostic <- toDiagnostic caps uri err
@@ -183,6 +183,6 @@ findQuickfix caps uri err@(NotTotal fc n _) = do
                                   , command     = Nothing
                                   , data_       = Nothing
                                   }
-    modify LSPConf (record { quickfixes $= (codeAction ::) })
+    update LSPConf (record { quickfixes $= (codeAction ::) })
 findQuickfix _ _ _ = pure ()
 

@@ -53,14 +53,15 @@ documentSymbol : Ref Ctxt Defs
               => Ref LSPConf LSPConfiguration
               => DocumentSymbolParams -> Core (List SymbolInformation)
 documentSymbol params = do
+  logI DocumentSymbol "Making for \{show params.textDocument.uri}"
   Just (uri, _) <- gets LSPConf openFile
     | Nothing => do
-        logString Debug "documentSymbol: openFile returned Nothing. This shouldn't happen."
+        logE DocumentSymbol "No open file"
         pure []
   let True = uri == params.textDocument.uri
-      | False => do
-          logString Debug "documentSymbol: different URI than expected \{show (uri, params.textDocument.uri)}"
-          pure []
+    | False => do
+        logD DocumentSymbol "Expected request for the currently opened file \{show uri}, instead received \{show params.textDocument.uri}"
+        pure []
   defs <- get Ctxt
   -- Get the current and visible namespaces from the context
   let currentNamespaces = defs.currentNS :: defs.nestedNS
@@ -96,5 +97,5 @@ documentSymbol params = do
                     })
               meta.names
   let docSymbols = globalDocSymbols ++ metaDocSymbols
-  logString Debug "documentSymbol: Found \{show (length globalDocSymbols)} global and \{show (length metaDocSymbols)} meta document symbols."
+  logI DocumentSymbol "Found \{show (length globalDocSymbols)} global and \{show (length metaDocSymbols)} meta document symbols."
   pure $ docSymbols

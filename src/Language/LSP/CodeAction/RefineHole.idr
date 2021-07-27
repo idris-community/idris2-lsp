@@ -14,6 +14,7 @@ import Idris.REPL.Opts
 import Idris.Syntax
 import Language.JSON
 import Language.LSP.CodeAction
+import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
 import Libraries.Data.NameMap
 import Libraries.Data.PosMap
@@ -23,7 +24,6 @@ import TTImp.TTImp
 import TTImp.Unelab
 import Server.Configuration
 import Server.Log
-import Server.Response
 import Server.Utils
 
 -- CodeAction for filling holes, not necessarily type correct constructions.
@@ -47,7 +47,7 @@ resolveTypeName (Ref fc x name)     = Just <$> toFullNames name
 resolveTypeName (Bind fc x b scope) = resolveTypeName scope -- ignores explicit/implicit parameters: {a} -> DataType
 resolveTypeName (App fc fn arg)     = resolveTypeName fn    -- ignores type parameters: DataType a
 resolveTypeName other = do
-  logString Debug "resolveTypeName: \{show other}"
+  logD RefineHole "resolveTypeName: \{show other}"
   pure Nothing
 
 ||| Checks if the the Term represents an explicit function
@@ -283,69 +283,64 @@ refineHole
   => Ref ROpts REPLOpts
   => CodeActionParams -> Core (List CodeAction)
 refineHole params = do
-  let True = params.range.start.line == params.range.end.line
-    | _ => pure []
+  logI RefineHole "Checking for \{show params.textDocument.uri} at \{show params.range}"
+  withSingleLine RefineHole params (pure []) $ \line => do
+    withMultipleCache RefineHole params RefineHole $ do
 
-  [] <- searchCache params.range RefineHole
-    | actions => do logString Debug "refineHole: found cached action"
-                    pure actions
+      meta <- get MD
+      let col = params.range.start.character
+      let Just (loc, name) = findPointInTreeLoc (line, col) (nameLocMap meta)
+        | Nothing => do logD RefineHole "No name found at \{show line}:\{show col}}"
+                        pure []
+      logD RefineHole "Found name \{show name}"
 
-  meta <- get MD
-  let line = params.range.start.line
-  let col = params.range.start.character
-  let Just (loc, name) = findPointInTreeLoc (line, col) (nameLocMap meta)
-    | Nothing =>
-        do logString Debug $
-             "refineHole: couldn't find name in tree for position (\{show line},\{show col})"
-           pure []
+      -- The name is a hole
+      defs <- get Ctxt
+      True <- isHole defs name -- should only work on holes
+        | _ => do logD RefineHole $ "\(show name) is not a metavariable"
+                  pure []
 
-  -- The name is a hole
-  defs <- get Ctxt
-  True <- (isHole defs name) -- should only work on holes
-    | _ => do logString Debug $ "refineHole: \(show name) is not a hole"
-              pure []
+      -- Find the type information at this hole
+      [(holeName, (x, holeGlobalDef))] <- lookupCtxtName name (gamma defs)
+        | _ => do
+          logD RefineHole "Non-unique context entries for \{show name}"
+          pure []
 
-  -- Find the type information at this hole
-  [(holeName, (x, holeGlobalDef))] <- lookupCtxtName name (gamma defs)
-    | _ => do
-      logString Debug "refineHole: Non-unique context entries for \{show name}"
-      pure []
-
-  -- Try to find some constructors
-  constructorStrings <-
-    -- If the type is a datatype find its definition
-    case !(resolveTypeName holeGlobalDef.type) of
-      Nothing => pure []
-      Just dataTypeName =>
-        if isFunctionType holeGlobalDef.type
-          -- If a hole represents a function, we shouldn't offer constructors
-          then pure []
-          -- Find its constructors
-          else case !(constructors holeName dataTypeName) of
-                Nothing => pure []
-                Just [] => pure []
-                Just cns => do
-                  -- Render the (Constructor ?field1 ?field2) like fields
-                  someNameStrings <- traverse (renderConstructor name) cns
-                  case the (Maybe (List String)) (sequence someNameStrings) of
+      logI RefineHole "Searching constructors"
+      -- Try to find some constructors
+      constructorStrings <-
+        -- If the type is a datatype find its definition
+        case !(resolveTypeName holeGlobalDef.type) of
+          Nothing => pure []
+          Just dataTypeName =>
+            if isFunctionType holeGlobalDef.type
+              -- If a hole represents a function, we shouldn't offer constructors
+              then pure []
+              -- Find its constructors
+              else case !(constructors holeName dataTypeName) of
                     Nothing => pure []
-                    Just cs => pure cs
+                    Just [] => pure []
+                    Just cns => do
+                      -- Render the (Constructor ?field1 ?field2) like fields
+                      someNameStrings <- traverse (renderConstructor name) cns
+                      case the (Maybe (List String)) (sequence someNameStrings) of
+                        Nothing => pure []
+                        Just cs => pure cs
 
-  -- Limit the results
-  cfg <- get LSPConf
-  let limit = cfg.searchLimit
+      -- Limit the results
+      cfg <- get LSPConf
+      let limit = cfg.searchLimit
 
-  typesafeNames <- keepNonHoleNames !(typeMatchingNames holeName holeGlobalDef.type 1000)
-  similarNames <- keepNonHoleNames (filter (\n => not (elem n typesafeNames)) !(getSimilarNames name))
+      logI RefineHole "Searching type matching names"
+      typesafeNames <- keepNonHoleNames !(typeMatchingNames holeName holeGlobalDef.type 1000)
+      logI RefineHole "Searching type similar names"
+      similarNames <- keepNonHoleNames (filter (\n => not (elem n typesafeNames)) !(getSimilarNames name))
 
-  -- Render code actions that inject constructors or similar names
-  let fillerStrings = nub (constructorStrings ++ typesafeNames)
-  let safeFillers = map (refineHoleWith False holeGlobalDef.location params) fillerStrings
-  let nonSafeFillerStrings = take limit $ filter (\x => elemBy (/=) x fillerStrings) similarNames
-  let nonSafeFillers = map (refineHoleWith True holeGlobalDef.location params) nonSafeFillerStrings
-  let fillers = safeFillers ++ nonSafeFillers
+      -- Render code actions that inject constructors or similar names
+      let fillerStrings = nub (constructorStrings ++ typesafeNames)
+      let safeFillers = map (refineHoleWith False holeGlobalDef.location params) fillerStrings
+      let nonSafeFillerStrings = take limit $ filter (\x => elemBy (/=) x fillerStrings) similarNames
+      let nonSafeFillers = map (refineHoleWith True holeGlobalDef.location params) nonSafeFillerStrings
+      let fillers = safeFillers ++ nonSafeFillers
 
-  -- Cache the fillers
-  modify LSPConf (record { cachedActions $= insert (cast loc, RefineHole, fillers) })
-
-  pure fillers
+      pure [(cast loc, fillers)]
