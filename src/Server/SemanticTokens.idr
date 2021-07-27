@@ -34,16 +34,16 @@ encode (relLine, relStartChar) (((_, (sl, sc), (el, ec)), decor, _) :: xs) =
 ||| Remove zero width tokens and split multiline tokens
 processToken : (Int -> Int) -> ASemanticDecoration -> List ASemanticDecoration
 processToken getLineLength orig@((fileName, (startLine, startChar), (endLine, endChar)), decoration, name) =
-  if startLine == endLine
-  then
-    if startChar == endChar
-    then []
-    else [orig]
-  else
-    let
-      lineLength = getLineLength startLine
-      rest = processToken getLineLength ((fileName, (startLine+1, 0), (endLine, endChar)), decoration, name)
-      in if lineLength == startChar then rest else ((fileName, (startLine, startChar), (startLine, lineLength)), decoration, name) :: rest
+  if startLine >= endLine
+     then if startChar >= endChar
+             then []
+             else [orig]
+     else let
+            lineLength = getLineLength startLine
+            rest = processToken getLineLength ((fileName, (startLine+1, 0), (endLine, endChar)), decoration, name)
+           in if lineLength == startChar
+                 then rest
+                 else ((fileName, (startLine, startChar), (startLine, lineLength)), decoration, name) :: rest
 
 ||| Write from last to current, poping of the stack when the end of a token is reached
 ||| current = Nothing means there a no remaining tokens except those on the stack
@@ -84,7 +84,7 @@ getSemanticTokens md getLineLength = do
   logD SemanticTokens "Removing overlapping tokens"
   let multilineSemanticHighlightingList = removeOverlap (0, 0) [] $ overlappingHighlightingList
   logD SemanticTokens "Splitting multiline tokens"
-  let singlelineSemanticHighlightingList = foldMap (processToken getLineLength) $ multilineSemanticHighlightingList
+  let singlelineSemanticHighlightingList = foldMap (processToken getLineLength) multilineSemanticHighlightingList
   logD SemanticTokens "Encoding semantic tokens"
   let encodedTokens = encode (0, 0) singlelineSemanticHighlightingList
   pure $ MkSemanticTokens Nothing encodedTokens
