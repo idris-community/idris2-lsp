@@ -12,7 +12,7 @@ import Language.LSP.Message.Initialize
 import Language.LSP.Message.Hover
 import Language.LSP.Message.Location
 import Language.LSP.Message.URI
-import Libraries.Data.PosMap
+import public Libraries.Data.PosMap
 import System.File
 
 ||| Label for the configuration reference.

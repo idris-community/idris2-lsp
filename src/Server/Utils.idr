@@ -26,14 +26,6 @@ gets : (l : label) -> Ref l a => (a -> b) -> Core b
 gets l f = f <$> get l
 
 export
-modify : (l : label) -> Ref l a => (a -> a) -> Core ()
-modify l f = put l . f =<< get l
-
-export
-foldlM : Foldable t => (a -> b -> Core a) -> a -> t b -> Core a
-foldlM f init = foldl (\ma, b => flip f b =<< ma) (pure init)
-
-export
 uncons' : List a -> Maybe (a, List a)
 uncons' [] = Nothing
 uncons' (x :: xs) = Just (x, xs)
@@ -41,7 +33,7 @@ uncons' (x :: xs) = Just (x, xs)
 ||| Reads a single header from an LSP message on the supplied file handle.
 ||| Headers end with the string "\r\n".
 export
-fGetHeader : (h : File) -> Core (Either FileError String)
+fGetHeader : (handle : File) -> Core (Either FileError String)
 fGetHeader handle = do
   Right l <- coreLift $ fGetLine handle
     | Left err => pure $ Left err
@@ -78,18 +70,18 @@ b16ToHexString n =
 
 private
 showChar : Char -> String
-showChar c
-  = case c of
-         '\b' => "\\b"
-         '\f' => "\\f"
-         '\n' => "\\n"
-         '\r' => "\\r"
-         '\t' => "\\t"
-         '\\' => "\\\\"
-         '"'  => "\\\""
-         c => if isControl c || c >= '\127'
-                 then "\\u" ++ b16ToHexString (cast (ord c)) -- quick hack until b16ToHexString is available in Idris2
-                 else singleton c
+showChar c =
+  case c of
+       '\b' => "\\b"
+       '\f' => "\\f"
+       '\n' => "\\n"
+       '\r' => "\\r"
+       '\t' => "\\t"
+       '\\' => "\\\\"
+       '"'  => "\\\""
+       c => if isControl c || c >= '\127'
+               then "\\u" ++ b16ToHexString (cast (ord c))
+               else singleton c
 
 private
 showString : String -> String
@@ -99,19 +91,16 @@ export
 stringify : JSON -> String
 stringify JNull = "null"
 stringify (JBoolean x) = if x then "true" else "false"
-stringify (JNumber x) = let s = show x in
-                            if isSuffixOf ".0" s
-                               then substr 0 (length s `minus` 2) s
-                               else s
+stringify (JNumber x) =
+  let s = show x
+   in if isSuffixOf ".0" s then substr 0 (length s `minus` 2) s else s
 stringify (JString x) = showString x
 stringify (JArray xs) = "[" ++ stringifyValues xs ++ "]"
   where
     stringifyValues : List JSON -> String
     stringifyValues [] = ""
-    stringifyValues (x :: xs) = stringify x
-                             ++ if isNil xs
-                                   then ""
-                                   else "," ++ stringifyValues xs
+    stringifyValues (x :: xs) =
+      stringify x ++ if isNil xs then "" else "," ++ stringifyValues xs
 stringify (JObject xs) = "{" ++ stringifyProps xs ++ "}"
   where
     stringifyProp : (String, JSON) -> String
@@ -119,10 +108,8 @@ stringify (JObject xs) = "{" ++ stringifyProps xs ++ "}"
 
     stringifyProps : List (String, JSON) -> String
     stringifyProps [] = ""
-    stringifyProps (x :: xs) = stringifyProp x
-                            ++ if isNil xs
-                                  then ""
-                                  else "," ++ stringifyProps xs
+    stringifyProps (x :: xs) =
+      stringifyProp x ++ if isNil xs then "" else "," ++ stringifyProps xs
 
 export
 findInTreeLoc' : FilePos -> FilePos -> PosMap (NonEmptyFC, a) -> List (NonEmptyFC, a)
@@ -196,11 +183,11 @@ searchCache r type = do
 export
 pathToURI : String -> URI
 pathToURI path =
-  MkURI { scheme = "file"
+  MkURI { scheme    = "file"
         , authority = Just (MkURIAuthority Nothing "" Nothing)
-        , path = path
-        , query = ""
-        , fragment = ""
+        , path      = path
+        , query     = ""
+        , fragment  = ""
         }
 
 export
@@ -208,3 +195,11 @@ toStart : FC -> FC
 toStart (MkFC f _ _) = MkFC f (0, 0) (0, 0)
 toStart (MkVirtualFC f _ _) = MkVirtualFC f (0, 0) (0, 0)
 toStart EmptyFC = EmptyFC
+
+export
+Show Position where
+  show (MkPosition line character) = "\{show line}:\{show character}"
+
+export
+Show Range where
+  show (MkRange start end) = "\{show start} -- \{show end}"

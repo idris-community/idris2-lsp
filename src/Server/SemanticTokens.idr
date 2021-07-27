@@ -6,6 +6,8 @@ import Language.LSP.Message
 import Libraries.Data.PosMap
 import Data.String
 import Core.Context
+import Server.Configuration
+import Server.Log
 
 ||| encode using relative tokens according the to LSP spec
 encode : FilePos -> List ASemanticDecoration -> List Int
@@ -60,24 +62,29 @@ removeOverlap last stack (current@((fileName, start, end), decoration, name)::re
 
 ||| Get the semantic tokens from the Metadata
 export
-getSemanticTokens : Metadata -> (getLineLength : Int -> Int) -> SemanticTokens
-getSemanticTokens md getLineLength =
-  let
-    semHigh = md.semanticHighlighting
+getSemanticTokens : Ref LSPConf LSPConfiguration => Metadata -> (getLineLength : Int -> Int) -> Core SemanticTokens
+getSemanticTokens md getLineLength = do
+  logD SemanticTokens "Fetching semantic highlightning metadata"
+  let semHigh = md.semanticHighlighting
 
-    aliases : List ASemanticDecoration =
+  logD SemanticTokens "Fetching semantic aliases metadata"
+  let aliases : List ASemanticDecoration =
       flip foldMap md.semanticAliases $ \ (from, to) =>
         let decors = uncurry exactRange (snd to) semHigh
         in map (\ ((fnm, loc), rest) => ((fnm, snd from), rest)) decors
 
-    defaults : List ASemanticDecoration =
+  logD SemanticTokens "Fetching semantic defaults metadata"
+  let defaults : List ASemanticDecoration =
       flip foldMap md.semanticDefaults $ \ decor@((_, range), _) =>
         case uncurry exactRange range semHigh of
           [] => [decor]
           _ => []
 
-    overlappingHighlightingList = toList $ semHigh `union` ((fromList aliases) `union` (fromList defaults))
-    multilineSemanticHighlightingList = removeOverlap (0, 0) [] $ overlappingHighlightingList
-    singlelineSemanticHighlightingList = foldMap (processToken getLineLength) $ multilineSemanticHighlightingList
-    encodedTokens = encode (0, 0) singlelineSemanticHighlightingList
-  in MkSemanticTokens Nothing encodedTokens
+  let overlappingHighlightingList = toList $ semHigh `union` ((fromList aliases) `union` (fromList defaults))
+  logD SemanticTokens "Removing overlapping tokens"
+  let multilineSemanticHighlightingList = removeOverlap (0, 0) [] $ overlappingHighlightingList
+  logD SemanticTokens "Splitting multiline tokens"
+  let singlelineSemanticHighlightingList = foldMap (processToken getLineLength) $ multilineSemanticHighlightingList
+  logD SemanticTokens "Encoding semantic tokens"
+  let encodedTokens = encode (0, 0) singlelineSemanticHighlightingList
+  pure $ MkSemanticTokens Nothing encodedTokens

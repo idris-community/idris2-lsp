@@ -13,10 +13,13 @@ import System.Path
 
 %default total
 
--- TODO: Very crude logging, we should probably adopt a more flexible logging mechanism.
---       Maybe comonads, à la Haskell co-log package?
-
 ||| Type for the severity of logging messages.
+||| Levels are roughly categorised as follow:
+||| - Debug    Messages targeted only for developing purposes
+||| - Info     Messages for progress without unexpected behaviour or errors
+||| - Warning  Messages for unsupported requests or wrong configurations 
+||| - Error    Messages for either server or compiler error which are unexpected but recoverable
+||| - Critical Messages for error that require immediate stopping of the server
 public export
 data Severity = Debug | Info | Warning | Error | Critical
 
@@ -48,31 +51,89 @@ export
 Ord Severity where
   compare x y = compare (cast {to = Integer} x) (cast y)
 
+public export
+data Topic
+  = AddClause
+  | CaseSplit
+  | Channel
+  | CodeAction
+  | Configuration
+  | Diagnostic
+  | DocumentSymbol
+  | ExprSearch
+  | GenerateDef
+  | GotoDefinition
+  | Hover
+  | MakeCase
+  | MakeLemma
+  | MakeWith
+  | QuickFix
+  | RefineHole
+  | SemanticTokens
+  | Server
+  | SignatureHelp
+
+export
+Show Topic where
+  show AddClause = "Request.CodeAction.AddClause"
+  show CaseSplit = "Request.CodeAction.CaseSplit"
+  show Channel = "Communication.Channel"
+  show CodeAction = "CodeAction"
+  show Configuration = "Request.Configuration"
+  show Diagnostic = "Notification.Diagnostic"
+  show DocumentSymbol = "Request.DocumentSymbol"
+  show ExprSearch = "Request.CodeAction.ExprSearch"
+  show GenerateDef = "Request.CodeAction.GenerateDef"
+  show GotoDefinition = "Request.GotoDefinition"
+  show Hover = "Request.Hover"
+  show MakeCase = "Request.CodeAction.MakeCase"
+  show MakeLemma = "Request.CodeAction.MakeLemma"
+  show MakeWith = "Request.CodeAction.MakeWith"
+  show QuickFix = "Request.CodeAction.QuickFix"
+  show RefineHole = "Request.CodeAction.RefineHole"
+  show SemanticTokens = "Notification.SemanticTokens"
+  show Server = "Server"
+  show SignatureHelp = "Request.SignatureHelp"
+
 ||| Logs a string with the provided severity level.
 export
-logString : Ref LSPConf LSPConfiguration => Severity -> String -> Core ()
-logString severity msg = do
+log : Ref LSPConf LSPConfiguration => Severity -> Topic -> String -> Core ()
+log severity topic msg = do
   logHandle <- gets LSPConf logHandle
-  ignore $ coreLift $ fPutStrLn logHandle ("LOG " ++ show severity ++ ": " ++ msg)
+  coreLift_ $ fPutStrLn logHandle "LOG \{show severity}:\{show topic}: \{msg}"
   coreLift $ fflush logHandle
 
-||| Logs a showable value with the provided severity level.
 export
-logShow : Ref LSPConf LSPConfiguration => Show a => Severity -> a -> Core ()
-logShow severity = logString severity . show
+logD : Ref LSPConf LSPConfiguration => Topic -> String -> Core ()
+logD = log Debug
+
+export
+logI : Ref LSPConf LSPConfiguration => Topic -> String -> Core ()
+logI = log Info
+
+export
+logW : Ref LSPConf LSPConfiguration => Topic -> String -> Core ()
+logW = log Warning
+
+export
+logE : Ref LSPConf LSPConfiguration => Topic -> String -> Core ()
+logE = log Error
+
+export
+logC : Ref LSPConf LSPConfiguration => Topic -> String -> Core ()
+logC = log Critical
 
 ||| Changes the log file location, if possible.
 export covering
 changeLogFile : Ref LSPConf LSPConfiguration => String -> Core ()
 changeLogFile fname = do
   let True = isAbsolute fname
-    | False => logString Error "Unable to change log file location: \{fname} is not an absolute path"
-  case parent fname of
-       Just dir => do Right _ <- coreLift $ mkdirAll dir
-                        | Left err => logString Error "Unable to create directory \{dir}: \{show err}"
-                      logString Debug "Created new log directory \{dir}"
-       Nothing => pure ()
+    | False => logE Configuration "Unable to change log file location: \{fname} is not an absolute path"
+  whenJust (parent fname) $ \dir => do
+    Right _ <- coreLift $ mkdirAll dir
+      | Left err => logE Configuration "Unable to create directory \{dir}: \{show err}"
+    logD Configuration "Created new directory \{dir} for log file \{fname}"
   Right handle <- coreLift $ openFile fname Append
-    | Left err => logString Error "Unable to updated log file location \{fname}: \{show err}"
-  modify LSPConf (record { logHandle = handle })
-  logString Debug "Log file location updated to \{fname}"
+    | Left err => logE Configuration "Unable to updated log file location \{fname}: \{show err}"
+  update LSPConf (record { logHandle = handle })
+  logI Configuration "Log file location updated to \{fname}"

@@ -5,14 +5,13 @@ import Core.Core
 import Core.Env
 import Core.Metadata
 import Core.UnifyState
-import Data.List
-import Data.List1
 import Data.String
 import Idris.REPL.Opts
-import Idris.Syntax
 import Idris.Resugar
+import Idris.Syntax
 import Language.JSON
 import Language.LSP.CodeAction
+import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
 import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
@@ -20,8 +19,8 @@ import Parser.Unlit
 import Server.Configuration
 import Server.Log
 import Server.Utils
-import TTImp.TTImp
 import TTImp.Interactive.MakeLemma
+import TTImp.TTImp
 
 buildCodeAction : Name -> URI -> List TextEdit -> CodeAction
 buildCodeAction name uri edits =
@@ -52,48 +51,44 @@ makeLemma : Ref LSPConf LSPConfiguration
          => Ref ROpts REPLOpts
          => CodeActionParams -> Core (Maybe CodeAction)
 makeLemma params = do
-  let True = params.range.start.line == params.range.end.line
-    | _ => do logString Debug "makeLemma: start and end line were different"
-              pure Nothing
+  logI MakeLemma "Checking for \{show params.textDocument.uri} at \{show params.range}"
+  withSingleLine MakeLemma params (pure Nothing) $ \line => do
+    withSingleCache MakeLemma params MakeLemma $ do
 
-  [] <- searchCache params.range MakeLemma
-    | action :: _ => do logString Debug "makeLemma: found cached action"
-                        pure (Just action)
+      nameLocs <- gets MD nameLocMap
+      let col = params.range.start.character
+      let Just (loc@(_, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
+        | Nothing => do logD MakeLemma "No name found at \{show line}:\{show col}}"
+                        pure Nothing
+      logD MakeLemma "Found name \{show name}"
 
-  nameLocs <- gets MD nameLocMap
-  let line = params.range.start.line
-  let col = params.range.start.character
-  let Just (loc@(_, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
-    | Nothing => do logString Debug "makeLemma: couldn't find name at \{show (line, col)}"
-                    pure Nothing
+      context <- gets Ctxt gamma
+      toBeBracketed <- gets Syn bracketholes
+      let toBrack = elemBy (\x, y => dropNS x == dropNS y) name toBeBracketed
 
-  context <- gets Ctxt gamma
-  toBeBracketed <- gets Syn bracketholes
-  let toBrack = elemBy (\x, y => dropNS x == dropNS y) name toBeBracketed
+      [(n, nidx, Hole locs _, ty)] <- lookupNameBy (\g => (definition g, type g)) name context
+        | _ => do logD MakeLemma $ "\{show name} is not a metavariable"
+                  pure Nothing
+      logD MakeLemma "Found metavariable \{show name}"
 
-  [(n, nidx, Hole locs _, ty)] <- lookupNameBy (\g => (definition g, type g)) name context
-    | _ => do logString Debug $ "makeLemma: \{show name} is not a metavariable"
-              pure Nothing
+      (lty, lapp) <- makeLemma replFC name locs ty
+      lemmaTy <- pterm lty
+      papp <- pterm lapp
+      let lemmaApp = show $ the PTerm $ if toBrack then addBracket replFC papp else papp
 
-  (lty, lapp) <- makeLemma replFC name locs ty
-  lemmaTy <- pterm lty
-  papp <- pterm lapp
-  let lemmaApp = show $ the PTerm $ if toBrack then addBracket replFC papp else papp
+      src <- lines <$> getSource
+      let Just srcLine = elemAt src (integerToNat (cast line))
+        | Nothing => do logE MakeLemma $ "Error while fetching the referenced line"
+                        pure Nothing
+      let (markM, _) = isLitLine srcLine
+      -- TODO: currently it has the same behaviour of the compiler, it puts the new
+      --       definition in the first blank line above the hole. We want to put it
+      --       exactly above the clause or declaration that uses the hole, however
+      --       this information is needed within the compiler, so waiting future PRs.
+      let blank = findBlankLine (reverse $ take (integerToNat (cast line)) src) line
 
-  src <- lines <$> getSource
-  let Just srcLine = elemAt src (integerToNat (cast line))
-    | Nothing => do logString Debug $ "makeLemma: error while fetching the referenced line"
-                    pure Nothing
-  let (markM, _) = isLitLine srcLine
-  -- TODO: currently it has the same behaviour of the compiler, it puts the new
-  --       definition in the first blank line above the hole. We want to put it
-  --       exactly above the clause or declaration that uses the hole, however
-  --       this information is needed within the compiler, so waiting future PRs.
-  let blank = findBlankLine (reverse $ take (integerToNat (cast line)) src) line
-
-  let appEdit = MkTextEdit (MkRange (uncurry MkPosition nstart) (uncurry MkPosition nend)) lemmaApp
-  let tyEdit = MkTextEdit (MkRange (MkPosition blank 0) (MkPosition blank 0))
-                          (relit markM "\{show $ dropNS name} : \{show lemmaTy}\n\n")
-  let action = buildCodeAction name params.textDocument.uri [tyEdit, appEdit]
-  modify LSPConf (record { cachedActions $= insert (cast loc, MakeLemma, [action]) })
-  pure $ Just action
+      let appEdit = MkTextEdit (MkRange (uncurry MkPosition nstart) (uncurry MkPosition nend)) lemmaApp
+      let tyEdit = MkTextEdit (MkRange (MkPosition blank 0) (MkPosition blank 0))
+                              (relit markM "\{show $ dropNS name} : \{show lemmaTy}\n\n")
+      let action = buildCodeAction name params.textDocument.uri [tyEdit, appEdit]
+      pure $ Just (cast loc, action)

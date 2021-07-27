@@ -24,9 +24,8 @@ mkLocation : Ref Ctxt Defs
 mkLocation origin (sline, scol) (eline, ecol) = do
   defs <- get Ctxt
   let PhysicalIdrSrc modIdent = origin
-    | _ => do
-       logString Debug "gotoDefinition: Origin doesn't have an Idris file attached to it \{show origin}"
-       pure Nothing
+    | _ => do logD GotoDefinition "Origin doesn't have an Idris file attached to it \{show origin}"
+              pure Nothing
   let wdir = defs.options.dirs.working_dir
   let pkg_dirs = filter (/= ".") defs.options.dirs.extra_dirs
   let exts = map show listOfExtensions
@@ -40,16 +39,14 @@ mkLocation origin (sline, scol) (eline, ecol) = do
         let pkg_dir_abs = ifThenElse (isRelative pkg_dir) (wdir </> pkg_dir) pkg_dir
         ext <- exts
         pure (pkg_dir_abs </> ModuleIdent.toPath modIdent <.> ext))
-    | _ => do
-      logString Debug "gotoDefinition: Can't find file for module \{show modIdent}"
-      pure Nothing
+    | _ => do logD GotoDefinition "Can't find file for module \{show modIdent}"
+              pure Nothing
 
   let fname_abs_uri = "file://" ++ fname_abs
 
   let Right (uri, _) = parse uriReferenceParser fname_abs_uri
-      | Left err => do
-          logString Debug "gotoDefinition: URI parse error: \{err} \{show (fname_abs_uri, sline, scol)}"
-          pure Nothing
+    | Left err => do logE GotoDefinition "URI parse error: \{err} \{show (fname_abs_uri, sline, scol)}"
+                     pure Nothing
 
   pure $ Just $ MkLocation uri (MkRange (MkPosition sline scol) (MkPosition eline ecol))
 
@@ -59,14 +56,15 @@ gotoDefinition : Ref Ctxt Defs
               => Ref LSPConf LSPConfiguration
               => DefinitionParams -> Core (Maybe Location)
 gotoDefinition params = do
+  logI GotoDefinition "Checking for \{show params.textDocument.uri} at \{show params.position}"
   -- Check actual doc
   Just (actualUri, _) <- gets LSPConf openFile
     | Nothing => do
-        logString Debug "gotoDefinition: openFile returned Nothing."
+        logE GotoDefinition "No open file"
         pure Nothing
   let True = actualUri == params.textDocument.uri
       | False => do
-          logString Debug "gotoDefinition: different URI than expected \{show (actualUri, params.textDocument.uri)}"
+          logD GotoDefinition "Expected request for the currently opened file \{show actualUri}, instead received \{show params.textDocument.uri}"
           pure Nothing
 
   let line = params.position.line
@@ -74,23 +72,24 @@ gotoDefinition params = do
 
   nameLocs <- gets MD nameLocMap
   let Just (_, name) = findPointInTreeLoc (line, col) nameLocs
-    | Nothing => do
-        logString Debug "gotoDefinition: Couldn't find a name at \{show (line, col)}"
-        pure Nothing
+    | Nothing => do logD GotoDefinition "No name found at \{show line}:\{show col}}"
+                    pure Nothing
+  logI GotoDefinition "Found name \{show name}"
 
   Nothing <- findTypeAt $ anyWithName name $ within (line, col)
     | Just _ => do
-        logString Debug "gotoDefinition: \{show name} was a local name."
+        logD GotoDefinition "\{show name} is a local name"
         pure Nothing
 
   Just globalDef <- lookupCtxtExact name !(gets Ctxt gamma)
     | Nothing => do
-        logString Debug "gotoDefinition: \{show name} didn't have a GlobalDef."
+        logD GotoDefinition "\{show name} is not in the global context"
         pure Nothing
+  logI GotoDefinition "Found definition of \{show name}"
 
   case globalDef.location of
     MkFC f s e => mkLocation f s e
     MkVirtualFC f s e => mkLocation f s e
     _ => do
-      logString Debug "gotoDefinition: \{show name} didn't have location information."
+      logD GotoDefinition "\{show name} doesn't have location information."
       pure Nothing

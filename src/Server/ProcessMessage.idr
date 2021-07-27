@@ -82,30 +82,31 @@ loadURI : Ref LSPConf LSPConfiguration
        => Ref ROpts REPLOpts
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
-  modify LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
+  logI Server "Loading file \{show uri}"
+  update LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
   resetContext (Virtual Interactive)
   let fpath = uri.path
   let Just (startFolder, startFile) = splitParent fpath
     | Nothing => do let msg = "Cannot find the parent folder for \{show uri}"
-                    logString Error msg
+                    logE Server msg
                     pure $ Left msg
   True <- coreLift $ changeDir startFolder
     | False => do let msg = "Cannot change current directory to \{show startFolder}, folder of \{show startFile}"
-                  logString Error msg
+                  logE Server msg
                   pure $ Left msg
   Just fname <- findIpkg (Just fpath)
     | Nothing => do let msg = "Cannot find ipkg file for \{show uri}"
-                    logString Error msg
+                    logE Server msg
                     pure $ Left msg
   Right res <- coreLift $ File.readFile fname
     | Left err => do let msg = "Cannot read file at \{show uri}"
-                     logString Error msg
+                     logE Server msg
                      pure $ Left msg
   setSource res
   errs <- catch
             (buildDeps fname)
             (\err => do
-              logString Debug "loadURI: caught error which shouldn't be leaked: \{show err}"
+              logE Server "Caught error which shouldn't be leaked while loading file: \{show err}"
               pure [err])
   -- FIXME: the compiler always dumps the errors on stdout, requires
   --        a compiler change.
@@ -113,10 +114,10 @@ loadURI conf uri version = do
   -- of accumulating them in the buildDeps.
   case errs of
     [] => pure ()
-    (_::_) => modify LSPConf (record { errorFiles $= insert uri })
+    (_::_) => update LSPConf (record { errorFiles $= insert uri })
   resetProofState
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
-  modify LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
+  update LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
   traverse_ (findQuickfix caps uri) errs
   sendDiagnostics caps uri version errs
   pure $ Right ()
@@ -144,10 +145,12 @@ withURI : Ref LSPConf LSPConfiguration
        => InitializeParams
        -> URI -> Maybe Int -> Core (Either ResponseError a) -> Core (Either ResponseError a) -> Core (Either ResponseError a)
 withURI conf uri version d k = do
-  False <- isError uri | _ => d
+  False <- isError uri
+    | _ => logW Server "Trying to load \{show uri} which has errors" >> d
   case !(loadIfNeeded conf uri version) of
        Right () => k
-       Left err =>
+       Left err => do
+         logE Server "Error while loading \{show uri}: \{show err}"
          pure $ Left (MkResponseError (Custom 3) err JNull)
 
 ||| Guard for requests that requires a successful initialization before being allowed.
@@ -155,13 +158,15 @@ whenInitializedRequest : Ref LSPConf LSPConfiguration => (InitializeParams -> Co
 whenInitializedRequest k =
   case !(gets LSPConf initialized) of
        Just conf => k conf
-       Nothing => pure $ Left $ serverNotInitialized
+       Nothing => do logE Server "Cannot process requests before initalization"
+                     pure $ Left $ serverNotInitialized
 
 ||| Guard for requests that cannot be sent after the shutdown protocol.
 whenNotShutdownRequest : Ref LSPConf LSPConfiguration => Core (Either ResponseError a) -> Core (Either ResponseError a)
 whenNotShutdownRequest k =
   if !(gets LSPConf isShutdown)
-     then pure $ Left $ (invalidRequest "Server has been shutdown")
+     then do logE Server "Cannot process requests after shutdown"
+             pure $ Left $ invalidRequest "Server has been shutdown"
      else k
 
 ||| whenInitializedRequest + whenNotShutdownRequest
@@ -173,13 +178,15 @@ whenInitializedNotification : Ref LSPConf LSPConfiguration => (InitializeParams 
 whenInitializedNotification k =
   case !(gets LSPConf initialized) of
        Just conf => k conf
-       Nothing => sendUnknownResponseMessage $ serverNotInitialized
+       Nothing => do logE Server "Cannot process notification before initialization"
+                     sendUnknownResponseMessage $ serverNotInitialized
 
 ||| Guard for notifications that cannot be sent after the shutdown protocol.
 whenNotShutdownNotification : Ref LSPConf LSPConfiguration => Core () -> Core ()
 whenNotShutdownNotification k =
   if !(gets LSPConf isShutdown)
-     then sendUnknownResponseMessage $ (invalidRequest "Server has been shutdown")
+     then do logE Server "Cannot process notifications after shutdown"
+             sendUnknownResponseMessage $ invalidRequest "Server has been shutdown"
      else k
 
 ||| whenInitializedNotification + whenNotShutdownNotification
@@ -200,115 +207,139 @@ handleRequest :
 
 handleRequest Initialize params = do
   -- TODO: Here we should analyze the client capabilities.
+  logI Channel "Received initialization request"
 
   case params.initializationOptions of
        Just (JObject xs) => do
          case lookup "logFile" xs of
               Just (JString fname) => changeLogFile fname
-              Just _ => logString Error "Incorrect type for log file location, expected string"
+              Just _ => logE Configuration "Incorrect type for log file location, expected string"
               Nothing => pure ()
          case lookup "longActionTimeout" xs of
               Just (JNumber v) => setSearchTimeout $ cast v
-              Just _ => logString Error "Incorrect type for long action timeout, expected number"
+              Just _ => logE Configuration "Incorrect type for long action timeout, expected number"
               Nothing => pure ()
          case lookup "maxCodeActionResults" xs of
-              Just (JNumber v) => modify LSPConf (record { searchLimit = integerToNat $ cast v })
-              Just _ => logString Error "Incorrect type for max code action results, expected number"
+              Just (JNumber v) => update LSPConf (record { searchLimit = integerToNat $ cast v })
+              Just _ => logE Configuration "Incorrect type for max code action results, expected number"
               Nothing => pure ()
-       Just _ => logString Error "Incorrect type for initialization options"
+       Just _ => logE Configuration "Incorrect type for initialization options"
        Nothing => pure ()
 
-  modify LSPConf (record {initialized = Just params})
+  update LSPConf (record {initialized = Just params})
+  logI Server "Server initialized and configured"
   pure $ pure $ MkInitializeResult serverCapabilities (Just serverInfo)
 
 handleRequest Shutdown params = do
+  logI Channel "Received shutdown request"
   -- In a future multithreaded model, we must guarantee that all pending request are still executed.
   update LSPConf (record {isShutdown = True})
+  logI Server "Server ready to be shutdown"
   pure $ pure $ (the (Maybe Null) Nothing)
 
 handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
-    False <- isDirty params.textDocument.uri
-      | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
-      Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
-        | Just hover => do logString Debug "hover: found cached action"
-                           pure $ pure $ make hover
+  logI Channel "Received hover request for \{show params.textDocument.uri}"
+  False <- isDirty params.textDocument.uri
+    | True => do logW Hover "\{show params.textDocument.uri} has unsaved changes, cannot complete the request"
+                 pure $ pure $ make $ MkNull
+  withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
+    Nothing <- gets LSPConf (map snd . head' . searchPos (cast params.position) . cachedHovers)
+      | Just hover => do logD Hover "Found cached action"
+                         pure $ pure $ make hover
 
-      defs <- get Ctxt
-      nameLocs <- gets MD nameLocMap
+    defs <- get Ctxt
+    nameLocs <- gets MD nameLocMap
 
-      let Just (loc, name) = findPointInTreeLoc (params.position.line, params.position.character) nameLocs
-        | Nothing => pure $ pure $ (make $ MkHover (make $ MkMarkupContent PlainText "") Nothing)
-      -- Lookup the name globally
-      globals <- lookupCtxtName name (gamma defs)
-      globalResult <- the (Core $ Maybe $ Doc IdrisAnn) $ case globals of
-        [] => pure Nothing
-        ts => do tys <- traverse (displayType defs) ts
-                 pure $ Just (vsep tys)
-      localResult <- findTypeAt $ anyWithName name $ within (params.position.line, params.position.character)
-      line <- case (globalResult, localResult) of
-        -- Give precedence to the local name, as it shadows the others
-        (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $ pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
-        (Just globalDoc, Nothing) => pure $ renderString $ unAnnotateS $ layoutUnbounded globalDoc
-        (Nothing, Nothing) => pure ""
-      let supportsMarkup = maybe False (Markdown `elem`) $ conf.capabilities.textDocument >>= .hover >>= .contentFormat
-      let markupContent = the MarkupContent $ if supportsMarkup then MkMarkupContent Markdown $ "```idris\n" ++ line ++ "\n```" else MkMarkupContent PlainText line
-      let hover = MkHover (make markupContent) Nothing
-      modify LSPConf (record { cachedHovers $= insert (cast loc, hover) })
-      pure $ pure (make hover)
+    let Just (loc, name) = findPointInTreeLoc (params.position.line, params.position.character) nameLocs
+      | Nothing => pure $ pure $ (make $ MkHover (make $ MkMarkupContent PlainText "") Nothing)
+    logD Hover "Found name \{show name}"
+    -- Lookup the name globally
+    globals <- lookupCtxtName name (gamma defs)
+    globalResult <- the (Core $ Maybe $ Doc IdrisAnn) $ case globals of
+      [] => pure Nothing
+      ts => do tys <- traverse (displayType defs) ts
+               pure $ Just (vsep tys)
+    localResult <- findTypeAt $ anyWithName name $ within (params.position.line, params.position.character)
+    line <- case (globalResult, localResult) of
+      -- Give precedence to the local name, as it shadows the others
+      (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $ pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
+      (Just globalDoc, Nothing) => pure $ renderString $ unAnnotateS $ layoutUnbounded globalDoc
+      (Nothing, Nothing) => pure ""
+    let supportsMarkup = maybe False (Markdown `elem`) $ conf.capabilities.textDocument >>= .hover >>= .contentFormat
+    let markupContent = the MarkupContent $ if supportsMarkup then MkMarkupContent Markdown $ "```idris\n" ++ line ++ "\n```" else MkMarkupContent PlainText line
+    let hover = MkHover (make markupContent) Nothing
+    update LSPConf (record { cachedHovers $= insert (cast loc, hover) })
+    pure $ pure (make hover)
 
 handleRequest TextDocumentDefinition params = whenActiveRequest $ \conf => do
-    False <- isDirty params.textDocument.uri
-      | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
-      Just link <- gotoDefinition params | Nothing => pure $ pure $ make MkNull
-      pure $ pure $ make link
+  logI Channel "Received gotoDefinition request for \{show params.textDocument.uri}"
+  False <- isDirty params.textDocument.uri
+    | True => do logW GotoDefinition "\{show params.textDocument.uri} has unsaved changes, cannot complete the request"
+                 pure $ pure $ make $ MkNull
+  withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
+    Just link <- gotoDefinition params | Nothing => pure $ pure $ make MkNull
+    pure $ pure $ make link
 
 handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
-    False <- isDirty params.textDocument.uri
-      | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
-      quickfixActions <- map Just <$> gets LSPConf quickfixes
-      exprSearchAction <- map Just <$> exprSearch params
-      splitAction <- caseSplit params
-      lemmaAction <- makeLemma params
-      withAction <- makeWith params
-      clauseAction <- addClause params
-      makeCaseAction <- handleMakeCase params
-      generateDefAction <- map Just <$> generateDef params
-      refineHoleAction <- map Just <$> refineHole params
-      let resp = flatten $ quickfixActions ++ refineHoleAction
-                             ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
-                             ++ generateDefAction ++ exprSearchAction
-      pure $ pure $ make resp
-      where
-        flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
-        flatten [] = []
-        flatten (Nothing :: xs) = flatten xs
-        flatten ((Just x) :: xs) = make x :: flatten xs
+  logI Channel "Received codeAction request for \{show params.textDocument.uri}"
+  False <- isDirty params.textDocument.uri
+    | True => do logW CodeAction "\{show params.textDocument.uri} has unsaved changes, cannot complete the request"
+                 pure $ pure $ make $ MkNull
+  withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
+    quickfixActions <- map Just <$> gets LSPConf quickfixes
+    exprSearchAction <- map Just <$> exprSearch params
+    splitAction <- caseSplit params
+    lemmaAction <- makeLemma params
+    withAction <- makeWith params
+    clauseAction <- addClause params
+    makeCaseAction <- handleMakeCase params
+    generateDefAction <- map Just <$> generateDef params
+    refineHoleAction <- map Just <$> refineHole params
+    let resp = flatten $ quickfixActions ++ refineHoleAction
+                           ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
+                           ++ generateDefAction ++ exprSearchAction
+    pure $ pure $ make resp
+    where
+      flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
+      flatten [] = []
+      flatten (Nothing :: xs) = flatten xs
+      flatten ((Just x) :: xs) = make x :: flatten xs
 
 handleRequest TextDocumentSignatureHelp params = whenActiveRequest $ \conf => do
-    False <- isDirty params.textDocument.uri
-      | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
-      Just signatureHelpData <- signatureHelp params | Nothing => pure $ pure $ make MkNull
-      pure $ pure $ make signatureHelpData
+  logI Channel "Received signatureHelp request for \{show params.textDocument.uri}"
+  False <- isDirty params.textDocument.uri
+    | True => do logW SignatureHelp "\{show params.textDocument.uri} has unsaved changes, cannot complete the request"
+                 pure $ pure $ make $ MkNull
+  withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
+    Just signatureHelpData <- signatureHelp params | Nothing => pure $ pure $ make MkNull
+    pure $ pure $ make signatureHelpData
 
 handleRequest TextDocumentDocumentSymbol params = whenActiveRequest $ \conf => do
-    False <- isDirty params.textDocument.uri
-      | True => pure $ pure $ make $ MkNull
-    withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
-      documentSymbolData <- documentSymbol params
-      pure $ pure $ make documentSymbolData
+  logI Channel "Received documentSymbol request for \{show params.textDocument.uri}"
+  False <- isDirty params.textDocument.uri
+    | True => do logW DocumentSymbol "\{show params.textDocument.uri} has unsaved changes, cannot complete the request"
+                 pure $ pure $ make $ MkNull
+  withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
+    documentSymbolData <- documentSymbol params
+    pure $ pure $ make documentSymbolData
 
-handleRequest TextDocumentCodeLens params = whenActiveRequest $ \conf =>
-    pure $ pure $ make MkNull
+handleRequest TextDocumentCodeLens params = whenActiveRequest $ \conf => do
+  -- TODO: still unimplemented, but send empty message to avoid errors
+  -- in clients since it's a common request
+  logW Channel $ "Received an unsupported codeLens request"
+  pure $ pure $ make MkNull
 
-handleRequest TextDocumentCompletion params = whenActiveRequest $ \conf =>
-    pure $ pure $ make MkNull
+handleRequest TextDocumentCompletion params = whenActiveRequest $ \conf => do
+  -- TODO: still unimplemented, but send empty message to avoid errors
+  -- in clients since it's a common request
+  logW Channel $ "Received an unsupported completion request"
+  pure $ pure $ make MkNull
 
-handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf =>
-    pure $ pure $ make MkNull
+handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf => do
+  -- TODO: still unimplemented, but send empty message to avoid errors
+  -- in clients since it's a common request
+  logW Channel $ "Received an unsupported documentLink request"
+  pure $ pure $ make MkNull
 
 handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
@@ -320,12 +351,12 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
       src <- getSource
       let srcLines = forget $ lines src
       let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
-      let tokens = getSemanticTokens md getLineLength
-      modify LSPConf (record { semanticTokensSentFiles $= insert params.textDocument.uri })
+      tokens <- getSemanticTokens md getLineLength
+      update LSPConf (record { semanticTokensSentFiles $= insert params.textDocument.uri })
       pure $ pure $ (make $ tokens)
 
 handleRequest method params = whenActiveRequest $ \conf => do
-    logString Warning $ "received a not supported \{show (toJSON method)} request"
+    logW Channel $ "Received a not supported \{show (toJSON method)} request"
     pure $ Left methodNotFound
 
 export
@@ -341,35 +372,44 @@ handleNotification :
     -> Core ()
 
 handleNotification Exit params = do
-  let status = if !(gets LSPConf isShutdown) then ExitSuccess else ExitFailure 1
+  logI Channel "Received exit notification"
+  status <- if !(gets LSPConf isShutdown)
+               then logI Server "Quitting the server..." >> pure ExitSuccess
+               else logC Server "Quitting the server without a proper shutdown" >> pure (ExitFailure 1)
   coreLift $ exitWith status
 
-handleNotification TextDocumentDidOpen params = whenActiveNotification $ \conf =>
-    ignore $ loadURI conf params.textDocument.uri (Just params.textDocument.version)
+handleNotification TextDocumentDidOpen params = whenActiveNotification $ \conf => do
+  logI Channel "Received didOpen notification for \{show params.textDocument.uri}"
+  ignore $ loadURI conf params.textDocument.uri (Just params.textDocument.version)
 
 handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf => do
-    modify LSPConf (record
-      { dirtyFiles $= delete params.textDocument.uri
-      , errorFiles $= delete params.textDocument.uri
-      , semanticTokensSentFiles $= delete params.textDocument.uri
-      })
-    ignore $ loadURI conf params.textDocument.uri Nothing
-    when (fromMaybe False $ conf.capabilities.workspace >>= semanticTokens >>= refreshSupport) $
-      sendRequestMessage_ WorkspaceSemanticTokensRefresh Nothing
+  logI Channel "Received didSave notification for \{show params.textDocument.uri}"
+  update LSPConf (record
+    { dirtyFiles $= delete params.textDocument.uri
+    , errorFiles $= delete params.textDocument.uri
+    , semanticTokensSentFiles $= delete params.textDocument.uri
+    })
+  ignore $ loadURI conf params.textDocument.uri Nothing
+  when (fromMaybe False $ conf.capabilities.workspace >>= semanticTokens >>= refreshSupport) $ do
+    logI SemanticTokens "Sending semantic tokens for \{show params.textDocument.uri}"
+    sendRequestMessage_ WorkspaceSemanticTokensRefresh Nothing
 
 handleNotification TextDocumentDidChange params = whenActiveNotification $ \conf => do
-    modify LSPConf (record { dirtyFiles $= insert params.textDocument.uri })
+  logI Channel "Received didChange notification for \{show params.textDocument.uri}"
+  update LSPConf (record { dirtyFiles $= insert params.textDocument.uri })
+  logI Server "File \{show params.textDocument.uri} marked as dirty"
 
 handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf => do
-    modify LSPConf (record { openFile = Nothing
-                           , quickfixes = []
-                           , cachedActions = empty
-                           , cachedHovers = empty
-                           , dirtyFiles $= delete params.textDocument.uri
-                           , errorFiles $= delete params.textDocument.uri
-                           , semanticTokensSentFiles $= delete params.textDocument.uri
-                           })
-    logString Info $ "File \{params.textDocument.uri.path} closed"
+  logI Channel "Received didClose notification for \{show params.textDocument.uri}"
+  update LSPConf (record { openFile = Nothing
+                         , quickfixes = []
+                         , cachedActions = empty
+                         , cachedHovers = empty
+                         , dirtyFiles $= delete params.textDocument.uri
+                         , errorFiles $= delete params.textDocument.uri
+                         , semanticTokensSentFiles $= delete params.textDocument.uri
+                         })
+  logI Server $ "File \{show params.textDocument.uri} closed"
 
 handleNotification method params = whenActiveNotification $ \conf =>
-  logString Warning "unhandled notification"
+  logW Channel "Received unhandled notification for method \{stringify $ toJSON method}"
