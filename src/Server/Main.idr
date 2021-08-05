@@ -41,9 +41,9 @@ Show Header where
 
 headerPart : List Header -> String
 headerPart [] = ""
-headerPart (ContentLength l :: xs) = "Content-Length: " ++ show l ++ "\r\n" ++ headerPart xs
-headerPart (ContentType s :: xs) = "Content-Type: " ++ s ++ "\r\n" ++ headerPart xs
-headerPart (StartContent :: _) = "\r\n"
+headerPart (ContentLength l :: xs) = "Content-Length: " ++ show l ++ "\n" ++ headerPart xs
+headerPart (ContentType s :: xs) = "Content-Type: " ++ s ++ "\n" ++ headerPart xs
+headerPart (StartContent :: _) = "\n"
 
 parseHeader : String -> Maybe Header
 parseHeader "\r\n" = Just StartContent

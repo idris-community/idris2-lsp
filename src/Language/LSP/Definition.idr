@@ -18,6 +18,10 @@ import Server.Utils
 import System.File
 import System.Path
 
+normalizePathSep : Char -> Char
+normalizePathSep '\\' = '/'
+normalizePathSep ch = ch
+
 mkLocation : Ref Ctxt Defs
           => Ref LSPConf LSPConfiguration
           => OriginDesc -> (Int, Int) -> (Int, Int) -> Core (Maybe Location)
@@ -42,7 +46,8 @@ mkLocation origin (sline, scol) (eline, ecol) = do
     | _ => do logD GotoDefinition "Can't find file for module \{show modIdent}"
               pure Nothing
 
-  let fname_abs_uri = "file://" ++ fname_abs
+  let fname_abs2 = fastPack (map normalizePathSep (fastUnpack fname_abs))
+  let fname_abs_uri = "file:///" ++ fname_abs2
 
   let Right (uri, _) = parse uriReferenceParser fname_abs_uri
     | Left err => do logE GotoDefinition "URI parse error: \{err} \{show (fname_abs_uri, sline, scol)}"

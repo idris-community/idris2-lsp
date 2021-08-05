@@ -39,7 +39,7 @@ fGetHeader handle = do
     | Left err => pure $ Left err
   -- TODO: reading up to a string should probably be handled directly by the FFI primitive
   --       or at least in a more efficient way in Idris2
-  if isSuffixOf "\r\n" l
+  if isSuffixOf "\n" l
      then pure $ Right l
      else (map (l ++)) <$> fGetHeader handle
 
