@@ -5,6 +5,7 @@ import Core.Core
 import Core.Directory
 import Core.Env
 import Core.FC
+import Core.Metadata
 import Data.OneOf
 import Data.String
 import Idris.Pretty
@@ -21,7 +22,7 @@ import System.File
 import System.Path
 
 keyword : Doc IdrisAnn -> Doc IdrisAnn
-keyword = annotate (Syntax SynKeyword)
+keyword = annotate $ Syntax (SynDecor Keyword)
 
 buildDiagnostic : Maybe FC -> Doc IdrisAnn -> Maybe (List DiagnosticRelatedInformation) -> Diagnostic
 buildDiagnostic loc error related =
@@ -118,6 +119,7 @@ pwarning (ShadowingGlobalDefs _ ns) =
              (forget ns)
 pwarning (Deprecated s) = pure $ pretty "Deprecation warning:" <++> pretty s
 pwarning (GenericWarn s) = pure $ pretty s
+pwarning (ParserWarning fc msg) = pure $ pretty msg
 
 perror : Ref Ctxt Defs
       => Ref Syn SyntaxInfo

@@ -170,7 +170,7 @@ Measure (Range, a) where
   measure (r, _) = (cast r.start, cast r.end)
 
 export
-prettyTerm : PTerm -> Doc IdrisAnn
+prettyTerm : IPTerm -> Doc IdrisAnn
 prettyTerm = reAnnotate Syntax . Pretty.prettyTerm
 
 export

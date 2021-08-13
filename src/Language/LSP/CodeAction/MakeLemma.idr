@@ -21,6 +21,7 @@ import Server.Log
 import Server.Utils
 import TTImp.Interactive.MakeLemma
 import TTImp.TTImp
+import TTImp.TTImp.Functor
 
 buildCodeAction : Name -> URI -> List TextEdit -> CodeAction
 buildCodeAction name uri edits =
@@ -72,9 +73,9 @@ makeLemma params = do
       logD MakeLemma "Found metavariable \{show name}"
 
       (lty, lapp) <- makeLemma replFC name locs ty
-      lemmaTy <- pterm lty
-      papp <- pterm lapp
-      let lemmaApp = show $ the PTerm $ if toBrack then addBracket replFC papp else papp
+      lemmaTy <- pterm $ map (MkKindedName Nothing) lty
+      papp <- pterm $ map (MkKindedName Nothing) lapp
+      let lemmaApp = show $ the IPTerm $ if toBrack then addBracket replFC papp else papp
 
       src <- lines <$> getSource
       let Just srcLine = elemAt src (integerToNat (cast line))

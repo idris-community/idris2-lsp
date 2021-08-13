@@ -1,7 +1,7 @@
 module Data.OneOf
 
 import public Data.List.Elem
-import public Data.HList
+import public Data.List.Quantifiers
 
 %default total
 

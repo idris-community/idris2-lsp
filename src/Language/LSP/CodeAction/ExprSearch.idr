@@ -19,6 +19,7 @@ import Server.Log
 import Server.Utils
 import TTImp.Interactive.ExprSearch
 import TTImp.TTImp
+import TTImp.TTImp.Functor
 
 dropLams : Nat -> RawImp -> RawImp
 dropLams Z tm = tm
@@ -68,14 +69,17 @@ exprSearch params = do
                         pure []
       logD ExprSearch "Found name \{show name}"
 
-      context <- gets Ctxt gamma
+      defs <- get Ctxt
+      let context = defs.gamma
       toBrack <- gets Syn (elemBy (\x, y => dropNS x == dropNS y) name . bracketholes)
-      let bracket = the (PTerm -> PTerm) $ if toBrack then addBracket replFC else id
+      let bracket = the (IPTerm -> IPTerm) $ if toBrack then addBracket replFC else id
       solutions <-
         case !(lookupDefName name context) of
              [(n, nidx, Hole locs _)] =>
                catch (do searchtms <- exprSearchN replFC fuel name []
-                         traverse (map (show . bracket) . pterm . dropLams locs) searchtms)
+                     -- let tm' = dropLams locs restm
+                     -- itm <- pterm $ map (MkKindedName Nothing) tm' -- hack
+                         traverse (map (show . bracket) . pterm . map (MkKindedName Nothing) . dropLams locs) searchtms)
                      (\case Timeout _ => do logI ExprSearch "Timed out"
                                             pure []
                             err => do logC ExprSearch "Unexpected error while searching"
@@ -84,7 +88,7 @@ exprSearch params = do
                NotHole => do logD ExprSearch "\{show name} is not a metavariable"
                              pure []
                SolvedHole locs => do
-                 let (_ ** (env, tm')) = dropLamsTm locs [] tm
+                 let (_ ** (env, tm')) = dropLamsTm locs [] !(normaliseHoles defs [] tm)
                  itm <- resugar env tm'
                  pure [show $ bracket itm]
              _ => do logD ExprSearch "\{show name} is not a metavariable"

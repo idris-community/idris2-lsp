@@ -31,9 +31,10 @@ record URIAuthority where
 
 export
 Show URIAuthority where
-  show authority = fromMaybe "" ((+> '@') <$> authority.userInfo)
-                     ++ authority.regName
-                     ++ fromMaybe "" (((<+) ':' . show) <$> authority.port)
+  show authority =
+    let info = maybe "" (+> '@') authority.userInfo
+        port = maybe "" ((':' <+) . show) authority.port
+     in "\{info}\{authority.regName}\{port}"
 
 export
 Eq URIAuthority where
@@ -55,12 +56,11 @@ record URI where
 
 export
 Show URI where
-  show uri = uri.scheme
-               ++ ":"
-               ++ fromMaybe "" ((++) "//" . show <$> uri.authority)
-               ++ uri.path
-               ++ if uri.query == "" then "" else '?' <+ uri.query
-               ++ if uri.fragment == "" then "" else '#' <+ uri.fragment
+  show uri = 
+    let auth = maybe "" ((++ "//") . show) uri.authority
+        query = if uri.query == "" then "" else '?' <+ uri.query
+        fragment = if uri.fragment == "" then "" else '#' <+ uri.fragment
+     in "\{uri.scheme}:\{auth}\{uri.path}\{query}\{fragment}"
 
 export
 Eq URI where
@@ -91,8 +91,8 @@ pctEncoded = do
   x <- satisfy isHexDigit
   y <- satisfy isHexDigit
   let Just d = fromHexChars [y, x]
-    | Nothing => fail $ "Cannot convert " ++ show (the (List Char) [x, y]) ++ " to a hex number"
-  pure (chr (cast d))
+    | Nothing => fail "Cannot convert \{show x}\{show y} to a hex number"
+  pure $ chr (cast d)
 
 ||| Parser for a URI scheme.
 |||
@@ -150,7 +150,7 @@ ipV6AddressParser = with Prelude.(::)
       o1 <- optional (satisfy isHexDigit)
       o2 <- optional (satisfy isHexDigit)
       o3 <- optional (satisfy isHexDigit)
-      pure (pack (c :: fromMaybe [] (sequence [o1, o2, o3])))
+      pure $ pack (c :: fromMaybe [] (sequence [o1, o2, o3]))
 
     ls32 : Parser String
     ls32 = [| [| h16 +> char ':' |] ++ h16 |] <|> ipV4AddressParser
@@ -192,10 +192,10 @@ regNameParser = pack <$> many (satisfy isUnreserved <|> pctEncoded <|> satisfy i
 authorityParser : Parser URIAuthority
 authorityParser = do
   ignore $ string "//"
-  userInfo <- optional (userInfoParser <* char '@')
+  userInfo <- optional $ userInfoParser <* char '@'
   host <- ipLiteralParser <|> ipV4AddressParser <|> regNameParser
-  port <- optional (char ':' *> natural)
-  pure (MkURIAuthority userInfo host port)
+  port <- optional $ char ':' *> natural
+  pure $ MkURIAuthority userInfo host port
 
 ||| Parser for a valid character in a path.
 |||
@@ -271,20 +271,20 @@ uriParser : Parser URI
 uriParser = do
   scheme <- schemeParser
   ignore $ char ':'
-  (authority, path) <- [| MkPair ((Just <$> authorityParser)) abempty |] <|> ((Nothing,) <$> (absolute <|> rootless <|> empty))
+  (authority, path) <- [| MkPair (Just <$> authorityParser) abempty |] <|> ((Nothing,) <$> (absolute <|> rootless <|> empty))
   query <- optionMap "" id (char '?' *> queryParser)
   fragment <- optionMap "" id (char '#' *> fragmentParser)
-  pure (MkURI scheme authority path query fragment)
+  pure $ MkURI scheme authority path query fragment
 
 ||| Parser for a URI relative reference.
 |||
 ||| @see RFC 3986, section 4.2
 relativeReferenceParser : Parser URI
 relativeReferenceParser = do
-  (authority, path) <- [| MkPair ((Just <$> authorityParser)) abempty |] <|> ((Nothing,) <$> (absolute <|> noscheme <|> empty))
+  (authority, path) <- [| MkPair (Just <$> authorityParser) abempty |] <|> ((Nothing,) <$> (absolute <|> noscheme <|> empty))
   query <- optionMap "" id (char '?' *> queryParser)
   fragment <- optionMap "" id (char '#' *> fragmentParser)
-  pure (MkURI "" authority path query fragment)
+  pure $ MkURI "" authority path query fragment
 
 ||| Parser for a URI reference.
 |||
@@ -301,6 +301,6 @@ uriAbsoluteParser : Parser URI
 uriAbsoluteParser = do
   scheme <- schemeParser
   ignore $ char ':'
-  (authority, path) <- [| MkPair ((Just <$> authorityParser)) abempty |] <|> ((Nothing,) <$> (absolute <|> rootless <|> empty))
+  (authority, path) <- [| MkPair (Just <$> authorityParser) abempty |] <|> ((Nothing,) <$> (absolute <|> rootless <|> empty))
   query <- optionMap "" id (char '?' *> queryParser)
-  pure (MkURI scheme authority path query "")
+  pure $ MkURI scheme authority path query ""
