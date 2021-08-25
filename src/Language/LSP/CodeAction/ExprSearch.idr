@@ -77,9 +77,7 @@ exprSearch params = do
         case !(lookupDefName name context) of
              [(n, nidx, Hole locs _)] =>
                catch (do searchtms <- exprSearchN replFC fuel name []
-                     -- let tm' = dropLams locs restm
-                     -- itm <- pterm $ map (MkKindedName Nothing) tm' -- hack
-                         traverse (map (show . bracket) . pterm . map (MkKindedName Nothing) . dropLams locs) searchtms)
+                         traverse (map (show . bracket) . pterm . map defaultKindedName . dropLams locs) searchtms)
                      (\case Timeout _ => do logI ExprSearch "Timed out"
                                             pure []
                             err => do logC ExprSearch "Unexpected error while searching"

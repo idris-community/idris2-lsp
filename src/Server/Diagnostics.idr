@@ -22,7 +22,7 @@ import System.File
 import System.Path
 
 keyword : Doc IdrisAnn -> Doc IdrisAnn
-keyword = annotate $ Syntax (SynDecor Keyword)
+keyword = annotate $ Syntax Keyword
 
 buildDiagnostic : Maybe FC -> Doc IdrisAnn -> Maybe (List DiagnosticRelatedInformation) -> Diagnostic
 buildDiagnostic loc error related =

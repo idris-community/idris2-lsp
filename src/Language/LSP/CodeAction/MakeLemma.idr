@@ -73,8 +73,8 @@ makeLemma params = do
       logD MakeLemma "Found metavariable \{show name}"
 
       (lty, lapp) <- makeLemma replFC name locs ty
-      lemmaTy <- pterm $ map (MkKindedName Nothing) lty
-      papp <- pterm $ map (MkKindedName Nothing) lapp
+      lemmaTy <- pterm $ map defaultKindedName lty
+      papp <- pterm $ map defaultKindedName lapp
       let lemmaApp = show $ the IPTerm $ if toBrack then addBracket replFC papp else papp
 
       src <- lines <$> getSource
