@@ -23,7 +23,7 @@ semanticTokensLegend = MkSemanticTokensLegend
   -- ``data``: data constructors       ==> ``enumMember``
   -- ``bound``: bound variables, or    ==> ``variable``
   -- ``keyword``                       ==> ``keyword``
-  ["type", "function", "enumMember", "variable", "keyword"]
+  ["type", "function", "enumMember", "variable", "keyword", "namespace", "postulate", "module"]
   []
 
 semanticTokensOptions : SemanticTokensOptions

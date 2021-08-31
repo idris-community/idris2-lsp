@@ -22,6 +22,9 @@ encode (relLine, relStartChar) (((_, (sl, sc), (el, ec)), decor, _) :: xs) =
   encodeDecorType Data     = 2
   encodeDecorType Bound    = 3
   encodeDecorType Keyword  = 4
+  encodeDecorType Namespace = 5
+  encodeDecorType Postulate = 6
+  encodeDecorType Module = 7
 
   ||| Line, StartChar, Length, TokenType, TokenModifiers
   encoding : List Int
