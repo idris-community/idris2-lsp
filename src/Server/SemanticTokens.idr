@@ -7,6 +7,7 @@ import Libraries.Data.PosMap
 import Data.String
 import Core.Context
 import Server.Configuration
+import Server.Capabilities
 import Server.Log
 
 ||| encode using relative tokens according the to LSP spec
@@ -15,23 +16,12 @@ encode _ [] = []
 encode (relLine, relStartChar) (((_, (sl, sc), (el, ec)), decor, _) :: xs) =
   encoding ++ encode (sl, sc) xs
  where
-  ||| Convert Decoration to legend index
-  encodeDecorType : Decoration -> Int
-  encodeDecorType Typ      = 0
-  encodeDecorType Function = 1
-  encodeDecorType Data     = 2
-  encodeDecorType Bound    = 3
-  encodeDecorType Keyword  = 4
-  encodeDecorType Namespace = 5
-  encodeDecorType Postulate = 6
-  encodeDecorType Module = 7
-
   ||| Line, StartChar, Length, TokenType, TokenModifiers
   encoding : List Int
   encoding = [ sl - relLine
              , if sl == relLine then sc - relStartChar else sc
              , ec - sc
-             , encodeDecorType decor
+             , encodeDecorAsNum decor
              , 0]
 
 ||| Remove zero width tokens and split multiline tokens

@@ -3,6 +3,8 @@
 ||| (C) The Idris Community, 2021
 module Server.Capabilities
 
+import Core.Metadata
+
 import Language.JSON
 import Language.LSP.Message
 
@@ -16,6 +18,31 @@ syncOptions = MkTextDocumentSyncOptions { openClose = Just True
                                         , save = Just (make (MkSaveOptions (Just True)))
                                         }
 
+decor : List Decoration
+decor = [Typ, Function, Data, Bound, Keyword, Namespace, Postulate, Module]
+
+encodeDecorAsString : Decoration -> String
+encodeDecorAsString Typ       = "type"
+encodeDecorAsString Function  = "function"
+encodeDecorAsString Data      = "enumMember"
+encodeDecorAsString Bound     = "variable"
+encodeDecorAsString Keyword   = "keyword"
+encodeDecorAsString Namespace = "namespace"
+encodeDecorAsString Postulate = "postulate"
+encodeDecorAsString Module    = "module"
+
+||| Convert Decoration to legend index
+export
+encodeDecorAsNum : Decoration -> Int
+encodeDecorAsNum Typ       = 0
+encodeDecorAsNum Function  = 1
+encodeDecorAsNum Data      = 2
+encodeDecorAsNum Bound     = 3
+encodeDecorAsNum Keyword   = 4
+encodeDecorAsNum Namespace = 5
+encodeDecorAsNum Postulate = 6
+encodeDecorAsNum Module    = 7
+
 semanticTokensLegend : SemanticTokensLegend
 semanticTokensLegend = MkSemanticTokensLegend
   -- ``type``: type constructors       ==> ``type``
@@ -23,7 +50,7 @@ semanticTokensLegend = MkSemanticTokensLegend
   -- ``data``: data constructors       ==> ``enumMember``
   -- ``bound``: bound variables, or    ==> ``variable``
   -- ``keyword``                       ==> ``keyword``
-  ["type", "function", "enumMember", "variable", "keyword", "namespace", "postulate", "module"]
+  (map encodeDecorAsString decor)
   []
 
 semanticTokensOptions : SemanticTokensOptions
