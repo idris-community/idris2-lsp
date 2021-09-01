@@ -98,7 +98,10 @@ loadURI conf uri version = do
     | Nothing => do let msg = "Cannot find ipkg file for \{show uri}"
                     logE Server msg
                     pure $ Left msg
-  res <- Core.readFile fname
+  Right res <- coreLift $ File.ReadWrite.readFile fname
+    | Left err => do let msg = "Cannot read file at \{show uri}"
+                     logE Server msg
+                     pure $ Left msg
   setSource res
   errs <- catch
             (buildDeps fname)
