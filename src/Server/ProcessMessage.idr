@@ -98,7 +98,7 @@ loadURI conf uri version = do
     | Nothing => do let msg = "Cannot find ipkg file for \{show uri}"
                     logE Server msg
                     pure $ Left msg
-  Right res <- coreLift $ File.readFile fname
+  Right res <- coreLift $ File.ReadWrite.readFile fname
     | Left err => do let msg = "Cannot read file at \{show uri}"
                      logE Server msg
                      pure $ Left msg
