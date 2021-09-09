@@ -47,18 +47,18 @@ buildRelatedInformation uri fc msg = MkDiagnosticRelatedInformation (MkLocation 
 ||| @err The compiler error.
 getRelatedErrors : (uri : URI) -> (err : Error) -> List DiagnosticRelatedInformation
 getRelatedErrors uri (Fatal err) = getRelatedErrors uri err
-getRelatedErrors uri (CantConvert fc _ l r) =
+getRelatedErrors uri (CantConvert fc _ _ l r) =
   [ buildRelatedInformation uri (getLoc l) "Mismatched type"
   , buildRelatedInformation uri (getLoc r) "Mismatched type"
   ]
-getRelatedErrors uri (CantSolveEq fc _ l r) =
+getRelatedErrors uri (CantSolveEq fc _ _ l r) =
   [ buildRelatedInformation uri (getLoc l) "Can't solve constraint"
   , buildRelatedInformation uri (getLoc r) "Can't solve constraint type"
   ]
 getRelatedErrors uri (PatternVariableUnifies fc _ n tm) =
   [ buildRelatedInformation uri (getLoc tm) ("Unifies with pattern variable " ++ show n) ]
 getRelatedErrors uri (CyclicMeta fc _ _ _) = []
-getRelatedErrors uri (WhenUnifying fc _ x y _) =
+getRelatedErrors uri (WhenUnifying fc _ _ x y _) =
   [ buildRelatedInformation uri (getLoc x) "Error while unification"
   , buildRelatedInformation uri (getLoc y) "Error while unification"
   ]
@@ -127,13 +127,13 @@ perror : Ref Ctxt Defs
       => Error
       -> Core (Doc IdrisAnn)
 perror (Fatal err) = perror err
-perror (CantConvert fc env l r) =
+perror (CantConvert fc _ env l r) =
   pure $ errorDesc (hsep [ reflow "Mismatch between" <+> colon
                          , code !(pshow env l)
                          , "and"
                          , code !(pshow env r) <+> dot
                          ])
-perror (CantSolveEq fc env l r) =
+perror (CantSolveEq fc _ env l r) =
   pure $ errorDesc (hsep [ reflow "Can't solve constraint between" <+> colon
                          , code !(pshow env l)
                          , "and"
@@ -152,7 +152,7 @@ perror (PatternVariableUnifies fc env n tm) =
 perror (CyclicMeta fc env n tm)
     = pure $ errorDesc (reflow "Cycle detected in solution of metavariable" <++> meta (pretty !(prettyName n)) <++> equals
         <++> code !(pshow env tm))
-perror (WhenUnifying _ env x y err)
+perror (WhenUnifying _ _ env x y err)
     = pure $ errorDesc (reflow "When unifying" <++> code !(pshow env x) <++> "and"
         <++> code !(pshow env y)) <+> dot <+> line <+> !(perror err)
 perror (ValidCase fc env (Left tm))
@@ -279,7 +279,7 @@ perror (TryWithImplicits fc env imps)
 perror (BadUnboundImplicit fc env n ty)
     = pure $ errorDesc (reflow "Can't bind name" <++> code (pretty (nameRoot n)) <++> reflow "with type" <++> code !(pshow env ty)
         <+> colon) <+> line <+> reflow "Suggestion: try an explicit bind."
-perror (CantSolveGoal fc env g)
+perror (CantSolveGoal fc _ env g)
     = let (_ ** (env', g')) = dropEnv env g in
           pure $ errorDesc (reflow "Can't find an implementation for" <++> code !(pshow env' g') <+> dot)
   where

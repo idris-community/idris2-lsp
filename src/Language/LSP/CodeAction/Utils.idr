@@ -1,6 +1,7 @@
 module Language.LSP.CodeAction.Utils
 
 import Core.Core
+import Core.Context.Context
 import Language.LSP.CodeAction
 import Language.LSP.Message.CodeAction
 import Language.LSP.Message.Location

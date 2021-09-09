@@ -4,6 +4,7 @@
 module Server.Log
 
 import Core.Core
+import Core.Context.Context
 import Core.Directory
 import Server.Configuration
 import Server.Utils
