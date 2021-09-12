@@ -55,6 +55,7 @@ import Data.List1
 import Libraries.Data.List.Extra
 import Parser.Unlit
 
+||| Mostly copied from Idris.REPL.displayResult.
 replResultToDoc : {auto c : Ref Ctxt Defs}
                -> {auto u : Ref UST UState}
                -> {auto s : Ref Syn SyntaxInfo}
