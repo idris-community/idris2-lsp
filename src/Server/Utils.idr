@@ -68,6 +68,47 @@ b16ToHexString n =
                b16ToHexString (n `shiftR` fromNat 4) ++
                b16ToHexString (n .&. 15)
 
+||| Pad a string with leading zeros, if
+||| its length is less than 4, up to 4 symbols.
+pad4 : String -> String
+pad4 str =
+  case length str of
+    0 => "0000"
+    1 => "000" ++ str
+    2 => "00" ++ str
+    3 => "0" ++ str
+    _ => str
+
+||| See https://en.wikipedia.org/wiki/UTF-16 for the algorithm.
+||| Returns the codepoint value represented as a hex string,
+||| if it encodes a symbol from the Basic Multilingual Plane.
+||| Otherwise, returns the 16-bit surrogate pair, every element of which
+||| is, in turn, represented as a hex string.
+encodeCodepointH : Bits32 -> Either String (String, String)
+encodeCodepointH x =
+  case x <= 0xFFFF of
+    -- Basic Multilingual Plane
+    True => Left $ pad4 (b16ToHexString (cast x))
+    --  One of the Supplementary Planes
+    False =>
+      let x' = x - 0x10000 in
+      Right $
+        ( pad4 (b16ToHexString (cast $ 0xD800 + (x' `shiftR` fromNat 10)))
+        , pad4 (b16ToHexString (cast $ 0xDC00 + (x' .&. 0b1111111111))))
+
+||| Encode an arbitrary unicode codepointby escaping it
+||| as defined in
+||| https://tools.ietf.org/id/draft-ietf-json-rfc4627bis-09.html#rfc.section.7
+encodeCodepoint : Bits32 -> String
+encodeCodepoint x =
+  case encodeCodepointH x of
+    Left w => "\\u" ++ w
+    Right (w1, w2) => "\\u" ++ w1 ++ "\\u" ++ w2
+
+||| Here we escape all wide characters (exceeding 8 bit width).
+||| JSON spec doesn't seem to require that,
+||| but at least some of the editors (e.g. Neovim) expect
+||| wide characters escaped, otherwise refusing to work.
 private
 showChar : Char -> String
 showChar c =
@@ -80,7 +121,7 @@ showChar c =
        '\\' => "\\\\"
        '"'  => "\\\""
        c => if isControl c || c >= '\127'
-               then "\\u" ++ b16ToHexString (cast (ord c))
+               then encodeCodepoint (cast $ ord c)
                else singleton c
 
 private
