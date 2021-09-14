@@ -182,9 +182,9 @@ main = do
               Just cwd <- coreLift $ currentDir
                 | Nothing => throw (InternalError "Can't get current directory")
               addLibDir cwd
-              -- That truth value tells Idris to silence the error output it otherwise dumps to stdout.
-              --                                                vvvv
-              o <- newRef ROpts (Opts.defaultOpts Nothing (REPL True) [])
+              -- Set verbosity level to none, i.e. dump (almost) no output to stdout.
+              --                                                vvvvvvv
+              o <- newRef ROpts (Opts.defaultOpts Nothing (REPL NoneLvl) [])
               u <- newRef UST initUState
               m <- newRef MD (initMetadata (Virtual Interactive))
               runServer)
