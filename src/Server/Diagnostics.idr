@@ -121,6 +121,7 @@ pwarning (Deprecated s) = pure $ pretty "Deprecation warning:" <++> pretty s
 pwarning (GenericWarn s) = pure $ pretty s
 pwarning (ParserWarning fc msg) = pure $ pretty msg
 
+export
 perror : Ref Ctxt Defs
       => Ref Syn SyntaxInfo
       => Ref ROpts REPLOpts

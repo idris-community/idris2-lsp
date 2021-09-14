@@ -12,6 +12,9 @@ import Core.UnifyState
 import Data.List
 import Data.OneOf
 import Data.SortedSet
+import Data.String
+import Idris.Doc.String
+import Idris.IDEMode.Holes
 import Idris.ModTree
 import Idris.Package
 import Idris.Pretty
@@ -19,7 +22,6 @@ import Idris.REPL
 import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
-import Idris.IDEMode.Holes
 import Language.JSON
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.AddClause
@@ -35,13 +37,15 @@ import Language.LSP.DocumentSymbol
 import Language.LSP.SignatureHelp
 import Language.LSP.Message
 import Libraries.Data.PosMap
+import Libraries.Data.Version
 import Libraries.Utils.Path
 import Server.Capabilities
 import Server.Configuration
+import Server.Diagnostics
 import Server.Log
 import Server.QuickFix
-import Server.SemanticTokens
 import Server.Response
+import Server.SemanticTokens
 import Server.Utils
 import System
 import System.Clock
@@ -49,6 +53,59 @@ import System.Directory
 import System.File
 import Data.List1
 import Libraries.Data.List.Extra
+import Parser.Unlit
+
+||| Mostly copied from Idris.REPL.displayResult.
+replResultToDoc : {auto c : Ref Ctxt Defs}
+               -> {auto u : Ref UST UState}
+               -> {auto s : Ref Syn SyntaxInfo}
+               -> {auto m : Ref MD Metadata}
+               -> {auto o : Ref ROpts REPLOpts}
+               -> REPLResult
+               -> Core (Doc IdrisAnn)
+replResultToDoc (REPLError err) = pure err
+replResultToDoc (Evaluated x Nothing) = pure (prettyTerm x)
+replResultToDoc (Evaluated x (Just y)) = pure (prettyTerm x <++> colon <++> code (prettyTerm y))
+replResultToDoc (Printed xs) = pure xs
+replResultToDoc (TermChecked x y) = pure (prettyTerm x <++> colon <++> code (prettyTerm y))
+replResultToDoc (FileLoaded x) = pure (reflow "Loaded file" <++> pretty x)
+replResultToDoc (ModuleLoaded x) = pure (reflow "Imported module" <++> pretty x)
+replResultToDoc (ErrorLoadingModule x err) = pure $ reflow "Error loading module" <++> pretty x <+> colon <++> !(perror err)
+replResultToDoc (ErrorLoadingFile x err) = pure (reflow "Error loading file" <++> pretty x <+> colon <++> pretty (show err))
+replResultToDoc (ErrorsBuildingFile x errs) = pure (reflow "Error(s) building file" <++> pretty x) -- messages already displayed while building
+replResultToDoc NoFileLoaded = pure (reflow "No file can be reloaded")
+replResultToDoc (CurrentDirectory dir) = pure (reflow "Current working directory is" <++> dquotes (pretty dir))
+replResultToDoc CompilationFailed = pure (reflow "Compilation failed")
+replResultToDoc (Compiled f) = pure (pretty "File" <++> pretty f <++> pretty "written")
+replResultToDoc (ProofFound x) = pure (prettyTerm x)
+replResultToDoc (Missed cases) = pure $ vsep (handleMissing <$> cases)
+replResultToDoc (CheckedTotal xs) = pure (vsep (map (\(fn, tot) => pretty fn <++> pretty "is" <++> pretty tot) xs))
+replResultToDoc (FoundHoles []) = pure (reflow "No holes")
+replResultToDoc (FoundHoles [x]) = pure (reflow "1 hole" <+> colon <++> pretty x.name)
+replResultToDoc (FoundHoles xs) = do
+  let holes = concatWith (surround (pretty ", ")) (pretty . name <$> xs)
+  pure (pretty (length xs) <++> pretty "holes" <+> colon <++> holes)
+replResultToDoc (LogLevelSet Nothing) = pure (reflow "Logging turned off")
+replResultToDoc (LogLevelSet (Just k)) = pure (reflow "Set log level to" <++> pretty k)
+replResultToDoc (ConsoleWidthSet (Just k)) = pure (reflow "Set consolewidth to" <++> pretty k)
+replResultToDoc (ConsoleWidthSet Nothing) = pure (reflow "Set consolewidth to auto")
+replResultToDoc (ColorSet b) = pure (reflow (if b then "Set color on" else "Set color off"))
+replResultToDoc (VersionIs x) = pure (pretty (showVersion True x))
+replResultToDoc (RequestedHelp) = pure (pretty displayHelp)
+replResultToDoc (Edited (DisplayEdit Empty)) = pure (pretty "")
+replResultToDoc (Edited (DisplayEdit xs)) = pure xs
+replResultToDoc (Edited (EditError x)) = pure x
+replResultToDoc (Edited (MadeLemma lit name pty pappstr)) = pure $ pretty (relit lit (show name ++ " : " ++ show pty ++ "\n") ++ pappstr)
+replResultToDoc (Edited (MadeWith lit wapp)) = pure $ pretty $ showSep "\n" (map (relit lit) wapp)
+replResultToDoc (Edited (MadeCase lit cstr)) = pure $ pretty $ showSep "\n" (map (relit lit) cstr)
+replResultToDoc (OptionsSet opts) = pure (vsep (pretty <$> opts))
+replResultToDoc Done = pure ""
+replResultToDoc (Executed _) = pure ""
+replResultToDoc DefDeclared = pure ""
+replResultToDoc Exited = pure ""
+-- Would be nice to preserve colours in the future, but
+-- sending ansi codes over the socket is a probably a no-go.
+replResultToDoc (PrintedDoc doc) = pure (unAnnotate doc)
 
 displayType : {auto c : Ref Ctxt Defs} ->
               {auto s : Ref Syn SyntaxInfo} ->
@@ -354,7 +411,19 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
       tokens <- getSemanticTokens md getLineLength
       update LSPConf (record { semanticTokensSentFiles $= insert params.textDocument.uri })
       pure $ pure $ (make $ tokens)
-
+handleRequest WorkspaceExecuteCommand
+  (MkExecuteCommandParams partialResultToken "repl" (Just [json])) = whenActiveRequest $ \conf => do
+    let JString cmd  = json
+      | _ => do pure $ Left (invalidParams "Expected String")
+    c <- getColor
+    -- Turn off the colour, because JSON
+    -- seems to fail to correctly escape the codes.
+    setColor False
+    res <- interpret cmd
+    doc <- replResultToDoc res
+    str <- render doc
+    setColor c
+    pure $ Right (JString str)
 handleRequest method params = whenActiveRequest $ \conf => do
     logW Channel $ "Received a not supported \{show (toJSON method)} request"
     pure $ Left methodNotFound
