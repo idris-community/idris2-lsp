@@ -26,7 +26,7 @@ test-only:
 
 test: build testbin test-only
 
-install: build
+install-only:
 	mkdir -p ${PREFIX}/bin/
 	install ${TARGET} ${PREFIX}/bin
 ifeq ($(OS), windows)
@@ -34,3 +34,6 @@ ifeq ($(OS), windows)
 endif
 	mkdir -p ${PREFIX}/bin/${NAME}_app
 	install ${TARGETDIR}/${NAME}_app/* ${PREFIX}/bin/${NAME}_app
+
+install: build install-only
+
