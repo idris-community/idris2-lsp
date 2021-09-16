@@ -139,7 +139,7 @@ generateHoleName : Ref Ctxt Defs => String -> Nat -> Core (String, Nat)
 generateHoleName holeName k = do
   defs <- get Ctxt
   let n = holeName ++ "_" ++ show k
-  case !(lookupCtxtName (UN n) defs.gamma) of
+  case !(lookupCtxtName (UN $ Basic n) defs.gamma) of
     [] => pure (n, k+1)
     _ => generateHoleName holeName (k + 1)
 
@@ -164,13 +164,13 @@ renderConstructor holeName conInfo = do
   case conInfo of
     UnnamedFieldsCon fullName 0 => pure $ Just $ show $ dropAllNS fullName
     UnnamedFieldsCon fullName n => do
-      let Just holeName' = userNameRoot holeName
+      let Just holeName' = displayUserName <$> userNameRoot holeName
           | Nothing => pure Nothing
       (_, newHoles) <- generateHoleNames holeName' n
       pure $ Just $ "(" ++ show (dropAllNS fullName) ++ " " ++ unwords newHoles ++ ")"
     NamedFieldsCon fullName [] => pure $ Just $ show $ dropAllNS fullName
     NamedFieldsCon fullName fieldNames => do
-      let Just holeName' = userNameRoot holeName
+      let Just holeName' = displayUserName <$> userNameRoot holeName
           | Nothing => pure Nothing
       (_, newHoles) <- genereateFieldHoleNames holeName' fieldNames
       pure $ Just $ "(" ++ show (dropAllNS fullName) ++ " " ++ unwords newHoles ++ ")"
@@ -252,7 +252,7 @@ typeMatchingNames holeName ty limit = do
       (\funcName =>
         let sn = userNameRoot funcName
         in if hn /= sn && !(nameHasType holeName funcName ty)
-              then pure (userNameRoot funcName)
+              then pure (displayUserName <$> userNameRoot funcName)
               else pure Nothing)
     $ keys
     $ namesResolvedAs defs.gamma
@@ -266,7 +266,7 @@ keepNonHoleNames = map catMaybes . traverse nonHoleName
     nonHoleName name = do
       -- Find the type information at this hole
       defs <- get Ctxt
-      [(_, (_, holeGlobalDef))] <- lookupCtxtName (UN name) (gamma defs)
+      [(_, (_, holeGlobalDef))] <- lookupCtxtName (UN $ Basic name) (gamma defs)
         | _ => do
           pure $ Just name
       pure $ case holeGlobalDef.definition of
