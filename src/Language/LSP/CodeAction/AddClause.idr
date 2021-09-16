@@ -44,7 +44,7 @@ addClause params = do
   logI AddClause "Checking for \{show params.textDocument.uri} at \{show params.range}"
   withSingleLine AddClause params (pure Nothing) $ \line => do
 
-    Just clause <- getClause (line + 1) (UN "")
+    Just clause <- getClause (line + 1) (UN $ Basic "")
       | Nothing => do logD AddClause "No clause defined at line \{show line}"
                       pure Nothing
 

@@ -45,7 +45,7 @@ genReadableSym : String -> Elab Name
 genReadableSym hint = do
   MN v i <- genSym hint
     | _ => fail "cannot generate readable argument name"
-  pure $ UN (v ++ show i)
+  pure $ UN $ Basic (v ++ show i)
 
 var : Name -> TTImp
 var = IVar EmptyFC
@@ -89,8 +89,8 @@ deriveToJSON opts n = do
       | xs => fail $ show n ++ " must be in scope and unique. Possible referred types are: " ++ show (fst <$> xs)
     -- FIXME: temporary name for debugging, should be converted to a name impossible to define from users
     -- and should not be exported, unless a specific option is enabled.
-    let funName = UN ("toJSON" ++ show (stripNs n))
-    let objName = UN ("__impl_toJSON" ++ show (stripNs n))
+    let funName = UN $ Basic ("toJSON" ++ show (stripNs n))
+    let objName = UN $ Basic ("__impl_toJSON" ++ show (stripNs n))
     conNames <- getCons name
     cons <- for conNames $ \n => do
       [(conName, conImpl)] <- getType n
@@ -157,8 +157,8 @@ deriveFromJSON opts n = do
       | xs => fail $ show n ++ " must be in scope and unique. Possible referred types are: " ++ show (fst <$> xs)
     -- FIXME: temporary name for debugging, should be converted to a name impossible to define from users
     -- and should not be exported, unless a specific option is enabled.
-    let funName = UN ("fromJSON" ++ show (stripNs n))
-    let objName = UN ("__impl_fromJSON" ++ show (stripNs n))
+    let funName = UN $ Basic ("fromJSON" ++ show (stripNs n))
+    let objName = UN $ Basic ("__impl_fromJSON" ++ show (stripNs n))
     conNames <- getCons name
     argName <- genReadableSym "arg"
     cons <- for conNames $ \n => do
