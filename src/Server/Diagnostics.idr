@@ -280,9 +280,17 @@ perror (TryWithImplicits fc env imps)
 perror (BadUnboundImplicit fc env n ty)
     = pure $ errorDesc (reflow "Can't bind name" <++> code (pretty (nameRoot n)) <++> reflow "with type" <++> code !(pshow env ty)
         <+> colon) <+> line <+> reflow "Suggestion: try an explicit bind."
-perror (CantSolveGoal fc _ env g)
-    = let (_ ** (env', g')) = dropEnv env g in
-          pure $ errorDesc (reflow "Can't find an implementation for" <++> code !(pshow env' g') <+> dot)
+perror (CantSolveGoal fc gam env g reason)
+    = do defs <- get Ctxt
+         setCtxt gam
+         let (_ ** (env', g')) = dropEnv env g
+         let res = errorDesc (reflow "Can't find an implementation for" <++> code !(pshow env' g') <+> dot)
+         put Ctxt defs
+         case reason of
+              Nothing => pure res
+              Just r => do rdesc <- perror r
+                           pure (res <+> line <+>
+                                 (reflow "Possible cause:" <++> rdesc))
   where
     -- For display, we don't want to see the full top level type; just the
     -- return type
@@ -292,7 +300,6 @@ perror (CantSolveGoal fc _ env g)
     dropEnv env (Bind _ n b@(Pi _ _ _ _) sc) = dropEnv (b :: env) sc
     dropEnv env (Bind _ n b@(Let _ _ _ _) sc) = dropEnv (b :: env) sc
     dropEnv env tm = (_ ** (env, tm))
-
 perror (DeterminingArg fc n i env g)
     = pure $ errorDesc (reflow "Can't find an implementation for" <++> code !(pshow env g) <+> line
         <+> reflow "since I can't infer a value for argument" <++> code (pretty n) <+> dot)
