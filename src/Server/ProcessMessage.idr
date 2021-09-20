@@ -308,7 +308,7 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
     nameLocs <- gets MD nameLocMap
 
     let Just (loc, name) = findPointInTreeLoc (params.position.line, params.position.character) nameLocs
-      | Nothing => pure $ pure $ (make $ MkHover (make $ MkMarkupContent PlainText "") Nothing)
+      | Nothing => pure $ pure $ make $ MkNull
     logD Hover "Found name \{show name}"
     -- Lookup the name globally
     globals <- lookupCtxtName name (gamma defs)
@@ -322,6 +322,8 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
       (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $ pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
       (Just globalDoc, Nothing) => pure $ renderString $ unAnnotateS $ layoutUnbounded globalDoc
       (Nothing, Nothing) => pure ""
+    let False = null line
+      | True => pure $ pure $ make $ MkNull
     let supportsMarkup = maybe False (Markdown `elem`) $ conf.capabilities.textDocument >>= .hover >>= .contentFormat
     let markupContent = the MarkupContent $ if supportsMarkup then MkMarkupContent Markdown $ "```idris\n" ++ line ++ "\n```" else MkMarkupContent PlainText line
     let hover = MkHover (make markupContent) Nothing
