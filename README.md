@@ -1,4 +1,4 @@
-# [WIP] idris2-lsp
+# idris2-lsp
 Language Server for Idris2.
 
 Refer to the [project wiki](https://github.com/idris-community/idris2-lsp/wiki) for editor-specific configurations.
@@ -6,9 +6,7 @@ Refer to the [project wiki](https://github.com/idris-community/idris2-lsp/wiki) 
 **NOTE: At this stage the LSP server requires an ipkg file to work correctly, for reference material about packages look [here](https://idris2.readthedocs.io/en/latest/tutorial/packages.html) and [here](https://idris2.readthedocs.io/en/latest/reference/packages.html). To start a new project with an ipkg, even for a single file, you can issue the `idris2 --init` command, which provides an interactive interface for package creation.**
 
 ## Compile
-To compile `idris2-lsp` you need a working installation of the Idris2 compiler (available [here](https://github.com/idris-lang/Idris2)) and you also need the `idris2api` package. See the [install guide](https://github.com/idris-lang/Idris2/blob/master/INSTALL.md) how to build the `idris2api` package.
-
-**NOTE: The version of the Idris2 compiler available as submodule is the only tested version, we will try to keep in sync with the latest master. For specific releases of the compiler refer to the branches with the same name as the release.**
+To compile `idris2-lsp` you need the `0.5.1` release of the Idris2 compiler (available [here](https://github.com/idris-lang/Idris2/releases/tag/v0.5.1)) and you also need the `idris2api` package. See the [install guide](https://github.com/idris-lang/Idris2/blob/master/INSTALL.md) on how to build the `idris2api` package.
 
 ## Install
 Run `make install` to install the server, by default it will be placed in the same default directory of the Idris2 compiler, i.e. `~/.idris2/bin`.
