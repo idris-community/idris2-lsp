@@ -19,7 +19,7 @@ syncOptions = MkTextDocumentSyncOptions { openClose = Just True
                                         }
 
 decor : List Decoration
-decor = [Typ, Function, Data, Bound, Keyword, Namespace, Postulate, Module]
+decor = [Typ, Function, Data, Bound, Keyword, Namespace, Postulate, Module, Comment]
 
 encodeDecorAsString : Decoration -> String
 encodeDecorAsString Typ       = "type"
@@ -30,6 +30,7 @@ encodeDecorAsString Keyword   = "keyword"
 encodeDecorAsString Namespace = "namespace"
 encodeDecorAsString Postulate = "postulate"
 encodeDecorAsString Module    = "module"
+encodeDecorAsString Comment   = "comment"
 
 ||| Convert Decoration to legend index
 export
@@ -42,6 +43,7 @@ encodeDecorAsNum Keyword   = 4
 encodeDecorAsNum Namespace = 5
 encodeDecorAsNum Postulate = 6
 encodeDecorAsNum Module    = 7
+encodeDecorAsNum Comment   = 8
 
 semanticTokensLegend : SemanticTokensLegend
 semanticTokensLegend = MkSemanticTokensLegend
