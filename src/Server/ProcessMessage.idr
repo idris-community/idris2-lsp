@@ -80,11 +80,11 @@ replResultToDoc (Compiled f) = pure (pretty "File" <++> pretty f <++> pretty "wr
 replResultToDoc (ProofFound x) = pure (prettyTerm x)
 replResultToDoc (Missed cases) = pure $ vsep (handleMissing <$> cases)
 replResultToDoc (CheckedTotal xs) = pure (vsep (map (\(fn, tot) => pretty fn <++> pretty "is" <++> pretty tot) xs))
-replResultToDoc (FoundHoles []) = pure (reflow "No holes")
-replResultToDoc (FoundHoles [x]) = pure (reflow "1 hole" <+> colon <++> pretty x.name)
-replResultToDoc (FoundHoles xs) = do
-  let holes = concatWith (surround (pretty ", ")) (pretty . name <$> xs)
-  pure (pretty (length xs) <++> pretty "holes" <+> colon <++> holes)
+-- replResultToDoc (FoundHoles []) = pure (reflow "No holes")
+-- replResultToDoc (FoundHoles [x]) = pure (reflow "1 hole" <+> colon <++> pretty x.name)
+-- replResultToDoc (FoundHoles xs) = do
+  -- let holes = concatWith (surround (pretty ", ")) (pretty . name <$> xs)
+  -- pure (pretty (length xs) <++> pretty "holes" <+> colon <++> holes)
 replResultToDoc (LogLevelSet Nothing) = pure (reflow "Logging turned off")
 replResultToDoc (LogLevelSet (Just k)) = pure (reflow "Set log level to" <++> pretty k)
 replResultToDoc (ConsoleWidthSet (Just k)) = pure (reflow "Set consolewidth to" <++> pretty k)
