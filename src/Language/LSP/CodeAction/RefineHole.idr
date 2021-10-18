@@ -311,7 +311,7 @@ refineHole params = do
       constructorStrings <-
         -- If the type is a datatype find its definition
         case !(resolveTypeName holeGlobalDef.type) of
-          Nothing => pure []
+          Nothing => pure (the (List String) [])
           Just dataTypeName =>
             if isFunctionType holeGlobalDef.type
               -- If a hole represents a function, we shouldn't offer constructors
@@ -334,7 +334,12 @@ refineHole params = do
       logI RefineHole "Searching type matching names"
       typesafeNames <- keepNonHoleNames !(typeMatchingNames holeName holeGlobalDef.type 1000)
       logI RefineHole "Searching type similar names"
-      similarNames <- keepNonHoleNames (filter (\n => not (elem n typesafeNames)) !(getSimilarNames name))
+      Just (simStr, allSimilars) <- getSimilarNames name
+        --TODO: better error message
+        | _ => do logD RefineHole $ "Error finding similar names to \(show name)"
+                  pure []
+      let similarStrings = showSimilarNames name simStr allSimilars
+      similarNames <- keepNonHoleNames (filter (\n => not (elem n typesafeNames)) similarStrings)
 
       -- Render code actions that inject constructors or similar names
       let fillerStrings = nub (constructorStrings ++ typesafeNames)
