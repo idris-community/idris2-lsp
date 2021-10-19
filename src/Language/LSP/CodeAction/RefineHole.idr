@@ -334,8 +334,8 @@ refineHole params = do
       logI RefineHole "Searching type matching names"
       typesafeNames <- keepNonHoleNames !(typeMatchingNames holeName holeGlobalDef.type 1000)
       logI RefineHole "Searching type similar names"
-      similarNames <- keepNonHoleNames (filter (\n => not (elem n typesafeNames)) !(getSimilarNames name))
-
+      similarNames <- keepNonHoleNames . filter (\n => not (elem n typesafeNames)) $
+        maybe [] (uncurry $ showSimilarNames name) !(getSimilarNames name)
       -- Render code actions that inject constructors or similar names
       let fillerStrings = nub (constructorStrings ++ typesafeNames)
       let safeFillers = map (refineHoleWith False holeGlobalDef.location params) fillerStrings
