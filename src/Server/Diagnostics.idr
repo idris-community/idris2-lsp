@@ -24,11 +24,11 @@ import System.Path
 keyword : Doc IdrisAnn -> Doc IdrisAnn
 keyword = annotate $ Syntax Keyword
 
-buildDiagnostic : Maybe FC -> Doc IdrisAnn -> Maybe (List DiagnosticRelatedInformation) -> Diagnostic
-buildDiagnostic loc error related =
+buildDiagnostic : DiagnosticSeverity -> Maybe FC -> Doc IdrisAnn -> Maybe (List DiagnosticRelatedInformation) -> Diagnostic
+buildDiagnostic severity loc error related =
   MkDiagnostic
     { range = cast $ fromMaybe replFC loc
-    , severity = Just Error
+    , severity = Just severity
     , code = Nothing
     , codeDescription = Nothing
     , source = Just "idris2"
@@ -425,20 +425,47 @@ perror (MaybeMisspelling err ns) = pure $ !(perror err) <++> case ns of
 perror (WarningAsError warn) = pwarning warn
 perror (Timeout str) = pure $ errorDesc (reflow "Timeout in" <++> pretty str)
 
+
+||| Computes a LSP `Diagnostic` from a compiler warning.
+|||
+||| @caps The client capabilities related to diagnostics
+||| @uri The URI of the source file.
+||| @err The compiler warning.
+export
+warningToDiagnostic : Ref Ctxt Defs
+            => Ref Syn SyntaxInfo
+            => Ref ROpts REPLOpts
+            => (caps : Maybe PublishDiagnosticsClientCapabilities)
+            -> (uri : URI)
+            -> (warning : Warning)
+            -> Core Diagnostic
+warningToDiagnostic caps uri warning = do
+  defs <- get Ctxt
+  warningAnn <- pwarning warning
+  let loc = getWarningLoc warning
+  let wdir = defs.options.dirs.working_dir
+  p <- maybe (pure uri.path) (pure . (wdir </>) <=< nsToSource replFC)
+         ((\case PhysicalIdrSrc ident => Just ident; _ => Nothing) . fst <=< isNonEmptyFC =<< loc)
+  if uri.path == p
+     then do let related = Nothing -- TODO related diagnostics?
+             pure $ buildDiagnostic Warning loc warningAnn related
+     else pure $ buildDiagnostic Warning (toStart <$> loc) ("In" <++> pretty p <+> colon <++> warningAnn) Nothing
+
+
 ||| Computes a LSP `Diagnostic` from a compiler error.
 |||
 ||| @caps The client capabilities related to diagnostics
 ||| @uri The URI of the source file.
 ||| @err The compiler error.
 export
-toDiagnostic : Ref Ctxt Defs
+errorToDiagnostic : Ref Ctxt Defs
             => Ref Syn SyntaxInfo
             => Ref ROpts REPLOpts
             => (caps : Maybe PublishDiagnosticsClientCapabilities)
             -> (uri : URI)
             -> (error : Error)
             -> Core Diagnostic
-toDiagnostic caps uri err = do
+errorToDiagnostic caps uri err = do
   defs <- get Ctxt
   error <- perror err
   let loc = getErrorLoc err
@@ -447,5 +474,5 @@ toDiagnostic caps uri err = do
          ((\case PhysicalIdrSrc ident => Just ident; _ => Nothing) . fst <=< isNonEmptyFC =<< loc)
   if uri.path == p
      then do let related = (flip toMaybe (getRelatedErrors uri err) <=< relatedInformation) =<< caps
-             pure $ buildDiagnostic loc error related
-     else pure $ buildDiagnostic (toStart <$> loc) ("In" <++> pretty p <+> colon <++> error) Nothing
+             pure $ buildDiagnostic Error loc error related
+     else pure $ buildDiagnostic Error (toStart <$> loc) ("In" <++> pretty p <+> colon <++> error) Nothing
