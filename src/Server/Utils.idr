@@ -19,6 +19,7 @@ import Language.LSP.Message
 import Libraries.Data.PosMap
 import Server.Configuration
 import System.File
+import System
 
 ||| Gets a specific component of a reference, using the supplied projection.
 export
@@ -35,6 +36,8 @@ uncons' (x :: xs) = Just (x, xs)
 export
 fGetHeader : (handle : File) -> Core (Either FileError String)
 fGetHeader handle = do
+  False <- coreLift $ fEOF handle
+    | True => coreLift $ exitWith (ExitFailure 1)
   Right l <- coreLift $ fGetLine handle
     | Left err => pure $ Left err
   -- TODO: reading up to a string should probably be handled directly by the FFI primitive

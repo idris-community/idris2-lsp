@@ -78,10 +78,14 @@ handleMessage = do
   Right (Just l) <- parseHeaderPart inputHandle
     | _ => do logD Channel "Cannot parse message header"
               sendUnknownResponseMessage parseError
+              coreLift $ exitWith (ExitFailure 1)
+  False <- coreLift $ fEOF inputHandle
+    | True => coreLift $ exitWith (ExitFailure 1)
   Right msg <- coreLift $ fGetChars inputHandle l
     | Left err => do
         logE Server "Cannot retrieve body of message: \{show err}"
         sendUnknownResponseMessage $ internalError "Error while recovering the content part of a message"
+        coreLift $ exitWith (ExitFailure 1)
   logD Channel "Received message: \{msg}"
   let Just msg = parse msg
     | _ => do logE Channel "Cannot parse message"
