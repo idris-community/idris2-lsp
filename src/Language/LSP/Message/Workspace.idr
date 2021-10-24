@@ -22,6 +22,10 @@ record TextEdit where
   newText : String
 %runElab deriveJSON defaultOpts `{TextEdit}
 
+export
+Eq TextEdit where
+  (MkTextEdit range1 newText1) == (MkTextEdit range2 newText2) = range1 == range2 && newText1 == newText2
+
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textEdit
 public export
 record ChangeAnnotation where

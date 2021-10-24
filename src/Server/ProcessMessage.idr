@@ -341,23 +341,29 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
                  pure $ pure $ make $ MkNull
   withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
     quickfixActions <- map Just <$> gets LSPConf quickfixes
-    exprSearchAction <- map Just <$> exprSearch params
+    exprSearchActions <- map Just <$> exprSearch params
+    refineHoleActions <- map Just <$> refineHole params
     splitAction <- caseSplit params
     lemmaAction <- makeLemma params
     withAction <- makeWith params
     clauseAction <- addClause params
     makeCaseAction <- handleMakeCase params
-    generateDefAction <- map Just <$> generateDef params
-    refineHoleAction <- map Just <$> refineHole params
-    let resp = flatten $ quickfixActions ++ refineHoleAction
+    generateDefActions <- map Just <$> generateDef params
+    let searchRefineActions = unionBy searchEq exprSearchActions refineHoleActions
+    let resp = flatten $ quickfixActions
                            ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
-                           ++ generateDefAction ++ exprSearchAction
+                           ++ generateDefActions ++ searchRefineActions
     pure $ pure $ make resp
     where
       flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
       flatten [] = []
       flatten (Nothing :: xs) = flatten xs
       flatten ((Just x) :: xs) = make x :: flatten xs
+
+      searchEq : Maybe CodeAction -> Maybe CodeAction -> Bool
+      searchEq (Just (MkCodeAction {edit = Just (MkWorkspaceEdit {changes = edit1, _}), _}))
+               (Just (MkCodeAction {edit = Just (MkWorkspaceEdit {changes = edit2, _}), _})) = edit1 == edit2
+      searchEq _ _ = False
 
 handleRequest TextDocumentSignatureHelp params = whenActiveRequest $ \conf => do
   logI Channel "Received signatureHelp request for \{show params.textDocument.uri}"
