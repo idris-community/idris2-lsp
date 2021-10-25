@@ -50,10 +50,10 @@ parseHeader "\r\n" = Just StartContent
 parseHeader str =
   if "Content-Length:" `isPrefixOf` str
      then let (_ ::: xs) = split (== ':') str in
-              ContentLength <$> parseInteger (fastAppend xs)
+              ContentLength <$> parseInteger (fastConcat xs)
      else if "Content-Type:" `isPrefixOf` str
              then let (_ ::: xs) = split (== ':') str in
-                      Just $ ContentType (fastAppend xs)
+                      Just $ ContentType (fastConcat xs)
              else Nothing
 
 parseHeaderPart : (h : File) -> Core (Either FileError (Maybe Int))
