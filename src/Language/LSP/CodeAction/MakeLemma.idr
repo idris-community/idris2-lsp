@@ -45,7 +45,7 @@ findBlankLine (x :: xs) acc = if trim x == "" then acc else findBlankLine xs (ac
 
 isAllowed : CodeActionParams -> Bool
 isAllowed params =
-  maybe True (\filter => (Other "refactor.rewrite.MakeLemma" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
+  maybe True (\filter => (Other "refactor.extract.MakeLemma" `elem` filter) || (RefactorExtract `elem` filter)) params.context.only
 
 export
 makeLemma : Ref LSPConf LSPConfiguration
