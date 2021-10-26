@@ -48,6 +48,10 @@ buildCodeAction name uri range str =
     , data_       = Nothing
     }
 
+isAllowed : CodeActionParams -> Bool
+isAllowed params =
+  maybe True (\filter => (Other "refactor.rewrite.ExprSearch" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
+
 export
 exprSearch : Ref LSPConf LSPConfiguration
           => Ref MD Metadata
@@ -57,6 +61,9 @@ exprSearch : Ref LSPConf LSPConfiguration
           => Ref ROpts REPLOpts
           => CodeActionParams -> Core (List CodeAction)
 exprSearch params = do
+  let True = isAllowed params
+    | False => do logI ExprSearch "Skipped"
+                  pure []
   logI ExprSearch "Checking for \{show params.textDocument.uri} at \{show params.range}"
   withSingleLine ExprSearch params (pure []) $ \line => do
     withMultipleCache ExprSearch params ExprSearch $ do

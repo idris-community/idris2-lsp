@@ -25,6 +25,21 @@ Server options that can be set via the `initializationOptions` object in the ini
 |`longActionTimeout`|`number`|Timeout in ms for long actions, e.g. expression search (default: 5000)|
 |`maxCodeActionResults`|`number`|Maximum number of multiple code actions for a single command, e.g. expression search (default: 5)|
 
+## Code Actions Filters
+As per specification, client can filter requested code actions with the `context.only` field in the request parameters.
+The following table specifies the list of keys that enable each code actions. A `null` field enables all actions, while an empty array disables all actions.
+
+|Code Action|Allowed Keys|
+|-----------|------------|
+|`CaseSplit`|`refactor.rewrite`,`refactor.rewrite.CaseSplit`|
+|`ExprSearch`|`refactor.rewrite`,`refactor.rewrite.ExprSearch`|
+|`GenerateDef`|`refactor.rewrite`,`refactor.rewrite.GenerateDef`|
+|`MakeCase`|`refactor.rewrite`,`refactor.rewrite.MakeCase`|
+|`MakeClause`|`refactor.rewrite`,`refactor.rewrite.MakeClause`|
+|`MakeLemma`|`refactor.extract`,`refactor.extract.MakeLemma`|
+|`MakeWith`|`refactor.rewrite`,`refactor.rewrite.MakeWith`|
+|`RefineHole`|`refactor.rewrite`,`refactor.rewrite.RefineHole`|
+
 ## Examples
 
 Some examples can be found in the `test/lsp/example` directory. Many of the existing functionality still needs to be documented.

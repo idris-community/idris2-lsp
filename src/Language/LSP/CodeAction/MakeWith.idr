@@ -36,6 +36,10 @@ buildCodeAction name uri edits =
                    , data_       = Nothing
                    }
 
+isAllowed : CodeActionParams -> Bool
+isAllowed params =
+  maybe True (\filter => (Other "refactor.rewrite.MakeWith" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
+
 export
 makeWith : Ref LSPConf LSPConfiguration
         => Ref MD Metadata
@@ -45,6 +49,9 @@ makeWith : Ref LSPConf LSPConfiguration
         => Ref ROpts REPLOpts
         => CodeActionParams -> Core (Maybe CodeAction)
 makeWith params = do
+  let True = isAllowed params
+    | False => do logI MakeWith "Skipped"
+                  pure Nothing
   logI MakeWith "Checking for \{show params.textDocument.uri} at \{show params.range}"
   withSingleLine MakeWith params (pure Nothing) $ \line => do
     withSingleCache MakeWith params MakeWith $ do

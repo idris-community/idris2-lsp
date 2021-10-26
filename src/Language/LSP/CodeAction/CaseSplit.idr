@@ -34,6 +34,10 @@ buildCodeAction uri name edit =
     , data_       = Nothing
     }
 
+isAllowed : CodeActionParams -> Bool
+isAllowed params =
+  maybe True (\filter => (Other "refactor.rewrite.CaseSplit" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
+
 export
 caseSplit : Ref LSPConf LSPConfiguration
          => Ref MD Metadata
@@ -43,6 +47,9 @@ caseSplit : Ref LSPConf LSPConfiguration
          => Ref ROpts REPLOpts
          => CodeActionParams -> Core (Maybe CodeAction)
 caseSplit params = do
+  let True = isAllowed params
+    | False => do logI CaseSplit "Skipped"
+                  pure Nothing
   logI CaseSplit "Checking for \{show params.textDocument.uri} at \{show params.range}"
   withSingleLine CaseSplit params (pure Nothing) $ \line => do
     withSingleCache CaseSplit params CaseSplit $ do

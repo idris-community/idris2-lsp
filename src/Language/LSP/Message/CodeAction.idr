@@ -30,6 +30,19 @@ namespace CodeActionKind
     | Other String
 
 export
+Eq CodeActionKind where
+  Empty == Empty = True
+  QuickFix == QuickFix = True
+  Refactor == Refactor = True
+  RefactorExtract == RefactorExtract = True
+  RefactorInline == RefactorInline = True
+  RefactorRewrite == RefactorRewrite = True
+  Source == Source = True
+  SourceOrganizeImport == SourceOrganizeImport = True
+  (Other str) == (Other str') = str == str'
+  _ == _ = False
+
+export
 ToJSON CodeActionKind where
   toJSON Empty                = JString ""
   toJSON QuickFix             = JString "quickfix"
