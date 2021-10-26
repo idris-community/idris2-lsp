@@ -46,6 +46,10 @@ number : Nat -> List a -> List (Nat, a)
 number n [] = []
 number n (x :: xs) = (n,x) :: number (S n) xs
 
+isAllowed : CodeActionParams -> Bool
+isAllowed params =
+  maybe True (\filter => (Other "refactor.rewrite.GenerateDef" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
+
 export
 generateDef : Ref LSPConf LSPConfiguration
             => Ref MD Metadata
@@ -55,6 +59,9 @@ generateDef : Ref LSPConf LSPConfiguration
             => Ref ROpts REPLOpts
             => CodeActionParams -> Core (List CodeAction)
 generateDef params = do
+  let True = isAllowed params
+    | False => do logI GenerateDef "Skipped"
+                  pure []
   logI GenerateDef "Checking for \{show params.textDocument.uri} at \{show params.range}"
   withSingleLine GenerateDef params (pure []) $ \line => do
     withMultipleCache GenerateDef params GenerateDef $ do

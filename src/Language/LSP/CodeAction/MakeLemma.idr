@@ -43,6 +43,10 @@ findBlankLine : List String -> Int -> Int
 findBlankLine [] acc = acc
 findBlankLine (x :: xs) acc = if trim x == "" then acc else findBlankLine xs (acc - 1)
 
+isAllowed : CodeActionParams -> Bool
+isAllowed params =
+  maybe True (\filter => (Other "refactor.rewrite.MakeLemma" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
+
 export
 makeLemma : Ref LSPConf LSPConfiguration
          => Ref MD Metadata
@@ -52,6 +56,9 @@ makeLemma : Ref LSPConf LSPConfiguration
          => Ref ROpts REPLOpts
          => CodeActionParams -> Core (Maybe CodeAction)
 makeLemma params = do
+  let True = isAllowed params
+    | False => do logI MakeLemma "Skipped"
+                  pure Nothing
   logI MakeLemma "Checking for \{show params.textDocument.uri} at \{show params.range}"
   withSingleLine MakeLemma params (pure Nothing) $ \line => do
     withSingleCache MakeLemma params MakeLemma $ do

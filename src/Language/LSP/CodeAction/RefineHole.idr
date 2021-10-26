@@ -131,6 +131,10 @@ keepNonHoleNames names =
   do defs <- get Ctxt
      filterM (map not . isHole defs) names
 
+isAllowed : CodeActionParams -> Bool
+isAllowed params =
+  maybe True (\filter => (Other "refactor.rewrite.RefineHole" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
+
 export
 refineHole : Ref LSPConf LSPConfiguration
           => Ref MD Metadata
@@ -140,6 +144,9 @@ refineHole : Ref LSPConf LSPConfiguration
           => Ref ROpts REPLOpts
           => CodeActionParams -> Core (List CodeAction)
 refineHole params = do
+  let True = isAllowed params
+    | False => do logI RefineHole "Skipped"
+                  pure []
   logI RefineHole "Checking for \{show params.textDocument.uri} at \{show params.range}"
   withSingleLine RefineHole params (pure []) $ \line => do
     withMultipleCache RefineHole params RefineHole $ do

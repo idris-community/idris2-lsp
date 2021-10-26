@@ -32,6 +32,10 @@ buildCodeAction uri edit =
     , data_       = Nothing
     }
 
+isAllowed : CodeActionParams -> Bool
+isAllowed params =
+  maybe True (\filter => (Other "refactor.rewrite.AddClause" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
+
 export
 addClause : Ref LSPConf LSPConfiguration
          => Ref Ctxt Defs
@@ -41,6 +45,9 @@ addClause : Ref LSPConf LSPConfiguration
          => Ref UST UState
          => CodeActionParams -> Core (Maybe CodeAction)
 addClause params = do
+  let True = isAllowed params
+    | False => do logI AddClause "Skipped"
+                  pure Nothing
   logI AddClause "Checking for \{show params.textDocument.uri} at \{show params.range}"
   withSingleLine AddClause params (pure Nothing) $ \line => do
 

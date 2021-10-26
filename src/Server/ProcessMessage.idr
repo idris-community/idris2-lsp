@@ -340,7 +340,9 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
     | True => do logW CodeAction "\{show params.textDocument.uri} has unsaved changes, cannot complete the request"
                  pure $ pure $ make $ MkNull
   withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
-    quickfixActions <- map Just <$> gets LSPConf quickfixes
+    quickfixActions <- if maybe True (QuickFix `elem`) params.context.only
+                          then map Just <$> gets LSPConf quickfixes
+                          else pure []
     exprSearchActions <- map Just <$> exprSearch params
     refineHoleActions <- map Just <$> refineHole params
     splitAction <- caseSplit params

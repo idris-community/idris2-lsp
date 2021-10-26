@@ -33,6 +33,10 @@ isHole defs n
               Hole _ _ => pure True
               _ => pure False
 
+isAllowed : CodeActionParams -> Bool
+isAllowed params =
+  maybe True (\filter => (Other "refactor.rewrite.MakeCase" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
+
 export
 handleMakeCase : Ref LSPConf LSPConfiguration
          => Ref MD Metadata
@@ -42,6 +46,9 @@ handleMakeCase : Ref LSPConf LSPConfiguration
          => Ref ROpts REPLOpts
          => CodeActionParams -> Core (Maybe CodeAction)
 handleMakeCase params = do
+  let True = isAllowed params
+    | False => do logI MakeCase "Skipped"
+                  pure Nothing
   logI MakeCase "Checking for \{show params.textDocument.uri} at \{show params.range}"
   withSingleLine MakeCase params (pure Nothing) $ \line => do
     withSingleCache MakeCase params MakeCase $ do
