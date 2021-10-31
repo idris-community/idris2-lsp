@@ -43,7 +43,7 @@ findRefNamesInTerm (TDelay fc x ty arg)   = findRefNamesInTerm ty
 findRefNamesInTerm (TForce fc x y)        = findRefNamesInTerm y
 findRefNamesInTerm (PrimVal fc c)         = []
 findRefNamesInTerm (Erased fc imp)        = []
-findRefNamesInTerm (TType fc)             = []
+findRefNamesInTerm (TType fc u)           = []
 
 renderDataTypeInfo : Ref Ctxt Defs
                   => Ref ROpts REPLOpts

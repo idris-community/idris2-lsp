@@ -216,11 +216,17 @@ perror (BorrowPartialType fc env tm)
     = pure $ errorDesc (code !(pshow env tm) <++> reflow "borrows, so must return a concrete type.")
 perror (AmbiguousName fc ns)
     = pure $ errorDesc (reflow "Ambiguous name" <++> code (pretty ns))
-perror (AmbiguousElab fc env ts)
+perror (AmbiguousElab fc env ts_in)
     = do pp <- getPPrint
          setPPrint (record { fullNamespace = True } pp)
+         ts_show <- for ts_in $ \(gam, t) => do
+                      defs <- get Ctxt
+                      setCtxt gam
+                      res <- pshow env t
+                      put Ctxt defs
+                      pure res
          let res = vsep [ errorDesc (reflow "Ambiguous elaboration. Possible results" <+> colon)
-                        , indent 4 (vsep !(traverse (pshow env) ts))
+                        , indent 4 (vsep ts_show)
                         ]
          setPPrint pp
          pure res
