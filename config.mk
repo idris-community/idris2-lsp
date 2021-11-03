@@ -3,6 +3,9 @@
 # Where to install idris2 binaries and libraries (must be an absolute path)
 PREFIX ?= $(HOME)/.idris2
 
+# Idris 2 executable for building and installation. By default, just use whatever is in PATH.
+IDRIS2 ?= idris2
+
 # For Windows targets. Set to 1 to support Windows 7.
 OLD_WIN ?= 0
 
