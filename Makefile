@@ -8,14 +8,14 @@ TARGET = ${TARGETDIR}/${NAME}
 .PHONY: build
 
 build:
-	idris2 --build lsp.ipkg
+	$(IDRIS2) --build lsp.ipkg
 
 clean:
-	idris2 --clean lsp.ipkg
+	$(IDRIS2) --clean lsp.ipkg
 	$(RM) -r build
 
 repl:
-	rlwrap idris2 --repl lsp.ipkg
+	rlwrap $(IDRIS2) --repl lsp.ipkg
 
 testbin:
 	@${MAKE} -C tests testbin
