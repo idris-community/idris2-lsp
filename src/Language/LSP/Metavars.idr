@@ -19,6 +19,7 @@ import Server.Configuration
 import Server.Utils
 import System.File
 import System.Path
+import Libraries.Text.PrettyPrint.Prettyprinter.Symbols
 
 %hide Holes.HolePremise
 %hide Holes.HoleData
@@ -30,6 +31,7 @@ import System.Path
 record HolePremise where
   constructor MkHolePremise
   name         : Name
+  location     : FC
   type         : IPTerm
   multiplicity : RigCount
   isImplicit   : Bool
@@ -46,6 +48,7 @@ showName (UN Underscore) = False
 showName (MN _ _) = False
 showName _ = True
 
+-- TODO: Check why premise location is replFC.
 extractHoleData : {vars : _}
                -> Ref Ctxt Defs
                => Ref Syn SyntaxInfo
@@ -53,12 +56,12 @@ extractHoleData : {vars : _}
                -> Core HoleData
 extractHoleData defs env fn fc (S args) (Bind _ _ (Let _ _ val _) sc) =
   extractHoleData defs env fn fc args (subst val sc)
-extractHoleData defs env fn fc (S args) (Bind _ x b sc) = do
+extractHoleData defs env fn fc (S args) (Bind fc' x b sc) = do
   rest <- extractHoleData defs (b :: env) fn fc args sc
   let True = showName x
     | False => pure rest
   ity <- resugar env !(normalise defs env (binderType b))
-  let premise = MkHolePremise x ity (multiplicity b) (isImplicit b)
+  let premise = MkHolePremise x fc' ity (multiplicity b) (isImplicit b)
   pure $ record { context $= (premise ::) } rest
 extractHoleData defs env fn fc args ty = do
   nty <- normalise defs env ty
@@ -101,6 +104,14 @@ getUserHolesData = do
 |||   location: Location | null;
 |||   name: string;
 |||   type: string;
+|||   premises: Premise[]
+||| }
+||| JSON schema for a single premise:
+||| {
+|||   location: Location | null;
+|||   name: string;
+|||   type: string;
+|||   isImplicit: bool;
 ||| }
 export
 metavarsCmd : Ref Ctxt Defs
@@ -119,6 +130,14 @@ metavarsCmd = do
       _ => pure Nothing
     let name = show h.name
     type <- render (reAnnotate Syntax $ prettyTerm h.type)
-    pure $ JObject [("location", toJSON loc), ("name", toJSON name), ("type", toJSON type)]
+    premises <- for h.context $ \p => do
+      loc <- case p.location of
+        MkFC f s e => mkLocation f s e
+        MkVirtualFC f s e => mkLocation f s e
+        _ => pure Nothing
+      let name = show p.name
+      type <- render (reAnnotate Syntax $ prettyTerm p.type)
+      pure $ JObject [("location", toJSON loc), ("name", toJSON name), ("type", toJSON type), ("isImplicit", toJSON p.isImplicit)]
+    pure $ JObject [("location", toJSON loc), ("name", toJSON name), ("type", toJSON type), ("premises", JArray premises)]
   setColor c
   pure $ JArray res
