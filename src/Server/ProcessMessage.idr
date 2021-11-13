@@ -36,6 +36,7 @@ import Language.LSP.Definition
 import Language.LSP.DocumentSymbol
 import Language.LSP.SignatureHelp
 import Language.LSP.Message
+import Language.LSP.Metavars
 import Libraries.Data.PosMap
 import Libraries.Data.Version
 import Libraries.Utils.Path
@@ -429,6 +430,8 @@ handleRequest WorkspaceExecuteCommand
     str <- render doc
     setColor c
     pure $ Right (JString str)
+handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "metavars" _) =
+  whenActiveRequest $ \conf => Right <$> metavarsCmd
 handleRequest method params = whenActiveRequest $ \conf => do
     logW Channel $ "Received a not supported \{show (toJSON method)} request"
     pure $ Left methodNotFound
