@@ -121,6 +121,40 @@ displayTerm defs tm
     = do ptm <- resugar [] !(normaliseHoles defs [] tm)
          pure (prettyTerm ptm)
 
+processSettings : Ref Ctxt Defs => Ref LSPConf LSPConfiguration => JSON -> Core ()
+processSettings (JObject xs) = do
+  case lookup "logFile" xs of
+       Just (JString fname) => changeLogFile fname
+       Just _ => logE Configuration "Incorrect type for log file location, expected string"
+       Nothing => pure ()
+  case lookup "longActionTimeout" xs of
+       Just (JNumber v) => do setSearchTimeout (cast v)
+                              logI Configuration "Long action timeout set to \{show $ cast {to = Int} v}"
+       Just _ => logE Configuration "Incorrect type for long action timeout, expected number"
+       Nothing => pure ()
+  case lookup "maxCodeActionResults" xs of
+       Just (JNumber v) => do update LSPConf (record { searchLimit = integerToNat (cast v) })
+                              logI Configuration "Max code action results set to \{show $ cast {to = Int} v}"
+       Just _ => logE Configuration "Incorrect type for max code action results, expected number"
+       Nothing => pure ()
+  case lookup "showImplicits" xs of
+       Just (JBoolean b) => do pp <- getPPrint
+                               when (pp.showImplicits /= b) $ do
+                                 setPPrint (record { showImplicits = b } pp)
+                                 update LSPConf (record { cachedHovers = empty })
+                               logI Configuration "Show implicits set to \{show b}"
+       Just _ => logE Configuration "Incorrect type for show implicits, expected boolean"
+       Nothing => pure ()
+  case lookup "fullNamespace" xs of
+       Just (JBoolean b) => do pp <- getPPrint
+                               when (pp.fullNamespace /= b) $ do
+                                 setPPrint (record { fullNamespace = b } pp)
+                                 update LSPConf (record { cachedHovers = empty })
+                               logI Configuration "Full namespace set to \{show b}"
+       Just _ => logE Configuration "Incorrect type for full namespace, expected boolean"
+       Nothing => pure ()
+processSettings _ = logE Configuration "Incorrect type for options"
+
 isDirty : Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
 isDirty uri = gets LSPConf (contains uri . dirtyFiles)
 
@@ -261,23 +295,7 @@ handleRequest :
 handleRequest Initialize params = do
   -- TODO: Here we should analyze the client capabilities.
   logI Channel "Received initialization request"
-
-  case params.initializationOptions of
-       Just (JObject xs) => do
-         case lookup "logFile" xs of
-              Just (JString fname) => changeLogFile fname
-              Just _ => logE Configuration "Incorrect type for log file location, expected string"
-              Nothing => pure ()
-         case lookup "longActionTimeout" xs of
-              Just (JNumber v) => setSearchTimeout $ cast v
-              Just _ => logE Configuration "Incorrect type for long action timeout, expected number"
-              Nothing => pure ()
-         case lookup "maxCodeActionResults" xs of
-              Just (JNumber v) => update LSPConf (record { searchLimit = integerToNat $ cast v })
-              Just _ => logE Configuration "Incorrect type for max code action results, expected number"
-              Nothing => pure ()
-       Just _ => logE Configuration "Incorrect type for initialization options"
-       Nothing => pure ()
+  whenJust params.initializationOptions processSettings
 
   update LSPConf (record {initialized = Just params})
   logI Server "Server initialized and configured"
@@ -419,6 +437,7 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
       pure $ pure $ (make $ tokens)
 handleRequest WorkspaceExecuteCommand
   (MkExecuteCommandParams partialResultToken "repl" (Just [json])) = whenActiveRequest $ \conf => do
+    logI Channel "Received repl command request"
     let JString cmd  = json
       | _ => do pure $ Left (invalidParams "Expected String")
     c <- getColor
@@ -430,8 +449,9 @@ handleRequest WorkspaceExecuteCommand
     str <- render doc
     setColor c
     pure $ Right (JString str)
-handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "metavars" _) =
-  whenActiveRequest $ \conf => Right <$> metavarsCmd
+handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "metavars" _) = whenActiveRequest $ \conf => do
+  logI Channel "Received metavars command request"
+  Right <$> metavarsCmd
 handleRequest method params = whenActiveRequest $ \conf => do
     logW Channel $ "Received a not supported \{show (toJSON method)} request"
     pure $ Left methodNotFound
@@ -454,6 +474,10 @@ handleNotification Exit params = do
                then logI Server "Quitting the server..." >> pure ExitSuccess
                else logC Server "Quitting the server without a proper shutdown" >> pure (ExitFailure 1)
   coreLift $ exitWith status
+
+handleNotification WorkspaceDidChangeConfiguration params = whenActiveNotification $ \conf => do
+  logI Channel "Received didChangeConfiguration notification"
+  processSettings params.settings
 
 handleNotification TextDocumentDidOpen params = whenActiveNotification $ \conf => do
   logI Channel "Received didOpen notification for \{show params.textDocument.uri}"
