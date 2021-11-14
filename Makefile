@@ -7,9 +7,11 @@ TARGET = ${TARGETDIR}/${NAME}
 
 .PHONY: build
 
-build:
+build: build/exec/idris2-lsp
+	
+build/exec/idris2-lsp:
 	$(IDRIS2) --build lsp.ipkg
-
+	
 clean:
 	$(IDRIS2) --clean lsp.ipkg
 	$(RM) -r build
