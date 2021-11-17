@@ -117,7 +117,7 @@ pwarning (ShadowingGlobalDefs _ ns) =
                              :: reflow "is shadowing"
                              :: punctuate comma (map pretty (forget ns)))
              (forget ns)
-pwarning (Deprecated s) = pure $ pretty "Deprecation warning:" <++> pretty s
+pwarning (Deprecated s n) = pure $ pretty "Deprecation warning:" <++> pretty s <++> pretty n
 pwarning (GenericWarn s) = pure $ pretty s
 pwarning (ParserWarning fc msg) = pure $ pretty msg
 
