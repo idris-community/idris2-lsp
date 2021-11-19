@@ -154,49 +154,47 @@ refineHole' params hints = do
                   pure []
   logI RefineHole "Checking for \{show params.textDocument.uri} at \{show params.range}"
   withSingleLine RefineHole params (pure []) $ \line => do
-    withMultipleCache RefineHole params RefineHole $ do
+    fuel <- gets LSPConf searchLimit
+    nameLocs <- gets MD nameLocMap
+    let col = params.range.start.character
+    let Just (loc@(_, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
+      | Nothing => do logD RefineHole "No name found at \{show line}:\{show col}}"
+                      pure []
+    logD RefineHole "Found name \{show name}"
 
-      fuel <- gets LSPConf searchLimit
-      nameLocs <- gets MD nameLocMap
-      let col = params.range.start.character
-      let Just (loc@(_, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
-        | Nothing => do logD RefineHole "No name found at \{show line}:\{show col}}"
-                        pure []
-      logD RefineHole "Found name \{show name}"
+    defs <- get Ctxt
+    let context = defs.gamma
+    toBrack <- gets Syn (elemBy (\x, y => dropNS x == dropNS y) name . bracketholes)
+    let bracket = the (IPTerm -> IPTerm) $ if toBrack then addBracket replFC else id
+    let opts = MkSearchOpts True True Nothing 2 False False True False False Nothing
+    solutions <-
+      case !(lookupCtxtName name context) of
+           [(n, nidx, def@(MkGlobalDef {definition = (Hole locs _), _}))] => do
+             catch (do searchtms <- the (Core (List RawImp)) $ if null hints
+                          then do matchingNames <- keepNonHoleNames =<< typeMatchingNames n def.type 1000
+                                  similar <- keepNonHoleNames =<< maybe [] (map fst . snd) <$> getSimilarNames n
+                                  fst <$> searchN fuel (exprSearchOpts opts replFC name (matchingNames ++ similar))
+                          else do filtered <- filterS (hasHints hints) <$> exprSearchOpts opts replFC name hints
+                                  fst <$> searchN fuel filtered
+                       let searchtms = filter isRawHole searchtms
+                       traverse (map (show . bracket) . pterm . map defaultKindedName . dropLams locs) searchtms)
+                   (\case Timeout _ => do logI RefineHole "Timed out"
+                                          pure []
+                          err => do logC RefineHole "Unexpected error while searching"
+                                    throw err)
+           [(n, nidx, def@(MkGlobalDef {definition = (PMDef pi [] (STerm _ tm) _ _), _}))] => case holeInfo pi of
+             NotHole => do logD RefineHole "\{show name} is not a metavariable"
+                           pure []
+             SolvedHole locs => do
+               let (_ ** (env, tm')) = dropLamsTm locs [] !(normaliseHoles defs [] tm)
+               itm <- resugar env tm'
+               pure [show $ bracket itm]
+           _ => do logD RefineHole "\{show name} is not a metavariable"
+                   pure []
 
-      defs <- get Ctxt
-      let context = defs.gamma
-      toBrack <- gets Syn (elemBy (\x, y => dropNS x == dropNS y) name . bracketholes)
-      let bracket = the (IPTerm -> IPTerm) $ if toBrack then addBracket replFC else id
-      let opts = MkSearchOpts True True Nothing 2 False False True False False Nothing
-      solutions <-
-        case !(lookupCtxtName name context) of
-             [(n, nidx, def@(MkGlobalDef {definition = (Hole locs _), _}))] => do
-               catch (do searchtms <- the (Core (List RawImp)) $ if null hints
-                            then do matchingNames <- keepNonHoleNames =<< typeMatchingNames n def.type 1000
-                                    similar <- keepNonHoleNames =<< maybe [] (map fst . snd) <$> getSimilarNames n
-                                    fst <$> searchN fuel (exprSearchOpts opts replFC name (matchingNames ++ similar))
-                            else do filtered <- filterS (hasHints hints) <$> exprSearchOpts opts replFC name hints
-                                    fst <$> searchN fuel filtered
-                         let searchtms = filter isRawHole searchtms
-                         traverse (map (show . bracket) . pterm . map defaultKindedName . dropLams locs) searchtms)
-                     (\case Timeout _ => do logI RefineHole "Timed out"
-                                            pure []
-                            err => do logC RefineHole "Unexpected error while searching"
-                                      throw err)
-             [(n, nidx, def@(MkGlobalDef {definition = (PMDef pi [] (STerm _ tm) _ _), _}))] => case holeInfo pi of
-               NotHole => do logD RefineHole "\{show name} is not a metavariable"
-                             pure []
-               SolvedHole locs => do
-                 let (_ ** (env, tm')) = dropLamsTm locs [] !(normaliseHoles defs [] tm)
-                 itm <- resugar env tm'
-                 pure [show $ bracket itm]
-             _ => do logD RefineHole "\{show name} is not a metavariable"
-                     pure []
-
-      let range = MkRange (uncurry MkPosition nstart) (uncurry MkPosition nend)
-      let actions = buildCodeAction name params.textDocument.uri range <$> solutions
-      pure [(cast loc, actions)]
+    let range = MkRange (uncurry MkPosition nstart) (uncurry MkPosition nend)
+    let actions = buildCodeAction name params.textDocument.uri range <$> solutions
+    pure actions
 
 export
 refineHole : Ref LSPConf LSPConfiguration
