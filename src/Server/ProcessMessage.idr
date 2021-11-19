@@ -452,6 +452,26 @@ handleRequest WorkspaceExecuteCommand
 handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "metavars" _) = whenActiveRequest $ \conf => do
   logI Channel "Received metavars command request"
   Right <$> metavarsCmd
+handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "exprSearchWithHints" (Just [json])) = whenActiveRequest $ \conf => do
+  logI Channel "Received exprSearchWithHints command request"
+  let JObject obj = json
+    | _ => pure $ Left (invalidParams "Expected Object")
+  let Just params = fromJSON {a = CodeActionParams} =<< lookup "codeAction" obj
+    | _ => pure $ Left (invalidParams "Expected CodeActionParams")
+  let Just hints = fromJSON {a = List String} =<< lookup "hints" obj
+    | _ => pure $ Left (invalidParams "Expected String[]")
+  actions <- exprSearchWithHints params hints
+  pure $ Right (toJSON actions)
+handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "refineHoleWithHints" (Just [json])) = whenActiveRequest $ \conf => do
+  logI Channel "Received refineHoleWithHints command request"
+  let JObject obj = json
+    | _ => pure $ Left (invalidParams "Expected Object")
+  let Just params = fromJSON {a = CodeActionParams} =<< lookup "codeAction" obj
+    | _ => pure $ Left (invalidParams "Expected CodeActionParams")
+  let Just hints = fromJSON {a = List String} =<< lookup "hints" obj
+    | _ => pure $ Left (invalidParams "Expected String[]")
+  actions <- refineHoleWithHints params hints
+  pure $ Right (toJSON actions)
 handleRequest method params = whenActiveRequest $ \conf => do
     logW Channel $ "Received a not supported \{show (toJSON method)} request"
     pure $ Left methodNotFound

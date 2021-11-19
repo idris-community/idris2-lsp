@@ -14,12 +14,15 @@ import Language.JSON
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
+import Parser.Source
+import Parser.Rule.Source
 import Server.Configuration
 import Server.Log
 import Server.Utils
 import TTImp.Interactive.ExprSearch
 import TTImp.TTImp
 import TTImp.TTImp.Functor
+import TTImp.Utils
 
 dropLams : Nat -> RawImp -> RawImp
 dropLams Z tm = tm
@@ -52,15 +55,14 @@ isAllowed : CodeActionParams -> Bool
 isAllowed params =
   maybe True (\filter => (Other "refactor.rewrite.ExprSearch" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
 
-export
-exprSearch : Ref LSPConf LSPConfiguration
-          => Ref MD Metadata
-          => Ref Ctxt Defs
-          => Ref UST UState
-          => Ref Syn SyntaxInfo
-          => Ref ROpts REPLOpts
-          => CodeActionParams -> Core (List CodeAction)
-exprSearch params = do
+exprSearch' : Ref LSPConf LSPConfiguration
+           => Ref MD Metadata
+           => Ref Ctxt Defs
+           => Ref UST UState
+           => Ref Syn SyntaxInfo
+           => Ref ROpts REPLOpts
+           => CodeActionParams -> List Name -> Core (List CodeAction)
+exprSearch' params hints = do
   let True = isAllowed params
     | False => do logI ExprSearch "Skipped"
                   pure []
@@ -83,7 +85,7 @@ exprSearch params = do
       solutions <-
         case !(lookupDefName name context) of
              [(n, nidx, Hole locs _)] =>
-               catch (do searchtms <- exprSearchN replFC fuel name []
+               catch (do searchtms <- exprSearchN replFC fuel name hints
                          traverse (map (show . bracket) . pterm . map defaultKindedName . dropLams locs) searchtms)
                      (\case Timeout _ => do logI ExprSearch "Timed out"
                                             pure []
@@ -102,3 +104,30 @@ exprSearch params = do
       let range = MkRange (uncurry MkPosition nstart) (uncurry MkPosition nend)
       let actions = buildCodeAction name params.textDocument.uri range <$> solutions
       pure [(cast loc, actions)]
+
+export
+exprSearch : Ref LSPConf LSPConfiguration
+          => Ref MD Metadata
+          => Ref Ctxt Defs
+          => Ref UST UState
+          => Ref Syn SyntaxInfo
+          => Ref ROpts REPLOpts
+          => CodeActionParams -> Core (List CodeAction)
+exprSearch params = exprSearch' params []
+
+export
+exprSearchWithHints : Ref LSPConf LSPConfiguration
+                   => Ref MD Metadata
+                   => Ref Ctxt Defs
+                   => Ref UST UState
+                   => Ref Syn SyntaxInfo
+                   => Ref ROpts REPLOpts
+                   => CodeActionParams -> List String -> Core (List CodeAction)
+exprSearchWithHints params names = do
+  defs <- get Ctxt
+  hints <- for names $ \str => do
+    let Right (_, _, n) = runParser (Virtual Interactive) Nothing str name
+      | _ => pure []
+    ns <- lookupCtxtName n defs.gamma
+    pure $ fst <$> ns
+  exprSearch' params (concat hints)
