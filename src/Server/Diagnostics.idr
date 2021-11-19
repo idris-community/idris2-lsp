@@ -265,6 +265,10 @@ perror (AllFailed ts)
     allUndefined _ = Nothing
 perror (RecordTypeNeeded fc _)
     = pure $ errorDesc (reflow "Can't infer type for this record update.")
+perror (DuplicatedRecordUpdatePath fc ps)
+    = pure $ vcat $
+        errorDesc (reflow "Duplicated record update paths:")
+          :: map (indent 2 . concatWith (surround (pretty "->")) . map pretty) ps
 perror (NotRecordField fc fld Nothing)
     = pure $ errorDesc (code (pretty fld) <++> reflow "is not part of a record type.")
 perror (NotRecordField fc fld (Just ty))

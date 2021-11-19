@@ -16,12 +16,15 @@ import Language.LSP.CodeAction
 import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
 import Libraries.Data.NameMap
+import Parser.Source
+import Parser.Rule.Source
 import Server.Configuration
 import Server.Log
 import Server.Utils
 import TTImp.Interactive.ExprSearch
 import TTImp.TTImp
 import TTImp.TTImp.Functor
+import TTImp.Utils
 
 dropLams : Nat -> RawImp -> RawImp
 dropLams Z tm = tm
@@ -131,19 +134,21 @@ keepNonHoleNames names =
   do defs <- get Ctxt
      filterM (map not . isHole defs) names
 
+hasHints : List Name -> RawImp -> Bool
+hasHints hs tm = not $ null $ intersect hs (findAllNames [] tm)
+
 isAllowed : CodeActionParams -> Bool
 isAllowed params =
   maybe True (\filter => (Other "refactor.rewrite.RefineHole" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
 
-export
-refineHole : Ref LSPConf LSPConfiguration
-          => Ref MD Metadata
-          => Ref Ctxt Defs
-          => Ref UST UState
-          => Ref Syn SyntaxInfo
-          => Ref ROpts REPLOpts
-          => CodeActionParams -> Core (List CodeAction)
-refineHole params = do
+refineHole' : Ref LSPConf LSPConfiguration
+           => Ref MD Metadata
+           => Ref Ctxt Defs
+           => Ref UST UState
+           => Ref Syn SyntaxInfo
+           => Ref ROpts REPLOpts
+           => CodeActionParams -> List Name -> Core (List CodeAction)
+refineHole' params hints = do
   let True = isAllowed params
     | False => do logI RefineHole "Skipped"
                   pure []
@@ -167,9 +172,12 @@ refineHole params = do
       solutions <-
         case !(lookupCtxtName name context) of
              [(n, nidx, def@(MkGlobalDef {definition = (Hole locs _), _}))] => do
-               matchingNames <- keepNonHoleNames =<< typeMatchingNames n def.type 1000
-               similar <- keepNonHoleNames =<< maybe [] (map fst . snd) <$> getSimilarNames n
-               catch (do (searchtms, _) <- searchN fuel (exprSearchOpts opts replFC name (matchingNames ++ similar))
+               catch (do searchtms <- the (Core (List RawImp)) $ if null hints
+                            then do matchingNames <- keepNonHoleNames =<< typeMatchingNames n def.type 1000
+                                    similar <- keepNonHoleNames =<< maybe [] (map fst . snd) <$> getSimilarNames n
+                                    fst <$> searchN fuel (exprSearchOpts opts replFC name (matchingNames ++ similar))
+                            else do filtered <- filterS (hasHints hints) <$> exprSearchOpts opts replFC name hints
+                                    fst <$> searchN fuel filtered
                          let searchtms = filter isRawHole searchtms
                          traverse (map (show . bracket) . pterm . map defaultKindedName . dropLams locs) searchtms)
                      (\case Timeout _ => do logI RefineHole "Timed out"
@@ -189,3 +197,30 @@ refineHole params = do
       let range = MkRange (uncurry MkPosition nstart) (uncurry MkPosition nend)
       let actions = buildCodeAction name params.textDocument.uri range <$> solutions
       pure [(cast loc, actions)]
+
+export
+refineHole : Ref LSPConf LSPConfiguration
+          => Ref MD Metadata
+          => Ref Ctxt Defs
+          => Ref UST UState
+          => Ref Syn SyntaxInfo
+          => Ref ROpts REPLOpts
+          => CodeActionParams -> Core (List CodeAction)
+refineHole params = refineHole' params []
+
+export
+refineHoleWithHints : Ref LSPConf LSPConfiguration
+                   => Ref MD Metadata
+                   => Ref Ctxt Defs
+                   => Ref UST UState
+                   => Ref Syn SyntaxInfo
+                   => Ref ROpts REPLOpts
+                   => CodeActionParams -> List String -> Core (List CodeAction)
+refineHoleWithHints params names = do
+  defs <- get Ctxt
+  hints <- for names $ \str => do
+    let Right (_, _, n) = runParser (Virtual Interactive) Nothing str name
+      | _ => pure []
+    ns <- lookupCtxtName n defs.gamma
+    pure $ fst <$> ns
+  refineHole' params (concat hints)
