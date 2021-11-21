@@ -117,7 +117,8 @@ pwarning (ShadowingGlobalDefs _ ns) =
                              :: reflow "is shadowing"
                              :: punctuate comma (map pretty (forget ns)))
              (forget ns)
-pwarning (Deprecated s) = pure $ pretty "Deprecation warning:" <++> pretty s
+pwarning (Deprecated s Nothing) = pure $ pretty "Deprecation warning:" <++> pretty s
+pwarning (Deprecated s (Just fcAndName)) = pure $ pretty "Deprecation warning:" <++> pretty s <++> pretty "at" <++> pretty fcAndName
 pwarning (GenericWarn s) = pure $ pretty s
 pwarning (ParserWarning fc msg) = pure $ pretty msg
 
@@ -430,6 +431,7 @@ perror (MaybeMisspelling err ns) = pure $ !(perror err) <++> case ns of
        <+> comma <++> reflow "or" <++> pretty x <+> "?"
 perror (WarningAsError warn) = pwarning warn
 perror (Timeout str) = pure $ errorDesc (reflow "Timeout in" <++> pretty str)
+perror (DuplicatedRecordUpdatePath fc ps) = pure $ errorDesc (pretty fc <++> reflow ":Duplicated record update paths: " <++> pretty ps)
 
 ||| Computes a LSP `Diagnostic` from a compiler error.
 |||
