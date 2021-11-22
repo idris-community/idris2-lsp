@@ -45,7 +45,7 @@ mkLocation origin (sline, scol) (eline, ecol) = do
 
   let fname_abs_uri = "file://" ++ fname_abs
 
-  let Right (uri, _) = parse uriReferenceParser fname_abs_uri
+  let Right uri = escapeAndParseURI fname_abs_uri
     | Left err => do logE GotoDefinition "URI parse error: \{err} \{show (fname_abs_uri, sline, scol)}"
                      pure Nothing
 

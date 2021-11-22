@@ -9,6 +9,8 @@
 ||| (C) The Idris Community, 2021
 module Data.URI
 
+import Data.Bits
+import Data.DPair
 import Data.List
 import Data.List1
 import Data.Maybe
@@ -76,11 +78,17 @@ Ord URI where
 isUnreserved : Char -> Bool
 isUnreserved c = isAlphaNum c || (c `Prelude.elem` ['-', '.', '_', '~'])
 
+isGenDelim : Char -> Bool
+isGenDelim c = c `Prelude.elem` [':', '/', '?', '#', '[', ']', '@']
+
 ||| Returns true for reserved characters that requires to be percent escaped.
 |||
 ||| @see RFC 3986, section 2.2
 isSubDelim : Char -> Bool
 isSubDelim c = c `Prelude.elem` ['!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=']
+
+isReserved : Char -> Bool
+isReserved c = isGenDelim c || isSubDelim c
 
 ||| Parser for percent encoded characters.
 |||
@@ -304,3 +312,80 @@ uriAbsoluteParser = do
   (authority, path) <- [| MkPair (Just <$> authorityParser) abempty |] <|> ((Nothing,) <$> (absolute <|> rootless <|> empty))
   query <- optionMap "" id (char '?' *> queryParser)
   pure $ MkURI scheme authority path query ""
+
+export
+uriIsAbsolute : URI -> Bool
+uriIsAbsolute (MkURI {scheme, _}) = scheme /= ""
+
+export
+uriIsRelative : URI -> Bool
+uriIsRelative = not . uriIsAbsolute
+
+export
+isUnescapedInURI : Char -> Bool
+isUnescapedInURI c = isReserved c || isUnreserved c
+
+export
+isUnescapedInURIComponent : Char -> Bool
+isUnescapedInURIComponent c = not (isReserved c || not (isUnescapedInURI c))
+
+utf8EncodeChar : Char -> List Int
+utf8EncodeChar = go . ord
+  where
+    go : Int -> List Int
+    go x = if x <= 0x7f then [x]
+           else if x <= 0x7ff then [ 0xc0 + (x `shiftR` (Element 6 %search))
+                                   , 0x80 + x .&. 0x3f
+                                   ]
+           else if x <= 0xffff then [ 0xe0 + (x `shiftR` (Element 12 %search))
+                                    , 0x80 + ((x `shiftR` (Element 6 %search)) .&. 0x3f)
+                                    , 0x80 + x .&. 0x3f
+                                    ]
+           else [ 0xf0 + (x `shiftR` (Element 18 %search))
+                , 0x80 + ((x `shiftR` (Element 12 %search)) .&. 0x3f)
+                , 0x80 + ((x `shiftR` (Element 6 %search)) .&. 0x3f)
+                , 0x80 + x .&. 0x3f
+                ]
+
+b16ToHexString : Bits16 -> String
+b16ToHexString n =
+  case n of
+    0 => "0"
+    1 => "1"
+    2 => "2"
+    3 => "3"
+    4 => "4"
+    5 => "5"
+    6 => "6"
+    7 => "7"
+    8 => "8"
+    9 => "9"
+    10 => "A"
+    11 => "B"
+    12 => "C"
+    13 => "D"
+    14 => "E"
+    15 => "F"
+    other => assert_total $ b16ToHexString (n `shiftR` fromNat 4) ++ b16ToHexString (n .&. 15)
+
+pad2 : String -> String
+pad2 str =
+  case length str of
+    0 => "00"
+    1 => strCons '0' str
+    _ => str
+
+export
+escapeURIChar : (Char -> Bool) -> Char -> String
+escapeURIChar p c =
+  if p c
+     then cast c
+     else concatMap (strCons '%' . pad2 . b16ToHexString . cast) (utf8EncodeChar c)
+
+export
+escapeURIString : (Char -> Bool) -> String -> String
+escapeURIString p = foldl (\acc, c => acc ++ escapeURIChar p c) "" . unpack
+
+export
+escapeAndParseURI : String -> Either String URI
+escapeAndParseURI = mapSnd fst . parse (uriReferenceParser <* eos) . escapeURIString isUnescapedInURI
