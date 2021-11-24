@@ -129,10 +129,13 @@ sendDiagnostics : Ref LSPConf LSPConfiguration
                => (caps : Maybe PublishDiagnosticsClientCapabilities)
                -> (uri : DocumentURI)
                -> (version : Maybe Int)
+               -> (warnings : List Warning)
                -> (errs : List Error)
                -> Core ()
-sendDiagnostics caps uri version errs = do
-  diagnostics <- traverse (toDiagnostic caps uri) errs
+sendDiagnostics caps uri version warnings errs = do
+  warningDiagnostics <- traverse (warningToDiagnostic caps uri) warnings
+  errorDiagnostics <- traverse (errorToDiagnostic caps uri) errs
+  let diagnostics = warningDiagnostics ++ errorDiagnostics
   let params = MkPublishDiagnosticsParams uri version diagnostics
   logI Diagnostic "Sending diagnostic message for \{show uri}"
   sendNotificationMessage TextDocumentPublishDiagnostics params

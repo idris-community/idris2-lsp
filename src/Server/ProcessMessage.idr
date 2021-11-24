@@ -206,7 +206,10 @@ loadURI conf uri version = do
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   update LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
   traverse_ (findQuickfix caps uri) errs
-  sendDiagnostics caps uri version errs
+  defs <- get Ctxt
+  session <- getSession
+  let warnings = if session.warningsAsErrors then [] else reverse (warnings defs)
+  sendDiagnostics caps uri version warnings errs
   pure $ Right ()
 
 loadIfNeeded : Ref LSPConf LSPConfiguration
