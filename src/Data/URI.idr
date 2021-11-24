@@ -334,16 +334,16 @@ utf8EncodeChar = go . ord
   where
     go : Int -> List Int
     go x = if x <= 0x7f then [x]
-           else if x <= 0x7ff then [ 0xc0 + (x `shiftR` (Element 6 %search))
+           else if x <= 0x7ff then [ 0xc0 + (x `shiftR` fromNat 6)
                                    , 0x80 + x .&. 0x3f
                                    ]
-           else if x <= 0xffff then [ 0xe0 + (x `shiftR` (Element 12 %search))
-                                    , 0x80 + ((x `shiftR` (Element 6 %search)) .&. 0x3f)
+           else if x <= 0xffff then [ 0xe0 + (x `shiftR` fromNat 12)
+                                    , 0x80 + ((x `shiftR` fromNat 6) .&. 0x3f)
                                     , 0x80 + x .&. 0x3f
                                     ]
-           else [ 0xf0 + (x `shiftR` (Element 18 %search))
-                , 0x80 + ((x `shiftR` (Element 12 %search)) .&. 0x3f)
-                , 0x80 + ((x `shiftR` (Element 6 %search)) .&. 0x3f)
+           else [ 0xf0 + (x `shiftR` fromNat 18)
+                , 0x80 + ((x `shiftR` fromNat 12) .&. 0x3f)
+                , 0x80 + ((x `shiftR` fromNat 6) .&. 0x3f)
                 , 0x80 + x .&. 0x3f
                 ]
 

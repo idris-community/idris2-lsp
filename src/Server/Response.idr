@@ -25,7 +25,7 @@ import System.File
 ||| Header for messages on-the-wire.
 ||| By specification only Content-Length is mandatory.
 header : Int -> String
-header l = "Content-Length: " ++ show l ++ "\r\n\r\n"
+header l = "Content-Length: \{show l}\r\n\r\n"
 
 ||| Response message for method not found or not implemented yet.
 export
@@ -89,7 +89,7 @@ sendRequestMessage_ : Ref LSPConf LSPConfiguration
 sendRequestMessage_ method params = do
   requestId <- gets LSPConf nextRequestId
   let msg = toJSON $ MkRequestMessage (make $ cast {to = Int} requestId) method params
-  update LSPConf (record {nextRequestId = requestId + 1})
+  update LSPConf (record { nextRequestId = requestId + 1 })
   writeResponse (toJSON msg)
   logI Channel "Sent request message for method \{stringify $ toJSON method}"
   logD Channel "Request sent: \{stringify msg}"

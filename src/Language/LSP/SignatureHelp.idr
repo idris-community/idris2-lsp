@@ -27,7 +27,7 @@ getNonColoredDocsForName fc n = do
   put ROpts (record { color = False, synHighlightOn = False } ropts)
   docs <- getDocsForName fc n MkConfig
   put ROpts ropts
-  pure (show docs)
+  pure $ show docs
 
 -- Find the unique Name in the type term for the function return type which represent
 -- the datatype. This function should be called only for a closed term of a DCon.
@@ -57,23 +57,21 @@ renderDataTypeInfo n d@(DCon tag arity newtypeArg) = do
   case !(lookupCtxtExact fullName context) of
     Nothing => pure Nothing
     Just df => case findRefNamesInTerm (getFn df.type) of
-                [rn] => do
-                  fullName <- getFullName rn
-                  case !(lookupDefName fullName context) of
-                    -- Render the TCon for this DCon
-                    [(defName, _, tcon@(TCon _ _ _ _ _ _ _ _))] => renderDataTypeInfo defName tcon
-                    _ => pure Nothing
-                _ => pure Nothing
+      [rn] => do
+        fullName <- getFullName rn
+        case !(lookupDefName fullName context) of
+          -- Render the TCon for this DCon
+          [(defName, _, tcon@(TCon _ _ _ _ _ _ _ _))] => renderDataTypeInfo defName tcon
+          _ => pure Nothing
+      _ => pure Nothing
 renderDataTypeInfo n d@(TCon tag arity parampos detpos flags mutwith datacons detagabbleBy) = do
   -- Render the data structure information for the type.
   context <- gets Ctxt gamma
-  constructors <- traverse
-                    (\dn => case !(lookupDefName dn context) of
-                              [(_, _, DCon _ _ _)] => do
-                                fullName <- getFullName dn
-                                pure $ Just $ " | " ++ show fullName ++ " ..."
-                              _ => pure $ the (Maybe String) Nothing)
-                    datacons
+  constructors <- for datacons $ \dn => case !(lookupDefName dn context) of
+    [(_, _, DCon _ _ _)] => do
+      fullName <- getFullName dn
+      pure $ Just " | \{show fullName} ..."
+    _ => pure Nothing
   pure $ Just $ String.unlines (show n :: catMaybes constructors)
 renderDataTypeInfo n other = pure Nothing
 
@@ -92,12 +90,10 @@ signatureHelp params =
             let col = params.position.character
             nameLocs <- gets MD nameLocMap
             let Just ((fname, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
-              | Nothing => do logD SignatureHelp "No name found at \{show line}:\{show col}}"
-                              pure Nothing
+              | Nothing => logD SignatureHelp "No name found at \{show line}:\{show col}}" >> pure Nothing
 
             -- Check of the name is a local name.
             localResult <- findTypeAt $ anyWithName name $ within (line, col)
-
             docs <- getNonColoredDocsForName (MkFC fname nstart nend) name
 
             -- Generate the data type information if it is not in the generated doc already.
@@ -108,19 +104,16 @@ signatureHelp params =
                 then pure []
                 else do
                   defs <- lookupDefName name !(gets Ctxt gamma)
-                  infos <- traverse
-                            (\(n, _, d) => do
-                              infoStr <- renderDataTypeInfo n d
-                              pure $ map (\str => ("Data structure of", str)) infoStr)
-                            defs
+                  infos <- for defs $ (\(n, _, d) => do
+                    infoStr <- renderDataTypeInfo n d
+                    pure $ map (\str => ("Data structure of", str)) infoStr)
                   pure $ catMaybes infos
 
             -- Use one signature block, as it seems the nvim client doesn't render more than one... :(
             let signatureDocs : List (String, String)
-                signatureDocs =
-                  case localResult of
-                    Just (n,_,t) => [("Local", show n ++ " : " ++ show t), ("Shadowing", docs)]
-                    Nothing    => [("Global definition(s)", docs)]
+                signatureDocs = case localResult of
+                  Just (n, _, t) => [("Local", "\{show n} : \{show t}"), ("Shadowing", docs)]
+                  Nothing => [("Global definition(s)", docs)]
 
             let signatures =
                   MkSignatureInformation

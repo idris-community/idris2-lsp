@@ -59,18 +59,18 @@ export
 defaultConfig : LSPConfiguration
 defaultConfig =
   MkLSPConfiguration
-    { inputHandle       = stdin
-    , outputHandle      = stdout
-    , logHandle         = stderr
-    , initialized       = Nothing
-    , isShutdown        = False
-    , openFile          = Nothing
-    , dirtyFiles        = empty
-    , errorFiles        = empty
+    { inputHandle             = stdin
+    , outputHandle            = stdout
+    , logHandle               = stderr
+    , initialized             = Nothing
+    , isShutdown              = False
+    , openFile                = Nothing
+    , dirtyFiles              = empty
+    , errorFiles              = empty
     , semanticTokensSentFiles = empty
-    , searchLimit       = 5
-    , quickfixes        = []
-    , cachedActions     = empty
-    , cachedHovers      = empty
-    , nextRequestId     = 0
+    , searchLimit             = 5
+    , quickfixes              = []
+    , cachedActions           = empty
+    , cachedHovers            = empty
+    , nextRequestId           = 0
     }

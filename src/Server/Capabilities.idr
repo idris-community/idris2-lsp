@@ -10,27 +10,19 @@ import Language.LSP.Message
 
 %default total
 
-syncOptions : TextDocumentSyncOptions
-syncOptions = MkTextDocumentSyncOptions { openClose = Just True
-                                        , change = Just Incremental
-                                        , willSave = Nothing
-                                        , willSaveWaitUntil = Nothing
-                                        , save = Just (make (MkSaveOptions (Just True)))
-                                        }
-
 decor : List Decoration
 decor = [Typ, Function, Data, Bound, Keyword, Namespace, Postulate, Module, Comment]
 
 encodeDecorAsString : Decoration -> String
-encodeDecorAsString Typ       = "type"
-encodeDecorAsString Function  = "function"
-encodeDecorAsString Data      = "enumMember"
-encodeDecorAsString Bound     = "variable"
-encodeDecorAsString Keyword   = "keyword"
-encodeDecorAsString Namespace = "namespace"
-encodeDecorAsString Postulate = "postulate"
-encodeDecorAsString Module    = "module"
-encodeDecorAsString Comment   = "comment"
+encodeDecorAsString Typ       = "type"        -- Type constructors
+encodeDecorAsString Function  = "function"    -- Functions
+encodeDecorAsString Data      = "enumMember"  -- Data constructors
+encodeDecorAsString Bound     = "variable"    -- Bound variables
+encodeDecorAsString Keyword   = "keyword"     -- Keywords
+encodeDecorAsString Namespace = "namespace"   -- Explicit namespaces
+encodeDecorAsString Postulate = "postulate"   -- Postulates (assert_total, believe_me, ...)
+encodeDecorAsString Module    = "module"      -- Explicit module names
+encodeDecorAsString Comment   = "comment"     -- Comments
 
 ||| Convert Decoration to legend index
 export
@@ -45,65 +37,121 @@ encodeDecorAsNum Postulate = 6
 encodeDecorAsNum Module    = 7
 encodeDecorAsNum Comment   = 8
 
-semanticTokensLegend : SemanticTokensLegend
+syncOptions = MkTextDocumentSyncOptions
+  { openClose         = Just True
+  , change            = Just Incremental
+  , willSave          = Nothing
+  , willSaveWaitUntil = Nothing
+  , save              = Just $ make $ MkSaveOptions (Just True)
+  }
+
 semanticTokensLegend = MkSemanticTokensLegend
-  -- ``type``: type constructors       ==> ``type``
-  -- ``function``: defined functions   ==> ``function``
-  -- ``data``: data constructors       ==> ``enumMember``
-  -- ``bound``: bound variables, or    ==> ``variable``
-  -- ``keyword``                       ==> ``keyword``
-  (map encodeDecorAsString decor)
-  []
+  { tokenTypes = map encodeDecorAsString decor
+  , tokenModifiers = []
+  }
 
-semanticTokensOptions : SemanticTokensOptions
 semanticTokensOptions = MkSemanticTokensOptions
-  semanticTokensLegend
-  (Just (make False))
-  (Just (make True))
+  { legend = semanticTokensLegend
+  , range = Just $ make False
+  , full = Just $ make True
+  }
 
+completionOptions = MkCompletionOptions
+  { workDoneProgress    = Nothing
+  , triggerCharacters   = Just []
+  , allCommitCharacters = Just []
+  , resolveProvider     = Nothing
+  }
+
+signatureHelpOptions = MkSignatureHelpOptions
+  { workDoneProgress    = Nothing
+  , triggerCharacters   = Nothing
+  , retriggerCharacters = Nothing
+  }
+
+definitionOptions = MkDefinitionOptions
+  { workDoneProgress = Just False
+  }
+
+documentSymbolOptions = MkDocumentSymbolOptions
+  { workDoneProgress = Nothing
+  , label            = Nothing
+  }
+
+codeActionOptions = MkCodeActionOptions
+  { workDoneProgress = Nothing
+  , codeActionKinds  = Nothing
+  , resolveProvider  = Just False
+  }
+
+codeLensOptions = MkCodeLensOptions
+  { workDoneProgress = Nothing
+  , resolveProvider  = Nothing
+  }
+
+documentLinkOptions = MkDocumentLinkOptions
+  { workDoneProgress = Nothing
+  , resolveProvider  = Nothing
+  }
+
+executeCommandOptions = MkExecuteCommandOptions
+  { workDoneProgress = Nothing
+  , commands         = ["repl", "exprSearchWithHints", "refineHoleWithHints", "metavars"]
+  }
+
+workspaceFoldersServerCapabilities = MkWorkspaceFoldersServerCapabilities
+  { supported           = Just False
+  , changeNotifications = Nothing
+  }
+
+fileOperationServerCapabilities = MkFileOperationsServerCapabilities
+  { didCreate  = Nothing
+  , willCreate = Nothing
+  , didRename  = Nothing
+  , willRename = Nothing
+  , didDelete  = Nothing
+  , willDelete = Nothing
+  }
+
+workspaceServerCapabilities = MkWorkspaceServerCapabilities
+  { workspaceFolders = Just workspaceFoldersServerCapabilities
+  , fileOperations   = Just fileOperationServerCapabilities
+  }
 
 ||| Default server capabilities to be sent to clients during the initialization protocol.
 export
 serverCapabilities : ServerCapabilities
-serverCapabilities =
-  MkServerCapabilities { textDocumentSync                 = Just (make syncOptions)
-                       , completionProvider               = Just (MkCompletionOptions Nothing (Just []) (Just []) Nothing)
-                       , hoverProvider                    = Just (make True)
-                       , signatureHelpProvider            = Just (MkSignatureHelpOptions Nothing Nothing Nothing)
-                       , definitionProvider               = Just (make (MkDefinitionOptions
-                                                                          (Just False)))
-                       , declarationProvider              = Just (make False)
-                       , typeDefinitionProvider           = Just (make False)
-                       , implementationProvider           = Just (make False)
-                       , referencesProvider               = Just (make False)
-                       , documentHighlightProvider        = Just (make False)
-                       , documentSymbolProvider           = Just (make (MkDocumentSymbolOptions
-                                                                          Nothing
-                                                                          Nothing))
-                       , codeActionProvider               = Just (make (MkCodeActionOptions
-                                                                          Nothing
-                                                                          Nothing
-                                                                          (Just False)))
-                       , codeLensProvider                 = Just (MkCodeLensOptions Nothing Nothing)
-                       , documentLinkProvider             = Just (MkDocumentLinkOptions Nothing Nothing)
-                       , colorProvider                    = Just (make False)
-                       , documentFormattingProvider       = Just (make False)
-                       , documentRangeFormattingProvider  = Just (make False)
-                       , documentOnTypeFormattingProvider = Nothing
-                       , renameProvider                   = Just (make False)
-                       , foldingRangeProvider             = Just (make False)
-                       , executeCommandProvider           = Just (MkExecuteCommandOptions Nothing ["repl"])
-                       , selectionRangeProvider           = Just (make False)
-                       , linkedEditingRangeProvider       = Just (make False)
-                       , callHierarchyProvider            = Just (make False)
-                       , semanticTokensProvider           = Just (make semanticTokensOptions)
-                       , monikerProvider                  = Just (make False)
-                       , workspaceSymbolProvider          = Just (make False)
-                       , workspace                        = Just (MkWorkspaceServerCapabilities
-                                                                 (Just (MkWorkspaceFoldersServerCapabilities (Just False) Nothing))
-                                                                 (Just (MkFileOperationsServerCapabilities Nothing Nothing Nothing Nothing Nothing Nothing)))
-                       , experimental                     = Nothing
-                       }
+serverCapabilities = MkServerCapabilities
+  { textDocumentSync                 = Just $ make syncOptions
+  , completionProvider               = Just completionOptions
+  , hoverProvider                    = Just $ make True
+  , signatureHelpProvider            = Just signatureHelpOptions
+  , definitionProvider               = Just $ make definitionOptions
+  , declarationProvider              = Just $ make False
+  , typeDefinitionProvider           = Just $ make False
+  , implementationProvider           = Just $ make False
+  , referencesProvider               = Just $ make False
+  , documentHighlightProvider        = Just $ make False
+  , documentSymbolProvider           = Just $ make documentSymbolOptions
+  , codeActionProvider               = Just $ make codeActionOptions
+  , codeLensProvider                 = Just codeLensOptions
+  , documentLinkProvider             = Just documentLinkOptions
+  , colorProvider                    = Just $ make False
+  , documentFormattingProvider       = Just $ make False
+  , documentRangeFormattingProvider  = Just $ make False
+  , documentOnTypeFormattingProvider = Nothing
+  , renameProvider                   = Just $ make False
+  , foldingRangeProvider             = Just $ make False
+  , executeCommandProvider           = Just executeCommandOptions
+  , selectionRangeProvider           = Just $ make False
+  , linkedEditingRangeProvider       = Just $ make False
+  , callHierarchyProvider            = Just $ make False
+  , semanticTokensProvider           = Just $ make semanticTokensOptions
+  , monikerProvider                  = Just $ make False
+  , workspaceSymbolProvider          = Just $ make False
+  , workspace                        = Just workspaceServerCapabilities
+  , experimental                     = Nothing
+  }
 
 ||| Server information to be sent to clients during the initialization protocol.
 export

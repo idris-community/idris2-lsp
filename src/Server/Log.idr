@@ -68,6 +68,7 @@ data Topic
   | MakeCase
   | MakeLemma
   | MakeWith
+  | Metavars
   | QuickFix
   | RefineHole
   | SemanticTokens
@@ -90,6 +91,7 @@ Show Topic where
   show MakeCase = "Request.CodeAction.MakeCase"
   show MakeLemma = "Request.CodeAction.MakeLemma"
   show MakeWith = "Request.CodeAction.MakeWith"
+  show Metavars = "Request.Command.Metavars"
   show QuickFix = "Request.CodeAction.QuickFix"
   show RefineHole = "Request.CodeAction.RefineHole"
   show SemanticTokens = "Notification.SemanticTokens"

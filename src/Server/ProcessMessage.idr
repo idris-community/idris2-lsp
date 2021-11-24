@@ -10,6 +10,7 @@ import Core.Env
 import Core.Metadata
 import Core.UnifyState
 import Data.List
+import Data.List1
 import Data.OneOf
 import Data.SortedSet
 import Data.String
@@ -27,19 +28,21 @@ import Language.LSP.CodeAction
 import Language.LSP.CodeAction.AddClause
 import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
-import Language.LSP.CodeAction.RefineHole
 import Language.LSP.CodeAction.GenerateDef
 import Language.LSP.CodeAction.MakeCase
 import Language.LSP.CodeAction.MakeLemma
 import Language.LSP.CodeAction.MakeWith
+import Language.LSP.CodeAction.RefineHole
 import Language.LSP.Definition
 import Language.LSP.DocumentSymbol
-import Language.LSP.SignatureHelp
 import Language.LSP.Message
 import Language.LSP.Metavars
+import Language.LSP.SignatureHelp
+import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
 import Libraries.Data.Version
 import Libraries.Utils.Path
+import Parser.Unlit
 import Server.Capabilities
 import Server.Configuration
 import Server.Diagnostics
@@ -52,18 +55,14 @@ import System
 import System.Clock
 import System.Directory
 import System.File
-import Data.List1
-import Libraries.Data.List.Extra
-import Parser.Unlit
 
 ||| Mostly copied from Idris.REPL.displayResult.
-replResultToDoc : {auto c : Ref Ctxt Defs}
-               -> {auto u : Ref UST UState}
-               -> {auto s : Ref Syn SyntaxInfo}
-               -> {auto m : Ref MD Metadata}
-               -> {auto o : Ref ROpts REPLOpts}
-               -> REPLResult
-               -> Core (Doc IdrisAnn)
+replResultToDoc : Ref Ctxt Defs
+               => Ref UST UState
+               => Ref Syn SyntaxInfo
+               => Ref MD Metadata
+               => Ref ROpts REPLOpts
+               => REPLResult -> Core (Doc IdrisAnn)
 replResultToDoc (REPLError err) = pure err
 replResultToDoc (Evaluated x Nothing) = pure (prettyTerm x)
 replResultToDoc (Evaluated x (Just y)) = pure (prettyTerm x <++> colon <++> code (prettyTerm y))
@@ -103,23 +102,19 @@ replResultToDoc Exited = pure ""
 -- sending ansi codes over the socket is a probably a no-go.
 replResultToDoc (PrintedDoc doc) = pure (unAnnotate doc)
 
-displayType : {auto c : Ref Ctxt Defs} ->
-              {auto s : Ref Syn SyntaxInfo} ->
-              Defs -> (Name, Int, GlobalDef) ->
-              Core (Doc IdrisAnn)
-displayType defs (n, i, gdef)
-    = maybe (do tm <- resugar [] !(normaliseHoles defs [] (type gdef))
-                pure (pretty !(aliasName (fullname gdef)) <++> colon <++> prettyTerm tm))
-            (\num => reAnnotate Syntax <$> prettyHole defs [] n num (type gdef))
-            (isHole gdef)
+displayType : Ref Ctxt Defs
+           => Ref Syn SyntaxInfo
+           => Defs -> (Name, Int, GlobalDef) -> Core (Doc IdrisAnn)
+displayType defs (n, i, gdef) =
+  maybe (do tm <- resugar [] =<< normaliseHoles defs [] (type gdef)
+            pure (pretty !(aliasName (fullname gdef)) <++> colon <++> prettyTerm tm))
+        (\num => reAnnotate Syntax <$> prettyHole defs [] n num (type gdef))
+        (isHole gdef)
 
-displayTerm : {auto c : Ref Ctxt Defs} ->
-              {auto s : Ref Syn SyntaxInfo} ->
-              Defs -> ClosedTerm ->
-              Core (Doc IdrisAnn)
-displayTerm defs tm
-    = do ptm <- resugar [] !(normaliseHoles defs [] tm)
-         pure (prettyTerm ptm)
+displayTerm : Ref Ctxt Defs
+           => Ref Syn SyntaxInfo
+           => Defs -> ClosedTerm -> Core (Doc IdrisAnn)
+displayTerm defs = map prettyTerm . (resugar [] <=< normaliseHoles defs [])
 
 processSettings : Ref Ctxt Defs => Ref LSPConf LSPConfiguration => JSON -> Core ()
 processSettings (JObject xs) = do
@@ -128,29 +123,33 @@ processSettings (JObject xs) = do
        Just _ => logE Configuration "Incorrect type for log file location, expected string"
        Nothing => pure ()
   case lookup "longActionTimeout" xs of
-       Just (JNumber v) => do setSearchTimeout (cast v)
-                              logI Configuration "Long action timeout set to \{show $ cast {to = Int} v}"
+       Just (JNumber v) => do
+         setSearchTimeout (cast v)
+         logI Configuration "Long action timeout set to \{show $ cast {to = Int} v}"
        Just _ => logE Configuration "Incorrect type for long action timeout, expected number"
        Nothing => pure ()
   case lookup "maxCodeActionResults" xs of
-       Just (JNumber v) => do update LSPConf (record { searchLimit = integerToNat (cast v) })
-                              logI Configuration "Max code action results set to \{show $ cast {to = Int} v}"
+       Just (JNumber v) => do
+         update LSPConf (record { searchLimit = integerToNat (cast v) })
+         logI Configuration "Max code action results set to \{show $ cast {to = Int} v}"
        Just _ => logE Configuration "Incorrect type for max code action results, expected number"
        Nothing => pure ()
   case lookup "showImplicits" xs of
-       Just (JBoolean b) => do pp <- getPPrint
-                               when (pp.showImplicits /= b) $ do
-                                 setPPrint (record { showImplicits = b } pp)
-                                 update LSPConf (record { cachedHovers = empty })
-                               logI Configuration "Show implicits set to \{show b}"
+       Just (JBoolean b) => do
+         pp <- getPPrint
+         when (pp.showImplicits /= b) $ do
+           setPPrint (record { showImplicits = b } pp)
+           update LSPConf (record { cachedHovers = empty })
+         logI Configuration "Show implicits set to \{show b}"
        Just _ => logE Configuration "Incorrect type for show implicits, expected boolean"
        Nothing => pure ()
   case lookup "fullNamespace" xs of
-       Just (JBoolean b) => do pp <- getPPrint
-                               when (pp.fullNamespace /= b) $ do
-                                 setPPrint (record { fullNamespace = b } pp)
-                                 update LSPConf (record { cachedHovers = empty })
-                               logI Configuration "Full namespace set to \{show b}"
+       Just (JBoolean b) => do
+         pp <- getPPrint
+         when (pp.fullNamespace /= b) $ do
+           setPPrint (record { fullNamespace = b } pp)
+           update LSPConf (record { cachedHovers = empty })
+         logI Configuration "Full namespace set to \{show b}"
        Just _ => logE Configuration "Incorrect type for full namespace, expected boolean"
        Nothing => pure ()
 processSettings _ = logE Configuration "Incorrect type for options"
@@ -170,7 +169,7 @@ loadURI : Ref LSPConf LSPConfiguration
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
   logI Server "Loading file \{show uri}"
-  update LSPConf (record {openFile = Just (uri, fromMaybe 0 version)})
+  update LSPConf (record { openFile = Just (uri, fromMaybe 0 version) })
   resetContext (Virtual Interactive)
   let fpath = uri.path
   let Just (startFolder, startFile) = splitParent fpath
@@ -199,9 +198,7 @@ loadURI conf uri version = do
   --        a compiler change.
   -- NOTE on catch: It seems the compiler sometimes throws errors instead
   -- of accumulating them in the buildDeps.
-  case errs of
-    [] => pure ()
-    (_::_) => update LSPConf (record { errorFiles $= insert uri })
+  unless (null errs) (update LSPConf (record { errorFiles $= insert uri }))
   resetProofState
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   update LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
@@ -296,18 +293,17 @@ handleRequest :
     -> Core (Either ResponseError (ResponseResult method))
 
 handleRequest Initialize params = do
-  -- TODO: Here we should analyze the client capabilities.
   logI Channel "Received initialization request"
   whenJust params.initializationOptions processSettings
 
-  update LSPConf (record {initialized = Just params})
+  update LSPConf (record { initialized = Just params })
   logI Server "Server initialized and configured"
   pure $ pure $ MkInitializeResult serverCapabilities (Just serverInfo)
 
 handleRequest Shutdown params = do
   logI Channel "Received shutdown request"
   -- In a future multithreaded model, we must guarantee that all pending request are still executed.
-  update LSPConf (record {isShutdown = True})
+  update LSPConf (record { isShutdown = True })
   logI Server "Server ready to be shutdown"
   pure $ pure $ (the (Maybe Null) Nothing)
 
@@ -324,7 +320,7 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
     defs <- get Ctxt
     nameLocs <- gets MD nameLocMap
 
-    let Just (loc, name) = findPointInTreeLoc (params.position.line, params.position.character) nameLocs
+    let Just (loc, name) = findPointInTreeLoc (cast params.position) nameLocs
       | Nothing => pure $ pure $ make $ MkNull
     logD Hover "Found name \{show name}"
     -- Lookup the name globally
@@ -333,16 +329,19 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
       [] => pure Nothing
       ts => do tys <- traverse (displayType defs) ts
                pure $ Just (vsep tys)
-    localResult <- findTypeAt $ anyWithName name $ within (params.position.line, params.position.character)
+    localResult <- findTypeAt $ anyWithName name $ within (cast params.position)
     line <- case (globalResult, localResult) of
       -- Give precedence to the local name, as it shadows the others
-      (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $ pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
+      (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $
+                                  pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
       (Just globalDoc, Nothing) => pure $ renderString $ unAnnotateS $ layoutUnbounded globalDoc
       (Nothing, Nothing) => pure ""
     let False = null line
       | True => pure $ pure $ make $ MkNull
     let supportsMarkup = maybe False (Markdown `elem`) $ conf.capabilities.textDocument >>= .hover >>= .contentFormat
-    let markupContent = the MarkupContent $ if supportsMarkup then MkMarkupContent Markdown $ "```idris\n" ++ line ++ "\n```" else MkMarkupContent PlainText line
+    let markupContent = the MarkupContent $ if supportsMarkup
+                                               then MkMarkupContent Markdown $ "```idris\n\{line}\n```"
+                                               else MkMarkupContent PlainText line
     let hover = MkHover (make markupContent) Nothing
     update LSPConf (record { cachedHovers $= insert (cast loc, hover) })
     pure $ pure (make hover)
@@ -353,7 +352,8 @@ handleRequest TextDocumentDefinition params = whenActiveRequest $ \conf => do
     | True => do logW GotoDefinition "\{show params.textDocument.uri} has unsaved changes, cannot complete the request"
                  pure $ pure $ make $ MkNull
   withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
-    Just link <- gotoDefinition params | Nothing => pure $ pure $ make MkNull
+    Just link <- gotoDefinition params
+      | Nothing => pure $ pure $ make MkNull
     pure $ pure $ make link
 
 handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
@@ -361,23 +361,27 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
   False <- isDirty params.textDocument.uri
     | True => do logW CodeAction "\{show params.textDocument.uri} has unsaved changes, cannot complete the request"
                  pure $ pure $ make $ MkNull
-  withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
-    quickfixActions <- if maybe True (QuickFix `elem`) params.context.only
-                          then map Just <$> gets LSPConf quickfixes
-                          else pure []
-    exprSearchActions <- map Just <$> exprSearch params
-    refineHoleActions <- map Just <$> refineHole params
-    splitAction <- caseSplit params
-    lemmaAction <- makeLemma params
-    withAction <- makeWith params
-    clauseAction <- addClause params
-    makeCaseAction <- handleMakeCase params
-    generateDefActions <- map Just <$> generateDef params
-    let searchRefineActions = unionBy searchEq exprSearchActions refineHoleActions
-    let resp = flatten $ quickfixActions
-                           ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
-                           ++ generateDefActions ++ searchRefineActions
-    pure $ pure $ make resp
+  withURI conf params.textDocument.uri Nothing
+    (do quickfixActions <- if maybe True (QuickFix `elem`) params.context.only
+                              then map Just <$> gets LSPConf quickfixes
+                              else pure []
+        pure $ pure $ make $ flatten quickfixActions)
+    (do quickfixActions <- if maybe True (QuickFix `elem`) params.context.only
+                              then map Just <$> gets LSPConf quickfixes
+                              else pure []
+        exprSearchActions <- map Just <$> exprSearch params
+        refineHoleActions <- map Just <$> refineHole params
+        splitAction <- caseSplit params
+        lemmaAction <- makeLemma params
+        withAction <- makeWith params
+        clauseAction <- addClause params
+        makeCaseAction <- makeCase params
+        generateDefActions <- map Just <$> generateDef params
+        let searchRefineActions = unionBy searchEq exprSearchActions refineHoleActions
+        let resp = flatten $ quickfixActions
+                               ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
+                               ++ generateDefActions ++ searchRefineActions
+        pure $ pure $ make resp)
     where
       flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
       flatten [] = []
@@ -441,8 +445,8 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
 handleRequest WorkspaceExecuteCommand
   (MkExecuteCommandParams partialResultToken "repl" (Just [json])) = whenActiveRequest $ \conf => do
     logI Channel "Received repl command request"
-    let JString cmd  = json
-      | _ => do pure $ Left (invalidParams "Expected String")
+    let Just cmd = fromJSON {a = String} json
+      | Nothing => pure $ Left (invalidParams "Expected String")
     c <- getColor
     -- Turn off the colour, because JSON
     -- seems to fail to correctly escape the codes.
@@ -454,42 +458,33 @@ handleRequest WorkspaceExecuteCommand
     pure $ Right (JString str)
 handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "metavars" _) = whenActiveRequest $ \conf => do
   logI Channel "Received metavars command request"
-  Right <$> metavarsCmd
+  Right . toJSON <$> metavarsCmd
 handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "exprSearchWithHints" (Just [json])) = whenActiveRequest $ \conf => do
   logI Channel "Received exprSearchWithHints command request"
-  let JObject obj = json
-    | _ => pure $ Left (invalidParams "Expected Object")
-  let Just params = fromJSON {a = CodeActionParams} =<< lookup "codeAction" obj
-    | _ => pure $ Left (invalidParams "Expected CodeActionParams")
-  let Just hints = fromJSON {a = List String} =<< lookup "hints" obj
-    | _ => pure $ Left (invalidParams "Expected String[]")
-  actions <- exprSearchWithHints params hints
+  let Just params = fromJSON json
+    | Nothing => pure $ Left (invalidParams "Expected ExprSearchWithHintsParams")
+  actions <- exprSearchWithHints params
   pure $ Right (toJSON actions)
 handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "refineHoleWithHints" (Just [json])) = whenActiveRequest $ \conf => do
   logI Channel "Received refineHoleWithHints command request"
-  let JObject obj = json
-    | _ => pure $ Left (invalidParams "Expected Object")
-  let Just params = fromJSON {a = CodeActionParams} =<< lookup "codeAction" obj
-    | _ => pure $ Left (invalidParams "Expected CodeActionParams")
-  let Just hints = fromJSON {a = List String} =<< lookup "hints" obj
-    | _ => pure $ Left (invalidParams "Expected String[]")
-  actions <- refineHoleWithHints params hints
+  let Just params = fromJSON json
+    | Nothing => pure $ Left (invalidParams "Expected RefineHoleWithHintsParams")
+  actions <- refineHoleWithHints params
   pure $ Right (toJSON actions)
 handleRequest method params = whenActiveRequest $ \conf => do
     logW Channel $ "Received a not supported \{show (toJSON method)} request"
     pure $ Left methodNotFound
 
 export
-handleNotification :
-       Ref LSPConf LSPConfiguration
-    => Ref Ctxt Defs
-    => Ref UST UState
-    => Ref Syn SyntaxInfo
-    => Ref MD Metadata
-    => Ref ROpts REPLOpts
-    => (method : Method Client Notification)
-    -> (params : MessageParams method)
-    -> Core ()
+handleNotification : Ref LSPConf LSPConfiguration
+                  => Ref Ctxt Defs
+                  => Ref UST UState
+                  => Ref Syn SyntaxInfo
+                  => Ref MD Metadata
+                  => Ref ROpts REPLOpts
+                  => (method : Method Client Notification)
+                  -> (params : MessageParams method)
+                  -> Core ()
 
 handleNotification Exit params = do
   logI Channel "Received exit notification"

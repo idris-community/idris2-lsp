@@ -200,6 +200,14 @@ Cast Position FilePos where
   cast (MkPosition line col) = (line, col)
 
 export
+Cast FileRange Range where
+  cast (start, end) = MkRange (cast start) (cast end)
+
+export
+Cast Range FileRange where
+  cast (MkRange start end) = (cast start, cast end)
+
+export
 Cast FC Range where
   cast (MkFC _ start end) = MkRange { start = cast start, end = cast end }
   cast (MkVirtualFC _ start end) = MkRange { start = cast start, end = cast end }
@@ -221,7 +229,7 @@ export
 searchCache : Ref LSPConf LSPConfiguration => Range -> IdrisAction -> Core (List CodeAction)
 searchCache r type = do
   cache <- gets LSPConf cachedActions
-  let inRange = dominators (cast r.start, cast r.end) cache
+  let inRange = dominators (cast r) cache
   pure $ concatMap (snd . snd) $ filter (\(_, t, _) => type == t) inRange
 
 export
