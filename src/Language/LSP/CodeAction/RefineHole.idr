@@ -15,6 +15,8 @@ import Language.JSON
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
+import Language.LSP.Message.Derive
+import Language.Reflection
 import Libraries.Data.NameMap
 import Parser.Source
 import Parser.Rule.Source
@@ -25,6 +27,17 @@ import TTImp.Interactive.ExprSearch
 import TTImp.TTImp
 import TTImp.TTImp.Functor
 import TTImp.Utils
+
+%language ElabReflection
+%hide TT.Name
+
+export
+record RefineHoleWithHintsParams where
+  constructor MkRefineHoleWithHintsParams
+  codeAction : CodeActionParams
+  hints : List String
+
+%runElab deriveJSON defaultOpts `{RefineHoleWithHintsParams}
 
 dropLams : Nat -> RawImp -> RawImp
 dropLams Z tm = tm
@@ -126,20 +139,23 @@ resolveTypeName : Ref Ctxt Defs
 resolveTypeName (Ref {name, _}) = Just <$> toFullNames name
 resolveTypeName (Bind {scope, _}) = resolveTypeName scope -- ignores explicit/implicit parameters
 resolveTypeName (App {fn, _}) = resolveTypeName fn        -- ignores type parameters
-resolveTypeName other = do logD RefineHole "resolveTypeName: \{show other}"
-                           pure Nothing
+resolveTypeName other = logD RefineHole "resolveTypeName: \{show other}" >> pure Nothing
 
 keepNonHoleNames : Ref Ctxt Defs => List Name -> Core (List Name)
-keepNonHoleNames names =
-  do defs <- get Ctxt
-     filterM (map not . isHole defs) names
+keepNonHoleNames names = do
+  defs <- get Ctxt
+  filterM (map not . isHole defs) names
 
 hasHints : List Name -> RawImp -> Bool
 hasHints hs tm = not $ null $ intersect hs (findAllNames [] tm)
 
+export
+refineHoleKind : CodeActionKind
+refineHoleKind = Other "refactor.rewrite.RefineHole"
+
 isAllowed : CodeActionParams -> Bool
 isAllowed params =
-  maybe True (\filter => (Other "refactor.rewrite.RefineHole" `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
+  maybe True (\filter => (refineHoleKind `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
 
 refineHole' : Ref LSPConf LSPConfiguration
            => Ref MD Metadata
@@ -150,25 +166,24 @@ refineHole' : Ref LSPConf LSPConfiguration
            => CodeActionParams -> List Name -> Core (List CodeAction)
 refineHole' params hints = do
   let True = isAllowed params
-    | False => do logI RefineHole "Skipped"
-                  pure []
+    | False => logI RefineHole "Skipped" >> pure []
   logI RefineHole "Checking for \{show params.textDocument.uri} at \{show params.range}"
+
   withSingleLine RefineHole params (pure []) $ \line => do
     fuel <- gets LSPConf searchLimit
     nameLocs <- gets MD nameLocMap
     let col = params.range.start.character
     let Just (loc@(_, nstart, nend), name) = findPointInTreeLoc (line, col) nameLocs
-      | Nothing => do logD RefineHole "No name found at \{show line}:\{show col}}"
-                      pure []
+      | Nothing => logD RefineHole "No name found at \{show line}:\{show col}}" >> pure []
     logD RefineHole "Found name \{show name}"
 
     defs <- get Ctxt
-    let context = defs.gamma
     toBrack <- gets Syn (elemBy (\x, y => dropNS x == dropNS y) name . bracketholes)
-    let bracket = the (IPTerm -> IPTerm) $ if toBrack then addBracket replFC else id
+    let showPTerm : IPTerm -> String = if toBrack then show . addBracket replFC else show
     let opts = MkSearchOpts True True Nothing 2 False False True False False Nothing
+    names <- lookupCtxtName name defs.gamma
     solutions <-
-      case !(lookupCtxtName name context) of
+      case names of
            [(n, nidx, def@(MkGlobalDef {definition = (Hole locs _), _}))] => do
              catch (do searchtms <- the (Core (List RawImp)) $ if null hints
                           then do matchingNames <- keepNonHoleNames =<< typeMatchingNames n def.type 1000
@@ -177,20 +192,16 @@ refineHole' params hints = do
                           else do filtered <- filterS (hasHints hints) <$> exprSearchOpts opts replFC name hints
                                   fst <$> searchN fuel filtered
                        let searchtms = filter isRawHole searchtms
-                       traverse (map (show . bracket) . pterm . map defaultKindedName . dropLams locs) searchtms)
-                   (\case Timeout _ => do logI RefineHole "Timed out"
-                                          pure []
-                          err => do logC RefineHole "Unexpected error while searching"
-                                    throw err)
+                       traverse (map showPTerm . pterm . map defaultKindedName . dropLams locs) searchtms)
+                   (\case Timeout _ => logI RefineHole "Timed out" >> pure []
+                          err => logC RefineHole "Unexpected error while searching" >> throw err)
            [(n, nidx, def@(MkGlobalDef {definition = (PMDef pi [] (STerm _ tm) _ _), _}))] => case holeInfo pi of
-             NotHole => do logD RefineHole "\{show name} is not a metavariable"
-                           pure []
+             NotHole => logD RefineHole "\{show name} is not a metavariable" >> pure []
              SolvedHole locs => do
-               let (_ ** (env, tm')) = dropLamsTm locs [] !(normaliseHoles defs [] tm)
+               (_ ** (env, tm')) <- dropLamsTm locs [] <$> normaliseHoles defs [] tm
                itm <- resugar env tm'
-               pure [show $ bracket itm]
-           _ => do logD RefineHole "\{show name} is not a metavariable"
-                   pure []
+               pure [showPTerm itm]
+           _ => logD RefineHole "\{show name} is not a metavariable" >> pure []
 
     let range = MkRange (uncurry MkPosition nstart) (uncurry MkPosition nend)
     let actions = buildCodeAction name params.textDocument.uri range <$> solutions
@@ -213,12 +224,12 @@ refineHoleWithHints : Ref LSPConf LSPConfiguration
                    => Ref UST UState
                    => Ref Syn SyntaxInfo
                    => Ref ROpts REPLOpts
-                   => CodeActionParams -> List String -> Core (List CodeAction)
-refineHoleWithHints params names = do
+                   => RefineHoleWithHintsParams -> Core (List CodeAction)
+refineHoleWithHints params = do
   defs <- get Ctxt
-  hints <- for names $ \str => do
+  hs <- for params.hints $ \str => do
     let Right (_, _, n) = runParser (Virtual Interactive) Nothing str name
       | _ => pure []
     ns <- lookupCtxtName n defs.gamma
     pure $ fst <$> ns
-  refineHole' params (concat hints)
+  refineHole' params.codeAction (concat hs)

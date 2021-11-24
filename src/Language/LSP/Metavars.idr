@@ -16,17 +16,41 @@ import Language.JSON
 import Language.LSP.Message
 import Language.LSP.Definition
 import Server.Configuration
+import Server.Log
 import Server.Utils
 import System.File
 import System.Path
+import Language.Reflection
 import Libraries.Text.PrettyPrint.Prettyprinter.Symbols
 
+%language ElabReflection
+%hide Language.Reflection.TT.FC
+%hide Language.Reflection.TT.Name
 %hide Holes.HolePremise
 %hide Holes.HoleData
 %hide Holes.getUserHolesData
 
 -- Non-exported functions are temporary changes to functions in the module Idris.IDEMode.Holes.
 -- TODO: upstream changes to the compiler when stability is reached.
+
+public export
+record Premise where
+  constructor MkPremise
+  name : String
+  location : Maybe Location
+  type : String
+  multiplicity : String
+  isImplicit : Bool
+%runElab deriveJSON defaultOpts `{Premise}
+
+public export
+record Metavar where
+  constructor MkMetavar
+  name : String
+  location : Maybe Location
+  type : String
+  premises : List Premise
+%runElab deriveJSON defaultOpts `{Metavar}
 
 record HolePremise where
   constructor MkHolePremise
@@ -60,19 +84,18 @@ extractHoleData defs env fn fc (S args) (Bind fc' x b sc) = do
   rest <- extractHoleData defs (b :: env) fn fc args sc
   let True = showName x
     | False => pure rest
-  ity <- resugar env !(normalise defs env (binderType b))
+  ity <- resugar env =<< normalise defs env (binderType b)
   let premise = MkHolePremise x fc' ity (multiplicity b) (isImplicit b)
   pure $ record { context $= (premise ::) } rest
 extractHoleData defs env fn fc args ty = do
-  nty <- normalise defs env ty
-  ity <- resugar env nty
+  ity <- resugar env =<< normalise defs env ty
   pure $ MkHoleData fn fc ity []
 
 holeData : {vars : _}
         -> Ref Ctxt Defs
         => Ref Syn SyntaxInfo
-        => Defs -> Env Term vars -> Name -> FC -> Nat -> Term vars ->
-           Core HoleData
+        => Defs -> Env Term vars -> Name -> FC -> Nat -> Term vars
+        -> Core HoleData
 holeData gam env fn fc args ty = do
   hdata <- extractHoleData gam env fn fc args ty
   pp <- getPPrint
@@ -92,11 +115,10 @@ getUserHolesData : Ref Ctxt Defs
                 => Core (List HoleData)
 getUserHolesData = do
   defs <- get Ctxt
-  let ctxt = gamma defs
-  ms  <- getUserHoles
-  let globs = concat !(traverse (\n => lookupCtxtName n ctxt) ms)
+  ms <- getUserHoles
+  globs <- concat <$> traverse (flip lookupCtxtName defs.gamma) ms
   let holesWithArgs = mapMaybe (\(n, i, gdef) => pure (n, gdef, !(isHole gdef))) globs
-  traverse (\(n, gdef, args) => holeData defs [] n (location gdef) args (type gdef)) holesWithArgs
+  traverse (\(n, gdef, args) => holeData defs [] n gdef.location args gdef.type) holesWithArgs
 
 ||| Returns the list of metavariables visible in the current context with their location.
 ||| JSON schema for a single metavariable:
@@ -111,6 +133,7 @@ getUserHolesData = do
 |||   location: Location | null;
 |||   name: string;
 |||   type: string;
+|||   multiplicity: string;
 |||   isImplicit: bool;
 ||| }
 export
@@ -118,26 +141,22 @@ metavarsCmd : Ref Ctxt Defs
            => Ref Syn SyntaxInfo
            => Ref ROpts REPLOpts
            => Ref LSPConf LSPConfiguration
-           => Core JSON
+           => Core (List Metavar)
 metavarsCmd = do
+  logI Metavars "Fetching metavars"
   c <- getColor
   setColor False
   holes <- getUserHolesData
+  logI Metavars "Metavars fetched, found \{show $ length holes}"
   res <- for holes $ \h => do
-    loc <- case h.location of
-      MkFC f s e => mkLocation f s e
-      MkVirtualFC f s e => mkLocation f s e
-      _ => pure Nothing
+    loc <- mkLocation h.location
     let name = show h.name
     type <- render (reAnnotate Syntax $ prettyTerm h.type)
     premises <- for h.context $ \p => do
-      loc <- case p.location of
-        MkFC f s e => mkLocation f s e
-        MkVirtualFC f s e => mkLocation f s e
-        _ => pure Nothing
+      loc <- mkLocation p.location
       let name = show p.name
       type <- render (reAnnotate Syntax $ prettyTerm p.type)
-      pure $ JObject [("location", toJSON loc), ("name", toJSON name), ("type", toJSON type), ("isImplicit", toJSON p.isImplicit)]
-    pure $ JObject [("location", toJSON loc), ("name", toJSON name), ("type", toJSON type), ("premises", JArray premises)]
+      pure $ MkPremise { location = loc, name = name, type = type, isImplicit = p.isImplicit, multiplicity = show p.multiplicity }
+    pure $ MkMetavar { location = loc, name = name, type = type, premises = premises }
   setColor c
-  pure $ JArray res
+  pure res

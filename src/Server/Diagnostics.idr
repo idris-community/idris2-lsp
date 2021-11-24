@@ -28,15 +28,15 @@ keyword = annotate $ Syntax Keyword
 buildDiagnostic : DiagnosticSeverity -> Maybe FC -> Doc IdrisAnn -> Maybe (List DiagnosticRelatedInformation) -> Diagnostic
 buildDiagnostic severity loc error related =
   MkDiagnostic
-    { range = cast $ fromMaybe replFC loc
-    , severity = Just severity
-    , code = Nothing
-    , codeDescription = Nothing
-    , source = Just "idris2"
-    , message = renderString $ unAnnotateS $ layoutUnbounded error
-    , tags = Nothing
+    { range              = cast $ fromMaybe replFC loc
+    , severity           = Just severity
+    , code               = Nothing
+    , codeDescription    = Nothing
+    , source             = Just "idris2"
+    , message            = renderString $ unAnnotateS $ layoutUnbounded error
+    , tags               = Nothing
     , relatedInformation = related
-    , data_ = Nothing
+    , data_              = Nothing
     }
 
 buildRelatedInformation : URI -> FC -> String -> DiagnosticRelatedInformation
@@ -70,7 +70,7 @@ getRelatedErrors uri (InLHS _ _ err) = getRelatedErrors uri err
 getRelatedErrors uri (InRHS _ _ err) = getRelatedErrors uri err
 getRelatedErrors _ _ = []
 
-pShowMN : {vars : _} -> Term vars -> Env t vars -> Doc IdrisAnn -> Doc IdrisAnn
+pShowMN : {vars : _} -> Term vars -> Env Term vars -> Doc IdrisAnn -> Doc IdrisAnn
 pShowMN (Local _ _ _ p) env acc =
   case dropAllNS (nameAt p) of
        MN _ _ => acc <++> parens ("implicitly bound at" <++> pretty (getBinderLoc p env))
@@ -83,11 +83,11 @@ pshow : {vars : _}
      => Env Term vars
      -> Term vars
      -> Core (Doc IdrisAnn)
-pshow env tm
-    = do defs <- get Ctxt
-         ntm <- normaliseHoles defs env tm
-         itm <- resugar env ntm
-         pure (pShowMN ntm env $ prettyTerm itm)
+pshow env tm = do
+  defs <- get Ctxt
+  ntm <- normaliseHoles defs env tm
+  itm <- resugar env ntm
+  pure $ pShowMN ntm env $ prettyTerm itm
 
 pshowNoNorm : {vars : _}
            -> Ref Ctxt Defs
@@ -95,10 +95,10 @@ pshowNoNorm : {vars : _}
            => Env Term vars
            -> Term vars
            -> Core (Doc IdrisAnn)
-pshowNoNorm env tm
-    = do defs <- get Ctxt
-         itm <- resugar env tm
-         pure (pShowMN tm env $ prettyTerm itm)
+pshowNoNorm env tm = do
+  defs <- get Ctxt
+  itm <- resugar env tm
+  pure $ pShowMN tm env $ prettyTerm itm
 
 ploc : FC -> Doc IdrisAnn
 ploc fc = annotate FileCtxt (pretty fc)
@@ -118,11 +118,11 @@ pwarning (ShadowingGlobalDefs _ ns) =
                              :: reflow "is shadowing"
                              :: punctuate comma (map pretty (forget ns)))
              (forget ns)
-pwarning (Deprecated s fcAndName) =
-  do docs <- traverseOpt (\(fc, name) => getDocsForName fc name justUserDoc) fcAndName
-     pure . vsep $ catMaybes [ Just $ pretty "Deprecation warning:" <++> pretty s
-                             , map (const UserDocString) <$> docs
-                             ]
+pwarning (Deprecated s fcAndName) = do
+  docs <- traverseOpt (\(fc, name) => getDocsForName fc name justUserDoc) fcAndName
+  pure . vsep $ catMaybes [ Just $ pretty "Deprecation warning:" <++> pretty s
+                          , map (const UserDocString) <$> docs
+                          ]
 pwarning (GenericWarn s) = pure $ pretty s
 pwarning (ParserWarning fc msg) = pure $ pretty msg
 
@@ -206,14 +206,10 @@ perror (LinearMisuse fc n exp ctx)
                 <++> code (pretty (sugarName n)) <++> "in" <++> prettyRel ctx <++> "context.")
   where
     prettyRig : RigCount -> Doc ann
-    prettyRig = elimSemi "irrelevant"
-                         "linear"
-                         (const "unrestricted")
+    prettyRig = elimSemi "irrelevant" "linear" (const "unrestricted")
 
     prettyRel : RigCount -> Doc ann
-    prettyRel = elimSemi "irrelevant"
-                         "relevant"
-                         (const "non-linear")
+    prettyRel = elimSemi "irrelevant" "relevant" (const "non-linear")
 perror (BorrowPartial fc env tm arg)
     = pure $ errorDesc (code !(pshow env tm) <++> reflow "borrows argument" <++> code !(pshow env arg)
         <++> reflow "so must be fully applied.")

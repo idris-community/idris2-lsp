@@ -24,13 +24,10 @@ checkVisibleName : Ref Ctxt Defs => List Namespace -> Name -> Core (Maybe Name)
 checkVisibleName namespaces name = do
   fullName <- toFullNames name
   let True = isUserName fullName
-      | False => pure Nothing
+    | False => pure Nothing
   let (Just fullNamespace, _) = displayName fullName
-      | _ => pure Nothing
-  pure
-    $ if elem fullNamespace namespaces
-        then Just fullName
-        else Nothing
+    | _ => pure Nothing
+  pure $ if elem fullNamespace namespaces then Just fullName else Nothing
 
 ||| Check if the name is visible and returns the associated NonEmpty location.
 currentNSNameWithLoc : Ref Ctxt Defs => List Namespace -> Name -> Core (Maybe (Name, FilePos, FilePos))
@@ -45,6 +42,16 @@ currentNSNameWithLoc namespaces name = do
     MkFC        _ start end => Just (gdef.fullname, start, end)
     MkVirtualFC _ start end => Just (gdef.fullname, start, end)
 
+buildSymbolInformation : Name -> URI -> FileRange -> SymbolKind -> SymbolInformation
+buildSymbolInformation n uri range kind = MkSymbolInformation
+  { name = show $ dropNS n
+  , kind = kind
+  , tags = Nothing
+  , deprecated = Nothing
+  , location = MkLocation uri (cast range)
+  , containerName = Nothing
+  }
+
 ||| Render all names form Meta and current namespace matching Global names as SymbolInformation.
 ||| The LSP client needs to handle the SymbolInformations correctly.
 export
@@ -55,9 +62,7 @@ documentSymbol : Ref Ctxt Defs
 documentSymbol params = do
   logI DocumentSymbol "Making for \{show params.textDocument.uri}"
   Just (uri, _) <- gets LSPConf openFile
-    | Nothing => do
-        logE DocumentSymbol "No open file"
-        pure []
+    | Nothing => logE DocumentSymbol "No open file" >> pure []
   let True = uri == params.textDocument.uri
     | False => do
         logD DocumentSymbol "Expected request for the currently opened file \{show uri}, instead received \{show params.textDocument.uri}"
@@ -69,33 +74,9 @@ documentSymbol params = do
   let knownNames = NameMap.keys $ namesResolvedAs defs.gamma
   -- Render global and meta names as SymbolInformation
   visibleNames <- map catMaybes $ traverse (currentNSNameWithLoc currentNamespaces) knownNames
-  let globalDocSymbols
-        = map (\(n, (sline,scol), (eline, ecol)) =>
-                let range = MkRange (MkPosition sline scol) (MkPosition eline ecol)
-                    name = show $ dropNS n
-                 in MkSymbolInformation
-                    { name          = name
-                    , kind          = Function
-                    , tags          = Nothing
-                    , deprecated    = Nothing
-                    , location      = MkLocation params.textDocument.uri range
-                    , containerName = Nothing
-                    })
-              visibleNames
+  let globalDocSymbols = map (\(n, range) => buildSymbolInformation n uri range Function) visibleNames
   meta <- get MD
-  let metaDocSymbols
-        = map (\((_, (sline, scol), (eline, ecol)), (metaName, _, _)) =>
-                let range = MkRange (MkPosition sline scol) (MkPosition eline ecol)
-                    name = show $ dropNS metaName
-                 in MkSymbolInformation
-                    { name          = name
-                    , kind          = Variable
-                    , tags          = Nothing
-                    , deprecated    = Nothing
-                    , location      = MkLocation params.textDocument.uri range
-                    , containerName = Nothing
-                    })
-              meta.names
+  let metaDocSymbols = map (\((_, range), (metaName, _, _)) => buildSymbolInformation metaName uri range Variable) meta.names
   let docSymbols = globalDocSymbols ++ metaDocSymbols
   logI DocumentSymbol "Found \{show (length globalDocSymbols)} global and \{show (length metaDocSymbols)} meta document symbols."
   pure $ docSymbols
