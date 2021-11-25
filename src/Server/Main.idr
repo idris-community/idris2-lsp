@@ -28,6 +28,8 @@ import Server.Log
 import Server.ProcessMessage
 import Server.Response
 import Server.Utils
+import Server.Version
+import Idris.Version
 import System
 import System.Directory
 import System.File
@@ -146,8 +148,8 @@ runServer : Ref LSPConf LSPConfiguration
          => Core ()
 runServer = handleMessage >> runServer
 
-main : IO ()
-main = do
+startServer : IO ()
+startServer =
   coreRun (do l <- newRef LSPConf defaultConfig
               defs <- initDefs
               c <- newRef Ctxt defs
@@ -181,8 +183,8 @@ main = do
                    Nothing => pure ()
               addPkgDir "prelude" anyBounds
               addPkgDir "base" anyBounds
-              addDataDir (prefix_dir (dirs (options defs)) </> ("idris2-" ++ showVersion False version) </> "support")
-              addLibDir (prefix_dir (dirs (options defs)) </> ("idris2-" ++ showVersion False version) </> "lib")
+              addDataDir (prefix_dir (dirs (options defs)) </> ("idris2-" ++ showVersion False Idris.Version.version) </> "support")
+              addLibDir (prefix_dir (dirs (options defs)) </> ("idris2-" ++ showVersion False Idris.Version.version) </> "lib")
               Just cwd <- coreLift $ currentDir
                 | Nothing => throw (InternalError "Can't get current directory")
               addLibDir cwd
@@ -194,3 +196,17 @@ main = do
               runServer)
     (\err => fPutStrLn stderr ("CRITICAL UNCAUGHT ERROR " ++ show err) *> exitWith (ExitFailure 1))
     (\res => pure ())
+
+printVersion : IO ()
+printVersion = do
+  putStrLn "Idris2 LSP: \{ show Server.Version.version }"
+  putStrLn "Idris2 API: \{ show Idris.Version.version }"
+
+main : IO ()
+main = do
+  (_::args) <- getArgs
+    | _ => putStrLn "Invalid command line"
+  case args of
+    ["--version"] => printVersion
+    [] => startServer
+    _ => putStrLn "Invalid Arguments"
