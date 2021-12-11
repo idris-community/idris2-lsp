@@ -180,10 +180,11 @@ loadURI conf uri version = do
     | False => do let msg = "Cannot change current directory to \{show startFolder}, folder of \{show startFile}"
                   logE Server msg
                   pure $ Left msg
-  Just fname <- findIpkg (Just fpath)
-    | Nothing => do let msg = "Cannot find ipkg file for \{show uri}"
-                    logE Server msg
-                    pure $ Left msg
+  Right fname <- catch (maybe (Left "Cannot find the ipkg file") Right <$> findIpkg (Just fpath))
+                       (pure . Left . show)
+    | Left err => do let msg = "Cannot load ipkg file for \{show uri}: \{show err}"
+                     logE Server msg
+                     pure $ Left msg
   Right res <- coreLift $ File.ReadWrite.readFile fname
     | Left err => do let msg = "Cannot read file at \{show uri}"
                      logE Server msg
