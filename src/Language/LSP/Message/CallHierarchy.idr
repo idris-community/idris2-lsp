@@ -56,7 +56,7 @@ record CallHierarchyItem where
   range          : Range
   selectionRange : Range
   data_          : Maybe JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{CallHierarchyItem}
+%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{CallHierarchyItem}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#callHierarchy_incomingCalls
 public export

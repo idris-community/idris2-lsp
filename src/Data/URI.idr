@@ -18,7 +18,7 @@ import Data.String
 import Data.String.Extra
 import Data.String.Parser
 import Data.Vect
-import Libraries.Utils.Hex
+import Protocol.Hex
 
 foldSeq : (Applicative f, Traversable t, Monoid m) => t (f m) -> f m
 foldSeq = map concat . sequence
@@ -334,16 +334,16 @@ utf8EncodeChar = go . ord
   where
     go : Int -> List Int
     go x = if x <= 0x7f then [x]
-           else if x <= 0x7ff then [ 0xc0 + (x `shiftR` fromNat 6)
+           else if x <= 0x7ff then [ 0xc0 + (x `shiftR` 6)
                                    , 0x80 + x .&. 0x3f
                                    ]
-           else if x <= 0xffff then [ 0xe0 + (x `shiftR` fromNat 12)
-                                    , 0x80 + ((x `shiftR` fromNat 6) .&. 0x3f)
+           else if x <= 0xffff then [ 0xe0 + (x `shiftR` 12)
+                                    , 0x80 + ((x `shiftR` 6) .&. 0x3f)
                                     , 0x80 + x .&. 0x3f
                                     ]
-           else [ 0xf0 + (x `shiftR` fromNat 18)
-                , 0x80 + ((x `shiftR` fromNat 12) .&. 0x3f)
-                , 0x80 + ((x `shiftR` fromNat 6) .&. 0x3f)
+           else [ 0xf0 + (x `shiftR` 18)
+                , 0x80 + ((x `shiftR` 12) .&. 0x3f)
+                , 0x80 + ((x `shiftR` 6) .&. 0x3f)
                 , 0x80 + x .&. 0x3f
                 ]
 
@@ -366,7 +366,7 @@ b16ToHexString n =
     13 => "D"
     14 => "E"
     15 => "F"
-    other => assert_total $ b16ToHexString (n `shiftR` fromNat 4) ++ b16ToHexString (n .&. 15)
+    other => assert_total $ b16ToHexString (n `shiftR` 4) ++ b16ToHexString (n .&. 15)
 
 pad2 : String -> String
 pad2 str =

@@ -280,7 +280,7 @@ record CompletionItem where
   commitCharacters    : Maybe (List Char)
   command             : Maybe Command
   data_               : Maybe JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{CompletionItem}
+%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{CompletionItem}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
 public export

@@ -42,7 +42,7 @@ record WorkDoneProgressBegin where
   cancellable : Maybe Bool
   message : Maybe String
   percentage : Maybe Int
-%runElab deriveJSON (record {staticFields = [("kind", JString "begin")]} defaultOpts) `{WorkDoneProgressBegin}
+%runElab deriveJSON ({staticFields := [("kind", JString "begin")]} defaultOpts) `{WorkDoneProgressBegin}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workDoneProgressReport
 public export
@@ -51,11 +51,11 @@ record WorkDoneProgressReport where
   cancellable : Maybe Bool
   message : Maybe String
   percentage : Maybe Int
-%runElab deriveJSON (record {staticFields = [("kind", JString "report")]} defaultOpts) `{WorkDoneProgressReport}
+%runElab deriveJSON ({staticFields := [("kind", JString "report")]} defaultOpts) `{WorkDoneProgressReport}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workDoneProgressEnd
 public export
 record WorkDoneProgressEnd where
   constructor MkWorkDoneProgressEnd
   message : Maybe String
-%runElab deriveJSON (record {staticFields = [("kind", JString "end")]} defaultOpts) `{WorkDoneProgressEnd}
+%runElab deriveJSON ({staticFields := [("kind", JString "end")]} defaultOpts) `{WorkDoneProgressEnd}

@@ -24,7 +24,7 @@ getNonColoredDocsForName : Ref Ctxt Defs
                         => FC -> Name -> Core String
 getNonColoredDocsForName fc n = do
   ropts <- get ROpts
-  put ROpts (record { color = False, synHighlightOn = False } ropts)
+  put ROpts ({ color := False, synHighlightOn := False } ropts)
   docs <- getDocsForName fc n MkConfig
   put ROpts ropts
   pure $ show docs

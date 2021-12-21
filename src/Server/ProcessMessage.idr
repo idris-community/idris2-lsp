@@ -130,7 +130,7 @@ processSettings (JObject xs) = do
        Nothing => pure ()
   case lookup "maxCodeActionResults" xs of
        Just (JNumber v) => do
-         update LSPConf (record { searchLimit = integerToNat (cast v) })
+         update LSPConf ({ searchLimit := integerToNat (cast v) })
          logI Configuration "Max code action results set to \{show $ cast {to = Int} v}"
        Just _ => logE Configuration "Incorrect type for max code action results, expected number"
        Nothing => pure ()
@@ -138,8 +138,8 @@ processSettings (JObject xs) = do
        Just (JBoolean b) => do
          pp <- getPPrint
          when (pp.showImplicits /= b) $ do
-           setPPrint (record { showImplicits = b } pp)
-           update LSPConf (record { cachedHovers = empty })
+           setPPrint ({ showImplicits := b } pp)
+           update LSPConf ({ cachedHovers := empty })
          logI Configuration "Show implicits set to \{show b}"
        Just _ => logE Configuration "Incorrect type for show implicits, expected boolean"
        Nothing => pure ()
@@ -147,8 +147,8 @@ processSettings (JObject xs) = do
        Just (JBoolean b) => do
          pp <- getPPrint
          when (pp.fullNamespace /= b) $ do
-           setPPrint (record { fullNamespace = b } pp)
-           update LSPConf (record { cachedHovers = empty })
+           setPPrint ({ fullNamespace := b } pp)
+           update LSPConf ({ cachedHovers := empty })
          logI Configuration "Full namespace set to \{show b}"
        Just _ => logE Configuration "Incorrect type for full namespace, expected boolean"
        Nothing => pure ()
@@ -169,7 +169,7 @@ loadURI : Ref LSPConf LSPConfiguration
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
   logI Server "Loading file \{show uri}"
-  update LSPConf (record { openFile = Just (uri, fromMaybe 0 version) })
+  update LSPConf ({ openFile := Just (uri, fromMaybe 0 version) })
   resetContext (Virtual Interactive)
   let fpath = uri.path
   let Just (startFolder, startFile) = splitParent fpath
@@ -199,10 +199,10 @@ loadURI conf uri version = do
   --        a compiler change.
   -- NOTE on catch: It seems the compiler sometimes throws errors instead
   -- of accumulating them in the buildDeps.
-  unless (null errs) (update LSPConf (record { errorFiles $= insert uri }))
+  unless (null errs) (update LSPConf ({ errorFiles $= insert uri }))
   resetProofState
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
-  update LSPConf (record { quickfixes = [], cachedActions = empty, cachedHovers = empty })
+  update LSPConf ({ quickfixes := [], cachedActions := empty, cachedHovers := empty })
   traverse_ (findQuickfix caps uri) errs
   defs <- get Ctxt
   session <- getSession
@@ -297,14 +297,14 @@ handleRequest Initialize params = do
   logI Channel "Received initialization request"
   whenJust params.initializationOptions processSettings
 
-  update LSPConf (record { initialized = Just params })
+  update LSPConf ({ initialized := Just params })
   logI Server "Server initialized and configured"
   pure $ pure $ MkInitializeResult serverCapabilities (Just serverInfo)
 
 handleRequest Shutdown params = do
   logI Channel "Received shutdown request"
   -- In a future multithreaded model, we must guarantee that all pending request are still executed.
-  update LSPConf (record { isShutdown = True })
+  update LSPConf ({ isShutdown := True })
   logI Server "Server ready to be shutdown"
   pure $ pure $ (the (Maybe Null) Nothing)
 
@@ -344,7 +344,7 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
                                                then MkMarkupContent Markdown $ "```idris\n\{line}\n```"
                                                else MkMarkupContent PlainText line
     let hover = MkHover (make markupContent) Nothing
-    update LSPConf (record { cachedHovers $= insert (cast loc, hover) })
+    update LSPConf ({ cachedHovers $= insert (cast loc, hover) })
     pure $ pure (make hover)
 
 handleRequest TextDocumentDefinition params = whenActiveRequest $ \conf => do
@@ -441,7 +441,7 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
       let srcLines = forget $ lines src
       let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
       tokens <- getSemanticTokens md getLineLength
-      update LSPConf (record { semanticTokensSentFiles $= insert params.textDocument.uri })
+      update LSPConf ({ semanticTokensSentFiles $= insert params.textDocument.uri })
       pure $ pure $ (make $ tokens)
 handleRequest WorkspaceExecuteCommand
   (MkExecuteCommandParams partialResultToken "repl" (Just [json])) = whenActiveRequest $ \conf => do
@@ -504,7 +504,7 @@ handleNotification TextDocumentDidOpen params = whenActiveNotification $ \conf =
 
 handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf => do
   logI Channel "Received didSave notification for \{show params.textDocument.uri}"
-  update LSPConf (record
+  update LSPConf (
     { dirtyFiles $= delete params.textDocument.uri
     , errorFiles $= delete params.textDocument.uri
     , semanticTokensSentFiles $= delete params.textDocument.uri
@@ -516,19 +516,19 @@ handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf =
 
 handleNotification TextDocumentDidChange params = whenActiveNotification $ \conf => do
   logI Channel "Received didChange notification for \{show params.textDocument.uri}"
-  update LSPConf (record { dirtyFiles $= insert params.textDocument.uri })
+  update LSPConf ({ dirtyFiles $= insert params.textDocument.uri })
   logI Server "File \{show params.textDocument.uri} marked as dirty"
 
 handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf => do
   logI Channel "Received didClose notification for \{show params.textDocument.uri}"
-  update LSPConf (record { openFile = Nothing
-                         , quickfixes = []
-                         , cachedActions = empty
-                         , cachedHovers = empty
-                         , dirtyFiles $= delete params.textDocument.uri
-                         , errorFiles $= delete params.textDocument.uri
-                         , semanticTokensSentFiles $= delete params.textDocument.uri
-                         })
+  update LSPConf ({ openFile := Nothing
+                  , quickfixes := []
+                  , cachedActions := empty
+                  , cachedHovers := empty
+                  , dirtyFiles $= delete params.textDocument.uri
+                  , errorFiles $= delete params.textDocument.uri
+                  , semanticTokensSentFiles $= delete params.textDocument.uri
+                  })
   logI Server $ "File \{show params.textDocument.uri} closed"
 
 handleNotification method params = whenActiveNotification $ \conf =>

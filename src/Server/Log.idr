@@ -138,5 +138,5 @@ changeLogFile fname = do
     logD Configuration "Created new directory \{dir} for log file \{fname}"
   Right handle <- coreLift $ openFile fname Append
     | Left err => logE Configuration "Unable to updated log file location \{fname}: \{show err}"
-  update LSPConf (record { logHandle = handle })
+  update LSPConf ({ logHandle := handle })
   logI Configuration "Log file location updated to \{fname}"

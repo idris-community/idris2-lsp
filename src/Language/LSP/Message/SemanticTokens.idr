@@ -97,14 +97,14 @@ record SemanticTokens where
   constructor MkSemanticTokens
   resultId : Maybe String
   data_    : List Int
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{SemanticTokens}
+%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{SemanticTokens}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
 public export
 record SemanticTokensPartialResult where
   constructor MkSemanticTokensPartialResult
   data_ : List Int
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{SemanticTokensPartialResult}
+%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{SemanticTokensPartialResult}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
 public export
@@ -123,7 +123,7 @@ record SemanticTokensEdit where
   start       : Int
   deleteCount : Int
   data_       : Maybe (List Int)
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{SemanticTokensEdit}
+%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{SemanticTokensEdit}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
 public export

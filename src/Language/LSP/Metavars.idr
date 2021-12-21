@@ -26,9 +26,6 @@ import Libraries.Text.PrettyPrint.Prettyprinter.Symbols
 %language ElabReflection
 %hide Language.Reflection.TT.FC
 %hide Language.Reflection.TT.Name
-%hide Holes.HolePremise
-%hide Holes.HoleData
-%hide Holes.getUserHolesData
 
 -- Non-exported functions are temporary changes to functions in the module Idris.IDEMode.Holes.
 -- TODO: upstream changes to the compiler when stability is reached.
@@ -41,7 +38,7 @@ record Premise where
   type : String
   multiplicity : String
   isImplicit : Bool
-%runElab deriveJSON defaultOpts `{Premise}
+%runElab deriveJSON defaultOpts `{Metavars.Premise}
 
 public export
 record Metavar where
@@ -49,76 +46,23 @@ record Metavar where
   name : String
   location : Maybe Location
   type : String
-  premises : List Premise
-%runElab deriveJSON defaultOpts `{Metavar}
-
-record HolePremise where
-  constructor MkHolePremise
-  name         : Name
-  location     : FC
-  type         : IPTerm
-  multiplicity : RigCount
-  isImplicit   : Bool
-
-record HoleData where
-  constructor MkHoleData
-  name : Name
-  location : FC
-  type : IPTerm
-  context : List HolePremise
+  premises : List Metavars.Premise
+%runElab deriveJSON defaultOpts `{Metavars.Metavar}
 
 showName : Name -> Bool
 showName (UN Underscore) = False
 showName (MN _ _) = False
 showName _ = True
 
--- TODO: Check why premise location is replFC.
-extractHoleData : {vars : _}
-               -> Ref Ctxt Defs
-               => Ref Syn SyntaxInfo
-               => Defs -> Env Term vars -> Name -> FC -> Nat -> Term vars
-               -> Core HoleData
-extractHoleData defs env fn fc (S args) (Bind _ _ (Let _ _ val _) sc) =
-  extractHoleData defs env fn fc args (subst val sc)
-extractHoleData defs env fn fc (S args) (Bind fc' x b sc) = do
-  rest <- extractHoleData defs (b :: env) fn fc args sc
-  let True = showName x
-    | False => pure rest
-  ity <- resugar env =<< normalise defs env (binderType b)
-  let premise = MkHolePremise x fc' ity (multiplicity b) (isImplicit b)
-  pure $ record { context $= (premise ::) } rest
-extractHoleData defs env fn fc args ty = do
-  ity <- resugar env =<< normalise defs env ty
-  pure $ MkHoleData fn fc ity []
-
-holeData : {vars : _}
-        -> Ref Ctxt Defs
-        => Ref Syn SyntaxInfo
-        => Defs -> Env Term vars -> Name -> FC -> Nat -> Term vars
-        -> Core HoleData
-holeData gam env fn fc args ty = do
-  hdata <- extractHoleData gam env fn fc args ty
-  pp <- getPPrint
-  pure $ if showImplicits pp
-            then hdata
-            else record { context $= dropShadows } hdata
-  where
-    dropShadows : List HolePremise -> List HolePremise
-    dropShadows [] = []
-    dropShadows (premise :: rest) =
-      if premise.name `elem` map name rest
-         then            dropShadows rest
-         else premise :: dropShadows rest
-
 getUserHolesData : Ref Ctxt Defs
                 => Ref Syn SyntaxInfo
-                => Core (List HoleData)
+                => Core (List (Holes.Data, FC))
 getUserHolesData = do
   defs <- get Ctxt
   ms <- getUserHoles
   globs <- concat <$> traverse (flip lookupCtxtName defs.gamma) ms
   let holesWithArgs = mapMaybe (\(n, i, gdef) => pure (n, gdef, !(isHole gdef))) globs
-  traverse (\(n, gdef, args) => holeData defs [] n gdef.location args gdef.type) holesWithArgs
+  traverse (\(n, gdef, args) => (, gdef.location) <$> holeData defs [] n args gdef.type) holesWithArgs
 
 ||| Returns the list of metavariables visible in the current context with their location.
 ||| JSON schema for a single metavariable:
@@ -146,14 +90,14 @@ metavarsCmd = do
   logI Metavars "Fetching metavars"
   c <- getColor
   setColor False
-  holes <- getUserHolesData
+  holes <- Metavars.getUserHolesData
   logI Metavars "Metavars fetched, found \{show $ length holes}"
-  res <- for holes $ \h => do
-    loc <- mkLocation h.location
+  res <- for holes $ \(h, fc) => do
+    loc <- mkLocation fc
     let name = show h.name
     type <- render (reAnnotate Syntax $ prettyTerm h.type)
     premises <- for h.context $ \p => do
-      loc <- mkLocation p.location
+      loc <- mkLocation replFC
       let name = show p.name
       type <- render (reAnnotate Syntax $ prettyTerm p.type)
       pure $ MkPremise { location = loc, name = name, type = type, isImplicit = p.isImplicit, multiplicity = show p.multiplicity }

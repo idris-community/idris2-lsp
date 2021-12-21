@@ -160,4 +160,4 @@ record CodeAction where
   edit        : Maybe WorkspaceEdit
   command     : Maybe Command
   data_       : Maybe JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{CodeAction}
+%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{CodeAction}

@@ -45,7 +45,7 @@ withSingleCache topic params action new =
   case !(searchCache params.range action) of
        [] => do Just (loc, act) <- new
                   | Nothing => pure Nothing
-                update LSPConf (record { cachedActions $= insert (loc, action, [act]) })
+                update LSPConf ({ cachedActions $= insert (loc, action, [act]) })
                 pure $ Just act
        act :: _ => do logD topic "Found cached action"
                       pure $ Just act
@@ -66,7 +66,7 @@ withMultipleCache topic params action new =
   case !(searchCache params.range action) of
        [] => do locs <- new
                 for_ locs $ \(loc, acts) =>
-                  update LSPConf (record { cachedActions $= insert (loc, action, acts) })
+                  update LSPConf ({ cachedActions $= insert (loc, action, acts) })
                 pure $ concat $ snd <$> locs
        acts => do logD topic "Found cached action"
                   pure acts

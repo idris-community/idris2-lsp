@@ -68,7 +68,7 @@ b16ToHexString n =
     14 => "E"
     15 => "F"
     other => assert_total $
-               b16ToHexString (n `shiftR` fromNat 4) ++
+               b16ToHexString (n `shiftR` 4) ++
                b16ToHexString (n .&. 15)
 
 ||| Pad a string with leading zeros, if
@@ -96,7 +96,7 @@ encodeCodepointH x =
     False =>
       let x' = x - 0x10000 in
       Right $
-        ( pad4 (b16ToHexString (cast $ 0xD800 + (x' `shiftR` fromNat 10)))
+        ( pad4 (b16ToHexString (cast $ 0xD800 + (x' `shiftR` 10)))
         , pad4 (b16ToHexString (cast $ 0xDC00 + (x' .&. 0b1111111111))))
 
 ||| Encode an arbitrary unicode codepointby escaping it

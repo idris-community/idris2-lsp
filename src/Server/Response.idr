@@ -89,7 +89,7 @@ sendRequestMessage_ : Ref LSPConf LSPConfiguration
 sendRequestMessage_ method params = do
   requestId <- gets LSPConf nextRequestId
   let msg = toJSON $ MkRequestMessage (make $ cast {to = Int} requestId) method params
-  update LSPConf (record { nextRequestId = requestId + 1 })
+  update LSPConf ({ nextRequestId := requestId + 1 })
   writeResponse (toJSON msg)
   logI Channel "Sent request message for method \{stringify $ toJSON method}"
   logD Channel "Request sent: \{stringify msg}"

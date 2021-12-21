@@ -531,7 +531,7 @@ record ResponseError where
   code : ErrorCodes
   message : String
   data_ : JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{ResponseError}
+%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{ResponseError}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#responseMessage
 public export

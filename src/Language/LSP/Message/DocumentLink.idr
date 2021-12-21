@@ -54,4 +54,4 @@ record DocumentLink where
   target  : Maybe DocumentURI
   tooltip : Maybe String
   data_   : Maybe JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{DocumentLink}
+%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{DocumentLink}

@@ -52,7 +52,7 @@ record CodeLens where
   range   : Range
   command : Maybe Command
   data_   : Maybe JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{CodeLens}
+%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{CodeLens}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#codeLens_refresh
 public export

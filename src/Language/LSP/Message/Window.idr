@@ -85,7 +85,7 @@ record ShowDocumentParams where
   external_ : Maybe Bool
   takeFocus : Maybe Bool
   selection : Maybe Range
-%runElab deriveJSON (record {renames = [("external_", "external")]} defaultOpts) `{ShowDocumentParams}
+%runElab deriveJSON ({renames := [("external_", "external")]} defaultOpts) `{ShowDocumentParams}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showDocument
 public export

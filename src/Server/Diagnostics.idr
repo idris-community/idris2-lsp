@@ -219,7 +219,7 @@ perror (AmbiguousName fc ns)
     = pure $ errorDesc (reflow "Ambiguous name" <++> code (pretty ns))
 perror (AmbiguousElab fc env ts_in)
     = do pp <- getPPrint
-         setPPrint (record { fullNamespace = True } pp)
+         setPPrint ({ fullNamespace := True } pp)
          ts_show <- for ts_in $ \(gam, t) => do
                       defs <- get Ctxt
                       setCtxt gam

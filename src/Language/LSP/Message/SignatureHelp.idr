@@ -92,7 +92,7 @@ record SignatureInformation where
   documentation   : Maybe (OneOf [String, MarkupContent])
   parameters_     : Maybe (List ParameterInformation)
   activeParameter : Maybe Int
-%runElab deriveJSON (record {renames = [("parameters_", "parameters")]} defaultOpts) `{SignatureInformation}
+%runElab deriveJSON ({renames := [("parameters_", "parameters")]} defaultOpts) `{SignatureInformation}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 public export

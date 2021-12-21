@@ -97,7 +97,7 @@ record CreateFile where
   uri          : DocumentURI
   options      : Maybe CreateFileOptions
   annotationId : ChangeAnnotationIdentifier
-%runElab deriveJSON (record {staticFields = [("kind", JString "create")]} defaultOpts) `{CreateFile}
+%runElab deriveJSON ({staticFields := [("kind", JString "create")]} defaultOpts) `{CreateFile}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#resourceChanges
 public export
@@ -107,7 +107,7 @@ record RenameFile where
   newUri       : DocumentURI
   options      : Maybe RenameFileOptions
   annotationId : ChangeAnnotationIdentifier
-%runElab deriveJSON (record {staticFields = [("kind", JString "rename")]} defaultOpts) `{RenameFile}
+%runElab deriveJSON ({staticFields := [("kind", JString "rename")]} defaultOpts) `{RenameFile}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#resourceChanges
 public export
@@ -116,7 +116,7 @@ record DeleteFile where
   uri          : DocumentURI
   options      : Maybe DeleteFileOptions
   annotationId : ChangeAnnotationIdentifier
-%runElab deriveJSON (record {staticFields = [("kind", JString "delete")]} defaultOpts) `{DeleteFile}
+%runElab deriveJSON ({staticFields := [("kind", JString "delete")]} defaultOpts) `{DeleteFile}
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspaceEdit
 public export

@@ -74,7 +74,7 @@ record Diagnostic where
   tags               : Maybe (List DiagnosticTag)
   relatedInformation : Maybe (List DiagnosticRelatedInformation)
   data_              : Maybe JSON
-%runElab deriveJSON (record {renames = [("data_", "data")]} defaultOpts) `{Diagnostic}
+%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{Diagnostic}
 
 namespace PublishDiagnosticsClientCapabilities
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_publishDiagnostics
