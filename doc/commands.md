@@ -179,3 +179,28 @@ export interface RefineHoleHints {
 _Response_:
   - result: `CodeAction[] | null`.
   - error: code and message set in case an exception happens during the request.
+
+## BrowseNamespace Request
+
+The browseNamespace request is sent from the client to the server to return the list
+of visible names found in a given namespace.
+
+_Request_:
+  - method: 'workspace/executeCommand'
+  - params: `BrowseNamespaceParams` defined as follows:
+```typescript
+export interface BrowseNamespaceParams {
+  /**
+   * The identifier of the actual command handler.
+   */
+  command: 'browseNamespace';
+  /**
+   * List of namespaces. Currently supports a single object.
+   */
+  arguments: string[];
+}
+```
+
+_Response_:
+  - result: `SymbolInformation[]`.
+  - error: code and message set in case an exception happens during the request.
