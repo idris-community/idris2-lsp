@@ -42,11 +42,11 @@ currentNSNameWithLoc namespaces name = do
     MkFC        _ start end => Just (gdef.fullname, start, end)
     MkVirtualFC _ start end => Just (gdef.fullname, start, end)
 
-buildSymbolInformation : Name -> URI -> FileRange -> SymbolKind -> SymbolInformation
-buildSymbolInformation n uri range kind = MkSymbolInformation
+buildSymbolInformation : Name -> URI -> FileRange -> SymbolKind -> Bool -> SymbolInformation
+buildSymbolInformation n uri range kind deprecated = MkSymbolInformation
   { name = show $ dropNS n
   , kind = kind
-  , tags = Nothing
+  , tags = if deprecated then Just [Deprecated] else Nothing
   , deprecated = Nothing
   , location = MkLocation uri (cast range)
   , containerName = Nothing
@@ -74,9 +74,9 @@ documentSymbol params = do
   let knownNames = NameMap.keys $ namesResolvedAs defs.gamma
   -- Render global and meta names as SymbolInformation
   visibleNames <- map catMaybes $ traverse (currentNSNameWithLoc currentNamespaces) knownNames
-  let globalDocSymbols = map (\(n, range) => buildSymbolInformation n uri range Function) visibleNames
+  let globalDocSymbols = map (\(n, range) => buildSymbolInformation n uri range Function False) visibleNames
   meta <- get MD
-  let metaDocSymbols = map (\((_, range), (metaName, _, _)) => buildSymbolInformation metaName uri range Variable) meta.names
+  let metaDocSymbols = map (\((_, range), (metaName, _, _)) => buildSymbolInformation metaName uri range Variable False) meta.names
   let docSymbols = globalDocSymbols ++ metaDocSymbols
   logI DocumentSymbol "Found \{show (length globalDocSymbols)} global and \{show (length metaDocSymbols)} meta document symbols."
   pure $ docSymbols

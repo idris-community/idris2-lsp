@@ -24,6 +24,7 @@ import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
 import Language.JSON
+import Language.LSP.BrowseNamespace
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.AddClause
 import Language.LSP.CodeAction.CaseSplit
@@ -472,6 +473,12 @@ handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "refineHoleWithH
     | Nothing => pure $ Left (invalidParams "Expected RefineHoleWithHintsParams")
   actions <- refineHoleWithHints params
   pure $ Right (toJSON actions)
+handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "browseNamespace" (Just [json])) = whenActiveRequest $ \conf => do
+  logI Channel "Received browseNamespace command request"
+  let Just params = fromJSON {a = String} json
+    | Nothing => pure $ Left (invalidParams "Expected String")
+  names <- browseNamespaceCmd params
+  pure $ Right (toJSON names)
 handleRequest method params = whenActiveRequest $ \conf => do
     logW Channel $ "Received a not supported \{show (toJSON method)} request"
     pure $ Left methodNotFound

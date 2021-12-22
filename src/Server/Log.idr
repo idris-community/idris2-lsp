@@ -55,6 +55,7 @@ Ord Severity where
 public export
 data Topic
   = AddClause
+  | Browse
   | CaseSplit
   | Channel
   | CodeAction
@@ -78,6 +79,7 @@ data Topic
 export
 Show Topic where
   show AddClause = "Request.CodeAction.AddClause"
+  show Browse = "Request.Command.Browse"
   show CaseSplit = "Request.CodeAction.CaseSplit"
   show Channel = "Communication.Channel"
   show CodeAction = "CodeAction"
