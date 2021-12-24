@@ -1,9 +1,29 @@
 # [WIP] idris2-lsp
 Language Server for Idris2.
 
-Refer to the [project wiki](https://github.com/idris-community/idris2-lsp/wiki) for editor-specific configurations.
-
 **NOTE: At this stage the LSP server requires an ipkg file to work correctly, for reference material about packages look [here](https://idris2.readthedocs.io/en/latest/tutorial/packages.html) and [here](https://idris2.readthedocs.io/en/latest/reference/packages.html). To start a new project with an ipkg, even for a single file, you can issue the `idris2 --init` command, which provides an interactive interface for package creation.**
+
+## Setup
+```bash
+git clone https://github.com/idris-community/idris2-lsp.git # Clone this repository
+git submodule update --init Idris2 # Get the associated Idris commit
+cd Idris2 # Change into the Idris2 directory
+make bootstrap SCHEME=chez # Boostrap Idris
+make install # Install Idris
+make clean # Clean Idris
+make all # Build Idris
+make install # Install Idris
+make install-with-src-libs # Install sources for libraries
+make install-with-src-api # Install the API with sources
+cd .. # Go back to the idris2-lsp directory
+make install # Install idris2-lsp
+```
+
+## Editor Plugins
+- VSCode: [idris2-lsp-vscode](https://github.com/bamboo/idris2-lsp-vscode)
+- Neovim: [idris2-nvim](https://github.com/ShinKage/idris2-nvim)
+
+Refer to the [project wiki](https://github.com/idris-community/idris2-lsp/wiki) for editor-specific configurations.
 
 ## Compile
 To compile `idris2-lsp` you need a working installation of the Idris2 compiler (available [here](https://github.com/idris-lang/Idris2)) and you also need the `idris2api` package. See the [install guide](https://github.com/idris-lang/Idris2/blob/master/INSTALL.md) how to build the `idris2api` package.
