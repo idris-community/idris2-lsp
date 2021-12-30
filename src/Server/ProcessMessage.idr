@@ -35,6 +35,7 @@ import Language.LSP.CodeAction.MakeLemma
 import Language.LSP.CodeAction.MakeWith
 import Language.LSP.CodeAction.RefineHole
 import Language.LSP.Definition
+import Language.LSP.DocumentHighlight
 import Language.LSP.DocumentSymbol
 import Language.LSP.Message
 import Language.LSP.Metavars
@@ -347,6 +348,15 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
     let hover = MkHover (make markupContent) Nothing
     update LSPConf ({ cachedHovers $= insert (cast loc, hover) })
     pure $ pure (make hover)
+
+handleRequest TextDocumentDocumentHighlight params = whenActiveRequest $ \conf => do
+  logI Channel "Received documentHighlight request for \{show params.textDocument.uri}"
+  False <- isDirty params.textDocument.uri
+    | True => do logW DocumentHighlight "\{show params.textDocument.uri} has unsaved changes, cannot complete the request"
+                 pure $ pure $ make $ MkNull
+  withURI conf params.textDocument.uri Nothing (pure $ pure $ make MkNull) $ do
+    highlights <- documentHighlights params
+    pure $ pure $ make highlights
 
 handleRequest TextDocumentDefinition params = whenActiveRequest $ \conf => do
   logI Channel "Received gotoDefinition request for \{show params.textDocument.uri}"

@@ -61,6 +61,7 @@ data Topic
   | CodeAction
   | Configuration
   | Diagnostic
+  | DocumentHighlight
   | DocumentSymbol
   | ExprSearch
   | GenerateDef
@@ -85,6 +86,7 @@ Show Topic where
   show CodeAction = "CodeAction"
   show Configuration = "Request.Configuration"
   show Diagnostic = "Notification.Diagnostic"
+  show DocumentHighlight = "Request.DocumentHighlight"
   show DocumentSymbol = "Request.DocumentSymbol"
   show ExprSearch = "Request.CodeAction.ExprSearch"
   show GenerateDef = "Request.CodeAction.GenerateDef"
