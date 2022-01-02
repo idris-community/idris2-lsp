@@ -6,12 +6,14 @@ module Server.Configuration
 
 import Core.FC
 import Data.SortedSet
+import Data.SortedMap
 import Language.LSP.CodeAction
 import Language.LSP.Message.CodeAction
 import Language.LSP.Message.Initialize
 import Language.LSP.Message.Hover
 import Language.LSP.Message.Location
 import Language.LSP.Message.URI
+import Language.LSP.Message.SemanticTokens
 import public Libraries.Data.PosMap
 import System.File
 
@@ -42,7 +44,7 @@ record LSPConfiguration where
   ||| Files with errors
   errorFiles : SortedSet DocumentURI
   ||| Semantic tokens have been sent
-  semanticTokensSentFiles : SortedSet DocumentURI
+  semanticTokensSentFiles : SortedMap DocumentURI SemanticTokens
   ||| Limit for multiple search results
   searchLimit : Nat
   ||| List of quickfixes to be send in addition to other code actions

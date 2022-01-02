@@ -444,15 +444,15 @@ handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf => do
 handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
       | True => pure $ Left (MkResponseError RequestCancelled "Document Dirty" JNull)
-    False <- gets LSPConf (contains params.textDocument.uri . semanticTokensSentFiles)
-      | True => pure $ Left (MkResponseError RequestCancelled "Semantic tokens already sent" JNull)
+    Nothing <- gets LSPConf (lookup params.textDocument.uri . semanticTokensSentFiles)
+      | Just tokens => pure $ pure $ (make $ tokens)
     withURI conf params.textDocument.uri Nothing (pure $ Left (MkResponseError RequestCancelled "Document Errors" JNull)) $ do
       md <- get MD
       src <- getSource
       let srcLines = forget $ lines src
       let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
       tokens <- getSemanticTokens md getLineLength
-      update LSPConf ({ semanticTokensSentFiles $= insert params.textDocument.uri })
+      update LSPConf ({ semanticTokensSentFiles $= insert params.textDocument.uri tokens })
       pure $ pure $ (make $ tokens)
 handleRequest WorkspaceExecuteCommand
   (MkExecuteCommandParams partialResultToken "repl" (Just [json])) = whenActiveRequest $ \conf => do
