@@ -42,6 +42,7 @@ import Language.LSP.Metavars
 import Language.LSP.SignatureHelp
 import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
+import Libraries.Data.String.Extra
 import Libraries.Data.Version
 import Libraries.Utils.Path
 import Parser.Unlit
@@ -449,7 +450,7 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
     withURI conf params.textDocument.uri Nothing (pure $ Left (MkResponseError RequestCancelled "Document Errors" JNull)) $ do
       md <- get MD
       src <- getSource
-      let srcLines = forget $ lines src
+      let srcLines = lines src
       let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
       tokens <- getSemanticTokens md getLineLength
       update LSPConf ({ semanticTokensSentFiles $= insert params.textDocument.uri })

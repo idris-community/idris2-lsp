@@ -15,6 +15,7 @@ import Idris.Syntax
 import Idris.Doc.String
 import Language.JSON
 import Language.LSP.Message
+import Libraries.Data.String.Extra
 import Parser.Support
 import Server.Configuration
 import Server.Log
