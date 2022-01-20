@@ -47,6 +47,9 @@ genReadableSym hint = do
     | _ => fail "cannot generate readable argument name"
   pure $ UN $ Basic (v ++ show i)
 
+app : TTImp -> TTImp -> TTImp
+app = IApp EmptyFC
+
 var : Name -> TTImp
 var = IVar EmptyFC
 
@@ -61,6 +64,17 @@ patClause = PatClause EmptyFC
 
 implicit' : TTImp
 implicit' = Implicit EmptyFC True
+
+||| Constructs a term with a given type constructor fully applied with
+||| its explicit binders.
+saturate : TTImp -> TTImp -> Elab TTImp
+saturate (IPi _ rig ExplicitArg (Just n) arg ret) acc =
+  saturate ret (app acc (bindvar (show n)))
+saturate (IPi _ rig ExplicitArg Nothing arg ret) acc =
+  saturate ret (app acc (bindvar (show !(genSym "arg"))))
+saturate (IPi _ rig _ name arg ret) acc = saturate ret acc
+saturate (IType _) acc = pure acc
+saturate _ _ = fail "Type constructor with an unsupported signature"
 
 -- TODO: add support for polymorphic types and maybe use another type for
 -- optional fields in place of Maybe.
@@ -86,7 +100,8 @@ public export covering
 deriveToJSON : (opts : JSONDeriveOpts) -> (name : Name) -> Elab ()
 deriveToJSON opts n = do
     [(name, imp)] <- getType n
-      | xs => fail $ show n ++ " must be in scope and unique. Possible referred types are: " ++ show (fst <$> xs)
+      | xs => fail "\{show n} must be in scope and unique. Possible referred types are: \{show (fst <$> xs)}"
+    satName <- saturate imp (var name)
     -- FIXME: temporary name for debugging, should be converted to a name impossible to define from users
     -- and should not be exported, unless a specific option is enabled.
     let funName = UN $ Basic ("toJSON" ++ show (stripNs n))
@@ -94,36 +109,37 @@ deriveToJSON opts n = do
     conNames <- getCons name
     cons <- for conNames $ \n => do
       [(conName, conImpl)] <- getType n
-        | _ => fail $ show n ++ " constructor must be in scope and unique"
+        | _ => fail "\{show n} constructor must be in scope and unique"
       (bindNames, rhs) <- genRHS conImpl
       let rhs = if opts.tagged
                    then `(JObject $ [MkPair ~(primStr $ show $ stripNs n) (JObject $ catMaybes ~rhs)])
                    else `(JObject $ catMaybes ~rhs)
       let lhs = `(~(var funName) ~(applyBinds (var conName) (reverse bindNames)))
       pure $ patClause lhs rhs
-    let funclaim = IClaim EmptyFC MW Export [Inline] (MkTy EmptyFC EmptyFC funName `(~(var name) -> JSON))
+    let funclaim = IClaim EmptyFC MW Export [Inline] (MkTy EmptyFC EmptyFC funName `(~satName -> JSON))
     let fundecl = IDef EmptyFC funName cons
     declare [funclaim, fundecl]
     [(ifName, _)] <- getType `{ToJSON}
       | _ => fail "ToJSON interface must be in scope and unique"
     [NS _ (DN _ ifCon)] <- getCons ifName
       | _ => fail "Interface constructor error"
-    let retty = `(ToJSON ~(var name))
+    let retty = `(ToJSON ~satName)
     let objclaim = IClaim EmptyFC MW Export [Hint True, Inline] (MkTy EmptyFC EmptyFC objName retty)
     let objrhs = `(~(var ifCon) ~(var funName))
     let objdecl = IDef EmptyFC objName [(PatClause EmptyFC (var objName) objrhs)]
     declare [objclaim, objdecl]
   where
     genRHS : TTImp -> Elab (List Name, TTImp)
-    genRHS (IPi _ _ _ (Just n) `(Prelude.Types.Maybe ~argTy) retTy) = do
+    genRHS (IPi _ _ ExplicitArg (Just n) `(Prelude.Types.Maybe ~argTy) retTy) = do
       (ns, rest) <- genRHS retTy
       let name = primStr $ fromMaybe (show n) $ lookup (show n) opts.renames
       pure (n :: ns, `(((MkPair ~name . toJSON) <$> ~(var n)) :: ~rest))
-    genRHS (IPi _ _ _ (Just n) argTy retTy) = do
+    genRHS (IPi _ _ ExplicitArg (Just n) argTy retTy) = do
       (ns, rest) <- genRHS retTy
       let name = primStr $ fromMaybe (show n) $ lookup (show n) opts.renames
       pure (n :: ns, `(Just (MkPair ~name (toJSON ~(var n))) :: ~rest))
-    genRHS (IPi _ _ _ Nothing _ _) = fail $ "All arguments must be explicitly named"
+    genRHS (IPi _ _ ExplicitArg Nothing _ _) = fail "All arguments must be explicitly named"
+    genRHS (IPi _ _ _ _ _ retTy) = genRHS retTy
     genRHS _ = do
       -- Hack required, because if you quote directly opts.staticFields the elaborator introduces unsolved holes
       r <- traverse (\(k, v) => (k,) <$> quote v) opts.staticFields
@@ -154,7 +170,8 @@ public export covering
 deriveFromJSON : (opts : JSONDeriveOpts) -> (name : Name) -> Elab ()
 deriveFromJSON opts n = do
     [(name, imp)] <- getType n
-      | xs => fail $ show n ++ " must be in scope and unique. Possible referred types are: " ++ show (fst <$> xs)
+      | xs => fail "\{show n} must be in scope and unique. Possible referred types are: \{show (fst <$> xs)}"
+    satName <- saturate imp (var name)
     -- FIXME: temporary name for debugging, should be converted to a name impossible to define from users
     -- and should not be exported, unless a specific option is enabled.
     let funName = UN $ Basic ("fromJSON" ++ show (stripNs n))
@@ -163,7 +180,7 @@ deriveFromJSON opts n = do
     argName <- genReadableSym "arg"
     cons <- for conNames $ \n => do
       [(conName, conImpl)] <- getType n
-        | _ => fail $ show n ++ "constructor must be in scope and unique"
+        | _ => fail "\{show n} constructor must be in scope and unique"
       args <- getArgs conImpl
       pure (conName, args)
     clauses <- traverse (\(cn, as) => genClause funName cn argName (reverse as)) cons
@@ -171,22 +188,24 @@ deriveFromJSON opts n = do
                      then (uncurry patClause <$> clauses)
                      else [patClause `(~(var funName) (JObject ~(bindvar $ show argName)))
                                      (foldl (\acc, x => `(~x <|> ~acc)) `(Nothing) (snd <$> clauses))]
-    let funClaim = IClaim EmptyFC MW Export [Inline] (MkTy EmptyFC EmptyFC funName `(JSON -> Maybe ~(var name)))
+    let funClaim = IClaim EmptyFC MW Export [Inline] (MkTy EmptyFC EmptyFC funName `(JSON -> Maybe ~satName))
     let funDecl = IDef EmptyFC funName (clauses ++ [patClause `(~(var funName) ~implicit') `(Nothing)])
     declare [funClaim, funDecl]
     [(ifName, _)] <- getType `{FromJSON}
       | _ => fail "FromJSON interface must be in scope and unique"
     [NS _ (DN _ ifCon)] <- getCons ifName
       | _ => fail "Interface constructor error"
-    let retty = `(FromJSON ~(var name))
+    let retty = `(FromJSON ~satName)
     let objClaim = IClaim EmptyFC MW Export [Hint True, Inline] (MkTy EmptyFC EmptyFC objName retty)
     let objrhs = `(~(var ifCon) ~(var funName))
     let objDecl = IDef EmptyFC objName [(PatClause EmptyFC (var objName) objrhs)]
     declare [objClaim, objDecl]
   where
     getArgs : TTImp -> Elab (List (Name, TTImp))
-    getArgs (IPi _ _ _ (Just n) argTy retTy) = ((n, argTy) ::) <$> getArgs retTy
-    getArgs (IPi _ _ _ Nothing _ _) = fail $ "All arguments must be explicitly named"
+    getArgs (IPi _ _ ExplicitArg (Just n) argTy retTy) = ((n, argTy) ::) <$> getArgs retTy
+    getArgs (IPi _ _ ExplicitArg (Just n) argTy retTy) = ((n, argTy) ::) <$> getArgs retTy
+    getArgs (IPi _ _ ExplicitArg Nothing _ _) = fail "All arguments must be explicitly named"
+    getArgs (IPi _ _ _ _ _ retTy) = getArgs retTy
     getArgs _ = pure []
 
     genClause : Name -> Name -> Name -> List (Name, TTImp) -> Elab (TTImp, TTImp)
