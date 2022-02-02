@@ -20,6 +20,9 @@ import Data.String.Parser
 import Data.Vect
 import Protocol.Hex
 
+listElem : Eq a => a -> List a -> Bool
+listElem = elem
+
 foldSeq : (Applicative f, Traversable t, Monoid m) => t (f m) -> f m
 foldSeq = map concat . sequence
 
@@ -76,16 +79,16 @@ Ord URI where
 |||
 ||| @see RFC 3986, section 2.3
 isUnreserved : Char -> Bool
-isUnreserved c = isAlphaNum c || (c `Prelude.elem` ['-', '.', '_', '~'])
+isUnreserved c = isAlphaNum c || (c `listElem` ['-', '.', '_', '~'])
 
 isGenDelim : Char -> Bool
-isGenDelim c = c `Prelude.elem` [':', '/', '?', '#', '[', ']', '@']
+isGenDelim c = c `listElem` [':', '/', '?', '#', '[', ']', '@']
 
 ||| Returns true for reserved characters that requires to be percent escaped.
 |||
 ||| @see RFC 3986, section 2.2
 isSubDelim : Char -> Bool
-isSubDelim c = c `Prelude.elem` ['!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=']
+isSubDelim c = c `listElem` ['!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=']
 
 isReserved : Char -> Bool
 isReserved c = isGenDelim c || isSubDelim c
@@ -108,7 +111,7 @@ pctEncoded = do
 schemeParser : Parser String
 schemeParser = pack <$> [| alphaNum :: many (satisfy isValidForScheme) |]
   where isValidForScheme : Char -> Bool
-        isValidForScheme c = isAlphaNum c || (c `Prelude.elem` ['+', '-', '.'])
+        isValidForScheme c = isAlphaNum c || (c `listElem` ['+', '-', '.'])
 
 ||| Parser for a URI userinfo subcomponent.
 |||
