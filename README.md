@@ -6,6 +6,7 @@ Language Server for Idris2.
 ## Setup
 ```bash
 git clone https://github.com/idris-community/idris2-lsp.git # Clone this repository
+cd idris2-lsp
 git submodule update --init Idris2 # Get the associated Idris commit
 cd Idris2 # Change into the Idris2 directory
 make bootstrap SCHEME=chez # Boostrap Idris
