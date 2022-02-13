@@ -5,12 +5,14 @@ Language Server for Idris2.
 
 ## Setup
 ```bash
+# If you already have idris2, uninstall idris2 unless you installed it from source
 git clone https://github.com/idris-community/idris2-lsp.git # Clone this repository
 cd idris2-lsp
 git submodule update --init Idris2 # Get the associated Idris commit
 cd Idris2 # Change into the Idris2 directory
 make bootstrap SCHEME=chez # Boostrap Idris
 make install # Install Idris
+# If needed, modify your shell files to ensure ~/.idris2/bin is in your PATH
 make clean # Clean Idris
 make all # Build Idris
 make install # Install Idris
