@@ -28,13 +28,13 @@ printClause l i (PatClause _ lhsraw rhsraw) = do
   lhs <- pterm $ map defaultKindedName lhsraw
   rhs <- pterm $ map defaultKindedName rhsraw
   pure $ relit l "\{pack (replicate i ' ')}\{show lhs} = \{show rhs}"
-printClause l i (WithClause _ lhsraw wvraw prf flags csraw) = do
+printClause l i (WithClause _ lhsraw rig wvraw prf flags csraw) = do
   lhs <- pterm $ map defaultKindedName lhsraw
   wval <- pterm $ map defaultKindedName wvraw
   cs <- traverse (printClause l (i + 2)) csraw
   pure (relit l ((pack (replicate i ' ')
          ++ show lhs
-         ++ " with (" ++ show wval ++ ")"
+         ++ " with \{showCount rig}(" ++ show wval ++ ")"
          ++ maybe "" (\ nm => " proof " ++ show nm) prf
          ++ "\n"))
          ++ showSep "\n" cs)
