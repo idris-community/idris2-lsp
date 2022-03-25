@@ -78,7 +78,7 @@ record SemanticTokensRegistrationOptions where
   legend           : SemanticTokensLegend
   range            : Maybe (OneOf [Bool, ()])
   full             : Maybe (OneOf [Bool, SemanticTokenRequestsFull])
-  documentSelector : OneOf [DocumentSelector, Null]
+  documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe Bool
 %runElab deriveJSON defaultOpts `{SemanticTokensRegistrationOptions}
 

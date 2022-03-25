@@ -2,7 +2,7 @@
 |||
 ||| References:
 |||   [1] https://tools.ietf.org/html/rfc3986
-|||   [2] https://tools.ietf.org/html/rfc6874
+|||   [2] https://tools.ietf.org/html/rfc6874
 |||   [3] https://tools.ietf.org/html/rfc7320
 |||   [4] https://tools.ietf.org/html/rfc8820
 |||
