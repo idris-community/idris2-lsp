@@ -411,6 +411,13 @@ perror (NoForeignCC fc specs) = do
     pure res
 perror (BadMultiline _ str)
     = pure $ errorDesc (reflow "Invalid multiline string" <++> colon <++> line <++> pretty str)
+perror (FailingDidNotFail fc)
+  = pure $ errorDesc (reflow "Failing block did not fail" <+> dot)
+perror (FailingWrongError fc msg err)
+  = pure $ vcat [ errorDesc (reflow "Failing block failed with the wrong error" <+> dot)
+                , "Expected" <++> dquote <+> pretty msg <+> dquote <++> "but got:"
+                , !(perror err)
+                ]
 
 perror (InType fc n err)
     = pure $ hsep [ errorDesc (reflow "While processing type of" <++> code (pretty !(prettyName n))) <+> dot

@@ -189,7 +189,7 @@ refineHole' params hints = do
                           then do matchingNames <- keepNonHoleNames =<< typeMatchingNames n def.type 1000
                                   similar <- keepNonHoleNames =<< maybe [] (map fst . snd) <$> getSimilarNames n
                                   fst <$> searchN fuel (exprSearchOpts opts replFC name (matchingNames ++ similar))
-                          else do filtered <- filterS (hasHints hints) <$> exprSearchOpts opts replFC name hints
+                          else do filtered <- filter (hasHints hints) <$> exprSearchOpts opts replFC name hints
                                   fst <$> searchN fuel filtered
                        let searchtms = filter isRawHole searchtms
                        traverse (map showPTerm . pterm . map defaultKindedName . dropLams locs) searchtms)
