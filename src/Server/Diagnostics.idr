@@ -58,7 +58,7 @@ getRelatedErrors uri (CantSolveEq fc _ _ l r) =
   , buildRelatedInformation uri (getLoc r) "Can't solve constraint type"
   ]
 getRelatedErrors uri (PatternVariableUnifies fc _ n tm) =
-  [ buildRelatedInformation uri (getLoc tm) ("Unifies with pattern variable " ++ show n) ]
+  [ buildRelatedInformation uri (getLoc tm) ("Unifies with pattern variable " ++ show n) ]
 getRelatedErrors uri (CyclicMeta fc _ _ _) = []
 getRelatedErrors uri (WhenUnifying fc _ _ x y _) =
   [ buildRelatedInformation uri (getLoc x) "Error while unification"

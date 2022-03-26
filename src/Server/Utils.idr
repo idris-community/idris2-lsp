@@ -209,8 +209,8 @@ Cast Range FileRange where
 
 export
 Cast FC Range where
-  cast (MkFC _ start end) = MkRange { start = cast start, end = cast end }
-  cast (MkVirtualFC _ start end) = MkRange { start = cast start, end = cast end }
+  cast (MkFC _ start end) = MkRange { start = cast start, end = cast end }
+  cast (MkVirtualFC _ start end) = MkRange { start = cast start, end = cast end }
   cast EmptyFC = MkRange { start = MkPosition 0 0, end = MkPosition 0 0 }
 
 export
