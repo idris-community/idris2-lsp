@@ -80,8 +80,8 @@ findQuickfix caps uri (InType _ _ err) = findQuickfix caps uri err
 findQuickfix caps uri (InCon _ _ err) = findQuickfix caps uri err
 findQuickfix caps uri (InLHS _ _ err) = findQuickfix caps uri err
 findQuickfix caps uri (InRHS _ _ err) = findQuickfix caps uri err
-findQuickfix caps uri err@(PatternVariableUnifies fc env n tm) =
-  whenJust (isNonEmptyFC (getLoc tm)) $ \fc => do
+findQuickfix caps uri err@(PatternVariableUnifies fc fct env n tm) =
+  whenJust (isNonEmptyFC fct) $ \fc => do
     diagnostic <- errorToDiagnostic caps uri err
     let textEdit = MkTextEdit (cast fc) (nameRoot n)
     let codeAction = buildQuickfix uri "Unify pattern names" diagnostic textEdit
