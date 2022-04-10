@@ -15,6 +15,7 @@ import Data.OneOf
 import Data.SortedSet
 import Data.String
 import Idris.Doc.String
+import Idris.Error
 import Idris.IDEMode.Holes
 import Idris.ModTree
 import Idris.Package
