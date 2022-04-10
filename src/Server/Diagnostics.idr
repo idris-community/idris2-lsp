@@ -416,7 +416,7 @@ perror (FailingDidNotFail fc)
 perror (FailingWrongError fc msg err)
   = pure $ vcat [ errorDesc (reflow "Failing block failed with the wrong error" <+> dot)
                 , "Expected" <++> dquote <+> pretty msg <+> dquote <++> "but got:"
-                , !(perror err)
+                , vsep !(traverse perror (forget err))
                 ]
 
 perror (InType fc n err)
