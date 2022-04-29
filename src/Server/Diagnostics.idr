@@ -75,7 +75,7 @@ getRelatedErrors _ _ = []
 pShowMN : {vars : _} -> Term vars -> Env Term vars -> Doc IdrisAnn -> Doc IdrisAnn
 pShowMN (Local _ _ _ p) env acc =
   case dropAllNS (nameAt p) of
-       MN _ _ => acc <++> parens ("implicitly bound at" <++> pretty (getBinderLoc p env))
+       MN _ _ => acc <++> parens ("implicitly bound at" <++> pretty0 (getBinderLoc p env))
        _      => acc
 pShowMN _ _ acc = acc
 
@@ -125,7 +125,7 @@ warningToDiagnostic caps uri warning = do
   if uri.path == p
      then do let related = Nothing -- TODO related diagnostics?
              pure $ buildDiagnostic Warning loc warningAnn related
-     else pure $ buildDiagnostic Warning (toStart <$> loc) ("In" <++> pretty p <+> colon <++> warningAnn) Nothing
+     else pure $ buildDiagnostic Warning (toStart <$> loc) ("In" <++> pretty0 p <+> colon <++> warningAnn) Nothing
 
 
 ||| Computes a LSP `Diagnostic` from a compiler error.
@@ -151,4 +151,4 @@ errorToDiagnostic caps uri err = do
   if uri.path == p
      then do let related = (flip toMaybe (getRelatedErrors uri err) <=< relatedInformation) =<< caps
              pure $ buildDiagnostic Error loc error related
-     else pure $ buildDiagnostic Error (toStart <$> loc) ("In" <++> pretty p <+> colon <++> error) Nothing
+     else pure $ buildDiagnostic Error (toStart <$> loc) ("In" <++> pretty0 p <+> colon <++> error) Nothing
