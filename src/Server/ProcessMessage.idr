@@ -61,6 +61,7 @@ import System.Directory
 import System.File
 
 ||| Mostly copied from Idris.REPL.displayResult.
+partial
 replResultToDoc : Ref Ctxt Defs
                => Ref UST UState
                => Ref Syn SyntaxInfo
@@ -72,32 +73,32 @@ replResultToDoc (Evaluated x Nothing) = pure (prettyTerm x)
 replResultToDoc (Evaluated x (Just y)) = pure (prettyTerm x <++> colon <++> code (prettyTerm y))
 replResultToDoc (Printed xs) = pure xs
 replResultToDoc (TermChecked x y) = pure (prettyTerm x <++> colon <++> code (prettyTerm y))
-replResultToDoc (FileLoaded x) = pure (reflow "Loaded file" <++> pretty x)
-replResultToDoc (ModuleLoaded x) = pure (reflow "Imported module" <++> pretty x)
-replResultToDoc (ErrorLoadingModule x err) = pure $ reflow "Error loading module" <++> pretty x <+> colon <++> !(perror err)
-replResultToDoc (ErrorLoadingFile x err) = pure (reflow "Error loading file" <++> pretty x <+> colon <++> pretty (show err))
-replResultToDoc (ErrorsBuildingFile x errs) = pure (reflow "Error(s) building file" <++> pretty x) -- messages already displayed while building
+replResultToDoc (FileLoaded x) = pure (reflow "Loaded file" <++> pretty0 x)
+replResultToDoc (ModuleLoaded x) = pure (reflow "Imported module" <++> pretty0 x)
+replResultToDoc (ErrorLoadingModule x err) = pure $ reflow "Error loading module" <++> pretty0 x <+> colon <++> !(perror err)
+replResultToDoc (ErrorLoadingFile x err) = pure (reflow "Error loading file" <++> pretty0 x <+> colon <++> pretty0 (show err))
+replResultToDoc (ErrorsBuildingFile x errs) = pure (reflow "Error(s) building file" <++> pretty0 x) -- messages already displayed while building
 replResultToDoc NoFileLoaded = pure (reflow "No file can be reloaded")
-replResultToDoc (CurrentDirectory dir) = pure (reflow "Current working directory is" <++> dquotes (pretty dir))
+replResultToDoc (CurrentDirectory dir) = pure (reflow "Current working directory is" <++> dquotes (pretty0 dir))
 replResultToDoc CompilationFailed = pure (reflow "Compilation failed")
-replResultToDoc (Compiled f) = pure (pretty "File" <++> pretty f <++> pretty "written")
+replResultToDoc (Compiled f) = pure (pretty0 "File" <++> pretty0 f <++> pretty0 "written")
 replResultToDoc (ProofFound x) = pure (prettyTerm x)
 replResultToDoc (Missed cases) = pure $ vsep (handleMissing <$> cases)
-replResultToDoc (CheckedTotal xs) = pure (vsep (map (\(fn, tot) => pretty fn <++> pretty "is" <++> pretty tot) xs))
+replResultToDoc (CheckedTotal xs) = pure (vsep (map (\(fn, tot) => pretty0 fn <++> pretty0 "is" <++> pretty0 tot) xs))
 replResultToDoc (LogLevelSet Nothing) = pure (reflow "Logging turned off")
-replResultToDoc (LogLevelSet (Just k)) = pure (reflow "Set log level to" <++> pretty k)
-replResultToDoc (ConsoleWidthSet (Just k)) = pure (reflow "Set consolewidth to" <++> pretty k)
+replResultToDoc (LogLevelSet (Just k)) = pure (reflow "Set log level to" <++> pretty0 k)
+replResultToDoc (ConsoleWidthSet (Just k)) = pure (reflow "Set consolewidth to" <++> pretty0 k)
 replResultToDoc (ConsoleWidthSet Nothing) = pure (reflow "Set consolewidth to auto")
 replResultToDoc (ColorSet b) = pure (reflow (if b then "Set color on" else "Set color off"))
-replResultToDoc (VersionIs x) = pure (pretty (showVersion True x))
-replResultToDoc (RequestedHelp) = pure (pretty displayHelp)
-replResultToDoc (Edited (DisplayEdit Empty)) = pure (pretty "")
+replResultToDoc (VersionIs x) = pure (pretty0 (showVersion True x))
+replResultToDoc (RequestedHelp) = pure (pretty0 displayHelp)
+replResultToDoc (Edited (DisplayEdit Empty)) = pure (pretty0 "")
 replResultToDoc (Edited (DisplayEdit xs)) = pure xs
 replResultToDoc (Edited (EditError x)) = pure x
-replResultToDoc (Edited (MadeLemma lit name pty pappstr)) = pure $ pretty (relit lit (show name ++ " : " ++ show pty ++ "\n") ++ pappstr)
-replResultToDoc (Edited (MadeWith lit wapp)) = pure $ pretty $ showSep "\n" (map (relit lit) wapp)
-replResultToDoc (Edited (MadeCase lit cstr)) = pure $ pretty $ showSep "\n" (map (relit lit) cstr)
-replResultToDoc (OptionsSet opts) = pure (vsep (pretty <$> opts))
+replResultToDoc (Edited (MadeLemma lit name pty pappstr)) = pure $ pretty0 (relit lit (show name ++ " : " ++ show pty ++ "\n") ++ pappstr)
+replResultToDoc (Edited (MadeWith lit wapp)) = pure $ pretty0 $ showSep "\n" (map (relit lit) wapp)
+replResultToDoc (Edited (MadeCase lit cstr)) = pure $ pretty0 $ showSep "\n" (map (relit lit) cstr)
+replResultToDoc (OptionsSet opts) = pure (vsep (pretty0 <$> opts))
 replResultToDoc Done = pure ""
 replResultToDoc (Executed _) = pure ""
 replResultToDoc DefDeclared = pure ""
@@ -111,7 +112,7 @@ displayType : Ref Ctxt Defs
            => Defs -> (Name, Int, GlobalDef) -> Core (Doc IdrisAnn)
 displayType defs (n, i, gdef) =
   maybe (do tm <- resugar [] =<< normaliseHoles defs [] (type gdef)
-            pure (pretty !(aliasName (fullname gdef)) <++> colon <++> prettyTerm tm))
+            pure (pretty0 !(aliasName (fullname gdef)) <++> colon <++> prettyTerm tm))
         (\num => reAnnotate Syntax <$> prettyHole defs [] n num (type gdef))
         (isHole gdef)
 
@@ -338,7 +339,7 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
     line <- case (globalResult, localResult) of
       -- Give precedence to the local name, as it shadows the others
       (_, Just (n, _, type)) => pure $ renderString $ unAnnotateS $ layoutUnbounded $
-                                  pretty (nameRoot n) <++> colon <++> !(displayTerm defs type)
+                                  pretty0 (nameRoot n) <++> colon <++> !(displayTerm defs type)
       (Just globalDoc, Nothing) => pure $ renderString $ unAnnotateS $ layoutUnbounded globalDoc
       (Nothing, Nothing) => pure ""
     let False = null line

@@ -95,11 +95,11 @@ metavarsCmd = do
   res <- for holes $ \(h, fc) => do
     loc <- mkLocation fc
     let name = show h.name
-    type <- render (reAnnotate Syntax $ prettyTerm h.type)
+    type <- render (reAnnotate Syntax $ pretty h.type)
     premises <- for h.context $ \p => do
       loc <- mkLocation replFC
       let name = show p.name
-      type <- render (reAnnotate Syntax $ prettyTerm p.type)
+      type <- render (reAnnotate Syntax $ pretty p.type)
       pure $ MkPremise { location = loc, name = name, type = type, isImplicit = p.isImplicit, multiplicity = show p.multiplicity }
     pure $ MkMetavar { location = loc, name = name, type = type, premises = premises }
   setColor c
