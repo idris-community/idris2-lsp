@@ -223,7 +223,7 @@ Measure (Range, a) where
 
 export
 prettyTerm : IPTerm -> Doc IdrisAnn
-prettyTerm = reAnnotate Syntax . Pretty.prettyTerm
+prettyTerm = prettyBy Syntax
 
 export
 searchCache : Ref LSPConf LSPConfiguration => Range -> IdrisAction -> Core (List CodeAction)
