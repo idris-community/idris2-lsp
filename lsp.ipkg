@@ -54,3 +54,5 @@ modules = Data.URI
         , Language.LSP.Message.Utils
         , Language.LSP.Message.Window
         , Language.LSP.Message.Workspace
+
+prebuild = "make src/Server/Generated.idr"
