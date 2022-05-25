@@ -385,17 +385,15 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
                               then map Just <$> gets LSPConf quickfixes
                               else pure []
         exprSearchActions <- map Just <$> exprSearch params
-        refineHoleActions <- map Just <$> refineHole params
         splitAction <- caseSplit params
         lemmaAction <- makeLemma params
         withAction <- makeWith params
         clauseAction <- addClause params
         makeCaseAction <- makeCase params
         generateDefActions <- map Just <$> generateDef params
-        let searchRefineActions = unionBy searchEq exprSearchActions refineHoleActions
         let resp = flatten $ quickfixActions
                                ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
-                               ++ generateDefActions ++ searchRefineActions
+                               ++ generateDefActions ++ exprSearchActions
         pure $ pure $ make resp)
     where
       flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
@@ -480,11 +478,11 @@ handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "exprSearchWithH
     | Nothing => pure $ Left (invalidParams "Expected ExprSearchWithHintsParams")
   actions <- exprSearchWithHints params
   pure $ Right (toJSON actions)
-handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "refineHoleWithHints" (Just [json])) = whenActiveRequest $ \conf => do
-  logI Channel "Received refineHoleWithHints command request"
+handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "refineHole" (Just [json])) = whenActiveRequest $ \conf => do
+  logI Channel "Received refineHole command request"
   let Just params = fromJSON json
-    | Nothing => pure $ Left (invalidParams "Expected RefineHoleWithHintsParams")
-  actions <- refineHoleWithHints params
+    | Nothing => pure $ Left (invalidParams "Expected RefineHoleParams")
+  actions <- refineHole params
   pure $ Right (toJSON actions)
 handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "browseNamespace" (Just [json])) = whenActiveRequest $ \conf => do
   logI Channel "Received browseNamespace command request"

@@ -140,14 +140,12 @@ _Response_:
   - result: `CodeAction[] | null`.
   - error: code and message set in case an exception happens during the request.
 
-## RefineHoleWithHints Request
+## RefineHole Request
 
-The refine hole with hints request is sent from the client to the server
-to compute a refine hole with a custom list of hints. These requests are
-handled by the same library that handles the refine hole code action
-potentially sent by the server in response to a `textDocument/codeAction`
-request on a metavariable, thus the response is in the same format.
-Response edits in the `CodeAction`s must contain the hinted names.
+The refine hole request is sent from the client to the server to refine a
+metavariable, by partially applying the provided hint with known or inferrable
+information.
+Response edits in the `CodeAction`s must contain the hinted name.
 
 _Request_:
   - method: 'workspace/executeCommand'
@@ -157,22 +155,22 @@ export interface RefineHoleParams {
   /**
    * The identifier of the actual command handler.
    */
-  command: 'refineHoleWithHints';
+  command: 'refineHole';
   /**
    * Context and list of hints. Currently supports a single object.
    */
-  arguments: RefineHoleHints[];
+  arguments: RefineHoleHint[];
 }
 
-export interface RefineHoleHints {
+export interface RefineHoleHint {
   /**
    * Location and context of this search.
    */
   codeAction: CodeActionParams;
   /**
-   * List of names to be hinted for this search.
+   * Name to be hinted for this search.
    */
-  hints: string[];
+  hint: string;
 }
 ```
 
