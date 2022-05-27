@@ -31,6 +31,7 @@ import Language.LSP.CodeAction.AddClause
 import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
 import Language.LSP.CodeAction.GenerateDef
+import Language.LSP.CodeAction.Intro
 import Language.LSP.CodeAction.MakeCase
 import Language.LSP.CodeAction.MakeLemma
 import Language.LSP.CodeAction.MakeWith
@@ -98,6 +99,7 @@ replResultToDoc (Edited (EditError x)) = pure x
 replResultToDoc (Edited (MadeLemma lit name pty pappstr)) = pure $ pretty0 (relit lit (show name ++ " : " ++ show pty ++ "\n") ++ pappstr)
 replResultToDoc (Edited (MadeWith lit wapp)) = pure $ pretty0 $ showSep "\n" (map (relit lit) wapp)
 replResultToDoc (Edited (MadeCase lit cstr)) = pure $ pretty0 $ showSep "\n" (map (relit lit) cstr)
+replResultToDoc (Edited (MadeIntro is)) = pure $ pretty0 $ showSep "\n" (toList is)
 replResultToDoc (OptionsSet opts) = pure (vsep (pretty0 <$> opts))
 replResultToDoc Done = pure ""
 replResultToDoc (Executed _) = pure ""
@@ -390,10 +392,11 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
         withAction <- makeWith params
         clauseAction <- addClause params
         makeCaseAction <- makeCase params
+        introActions <- map Just <$> intro params
         generateDefActions <- map Just <$> generateDef params
         let resp = flatten $ quickfixActions
                                ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
-                               ++ generateDefActions ++ exprSearchActions
+                               ++ introActions ++ generateDefActions ++ exprSearchActions
         pure $ pure $ make resp)
     where
       flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
