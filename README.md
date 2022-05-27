@@ -59,6 +59,7 @@ The following table specifies the list of keys that enable each code actions. A 
 |`CaseSplit`|`refactor.rewrite`,`refactor.rewrite.CaseSplit`|
 |`ExprSearch`|`refactor.rewrite`,`refactor.rewrite.ExprSearch`|
 |`GenerateDef`|`refactor.rewrite`,`refactor.rewrite.GenerateDef`|
+|`Intro`|`refactor.rewrite`,`refactor.rewrite.Intro`|
 |`MakeCase`|`refactor.rewrite`,`refactor.rewrite.MakeCase`|
 |`MakeClause`|`refactor.rewrite`,`refactor.rewrite.MakeClause`|
 |`MakeLemma`|`refactor.extract`,`refactor.extract.MakeLemma`|

@@ -67,6 +67,7 @@ data Topic
   | GenerateDef
   | GotoDefinition
   | Hover
+  | Intro
   | MakeCase
   | MakeLemma
   | MakeWith
@@ -92,6 +93,7 @@ Show Topic where
   show GenerateDef = "Request.CodeAction.GenerateDef"
   show GotoDefinition = "Request.GotoDefinition"
   show Hover = "Request.Hover"
+  show Intro = "Request.CodeAction.Intro"
   show MakeCase = "Request.CodeAction.MakeCase"
   show MakeLemma = "Request.CodeAction.MakeLemma"
   show MakeWith = "Request.CodeAction.MakeWith"
