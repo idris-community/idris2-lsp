@@ -351,7 +351,8 @@ handleRequest TextDocumentHover params = whenActiveRequest $ \conf => do
                                                then MkMarkupContent Markdown $ "```idris\n\{line}\n```"
                                                else MkMarkupContent PlainText line
     let hover = MkHover (make markupContent) Nothing
-    update LSPConf ({ cachedHovers $= insert (cast loc, hover) })
+    -- TODO consider reenabling hover caching once locations are accurate
+    -- update LSPConf ({ cachedHovers $= insert (cast loc, hover) })
     pure $ pure (make hover)
 
 handleRequest TextDocumentDocumentHighlight params = whenActiveRequest $ \conf => do
