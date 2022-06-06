@@ -48,6 +48,7 @@ Server options that can be set via the `initializationOptions` object in the ini
 |`longActionTimeout`|`number`|Timeout in ms for long actions, e.g. expression search (default: 5000)|
 |`maxCodeActionResults`|`number`|Maximum number of multiple code actions for a single command, e.g. expression search (default: 5)|
 |`showImplicits`|`boolean`|Show implicits in hovers|
+|`showMachineNames`|`boolean`|Show machine names in hovers|
 |`fullNamespace`|`boolean`|Show full namespace in hovers|
 
 ## Code Actions Filters
