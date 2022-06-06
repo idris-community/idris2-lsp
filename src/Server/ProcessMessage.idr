@@ -159,6 +159,14 @@ processSettings (JObject xs) = do
          logI Configuration "Full namespace set to \{show b}"
        Just _ => logE Configuration "Incorrect type for full namespace, expected boolean"
        Nothing => pure ()
+  case lookup "showMachineNames" xs of
+       Just (JBoolean b) => do
+         pp <- getPPrint
+         when (pp.showMachineNames /= b) $ do
+           setPPrint ({ showMachineNames := b } pp)
+           update LSPConf ({ cachedHovers := empty })
+       Just _ => logE Configuration "Incorrect type for show machine names, expected boolean"
+       Nothing => pure ()
 processSettings _ = logE Configuration "Incorrect type for options"
 
 isDirty : Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
