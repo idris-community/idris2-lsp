@@ -3,7 +3,12 @@ Language Server for Idris2.
 
 **NOTE: At this stage the LSP server requires an ipkg file to work correctly, for reference material about packages look [here](https://idris2.readthedocs.io/en/latest/tutorial/packages.html) and [here](https://idris2.readthedocs.io/en/latest/reference/packages.html). To start a new project with an ipkg, even for a single file, you can issue the `idris2 --init` command, which provides an interactive interface for package creation.**
 
-## Setup
+## Installation with [Pack](https://github.com/stefan-hoeck/idris2-pack)
+```bash
+pack install-app lsp
+```
+
+## Manual Installation
 ```bash
 # If you already have idris2, uninstall idris2 unless you installed it from source
 git clone https://github.com/idris-community/idris2-lsp.git # Clone this repository
