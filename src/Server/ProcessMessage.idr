@@ -184,6 +184,8 @@ loadURI : Ref LSPConf LSPConfiguration
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
   logI Server "Loading file \{show uri}"
+  defs <- get Ctxt
+  let extraDirs = defs.options.dirs.extra_dirs
   update LSPConf ({ openFile := Just (uri, fromMaybe 0 version) })
   resetContext (Virtual Interactive)
   let fpath = uri.path
@@ -223,6 +225,8 @@ loadURI conf uri version = do
   session <- getSession
   let warnings = if session.warningsAsErrors then [] else reverse (warnings defs)
   sendDiagnostics caps uri version warnings errs
+  defs <- get Ctxt
+  put Ctxt ({ options->dirs->extra_dirs := extraDirs } defs)
   pure $ Right ()
 
 loadIfNeeded : Ref LSPConf LSPConfiguration
