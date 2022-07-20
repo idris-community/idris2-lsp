@@ -55,25 +55,11 @@ removeOverlap last stack (current@((fileName, start, end), decoration, name)::re
 
 ||| Get the semantic tokens from the Metadata
 export
-getSemanticTokens : Ref LSPConf LSPConfiguration => Metadata -> (getLineLength : Int -> Int) -> Core SemanticTokens
+getSemanticTokens : Ref LSPConf LSPConfiguration => Ref Ctxt Defs => Metadata -> (getLineLength : Int -> Int) -> Core SemanticTokens
 getSemanticTokens md getLineLength = do
   logD SemanticTokens "Fetching semantic highlightning metadata"
-  let semHigh = md.semanticHighlighting
-
-  logD SemanticTokens "Fetching semantic aliases metadata"
-  let aliases : List ASemanticDecoration =
-      flip foldMap md.semanticAliases $ \ (from, to) =>
-        let decors = uncurry exactRange (snd to) semHigh
-        in map (\ ((fnm, loc), rest) => ((fnm, snd from), rest)) decors
-
-  logD SemanticTokens "Fetching semantic defaults metadata"
-  let defaults : List ASemanticDecoration =
-      flip foldMap md.semanticDefaults $ \ decor@((_, range), _) =>
-        case uncurry exactRange range semHigh of
-          [] => [decor]
-          _ => []
-
-  let overlappingHighlightingList = toList $ semHigh `union` ((fromList aliases) `union` (fromList defaults))
+  allSemHigh <- allSemanticHighlighting md
+  let overlappingHighlightingList = toList allSemHigh
   logD SemanticTokens "Removing overlapping tokens"
   let multilineSemanticHighlightingList = removeOverlap (0, 0) [] $ overlappingHighlightingList
   logD SemanticTokens "Splitting multiline tokens"
