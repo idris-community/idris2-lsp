@@ -73,5 +73,5 @@ caseSplit params = do
                         pure Nothing
 
       let rng = MkRange (MkPosition line 0) (MkPosition line (cast (length original)))
-      let edit = MkTextEdit rng (unlines lines)
+      let edit = MkTextEdit rng (joinBy "\n" lines)
       pure $ Just (cast loc, buildCodeAction params.textDocument.uri name edit)
