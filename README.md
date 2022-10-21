@@ -27,6 +27,8 @@ cd .. # Go back to the idris2-lsp directory
 make install # Install idris2-lsp
 ```
 
+Can be installed on Windows via MSYS2.
+
 ## Editor Plugins
 - VSCode: [idris2-lsp-vscode](https://github.com/bamboo/idris2-lsp-vscode)
 - Neovim: [idris2-nvim](https://github.com/ShinKage/idris2-nvim)
