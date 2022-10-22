@@ -189,7 +189,7 @@ loadURI conf uri version = do
   update LSPConf ({ openFile := Just (uri, fromMaybe 0 version) })
   update ROpts { evalResultName := Nothing }
   resetContext (Virtual Interactive)
-  let fpath = uri.path
+  let fpath = uriPathToSystemPath uri.path
   let Just (startFolder, startFile) = splitParent fpath
     | Nothing => do let msg = "Cannot find the parent folder for \{show uri}"
                     logE Server msg

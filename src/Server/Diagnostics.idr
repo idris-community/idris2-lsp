@@ -122,7 +122,7 @@ warningToDiagnostic caps uri warning = do
   let wdir = defs.options.dirs.working_dir
   p <- maybe (pure uri.path) (pure . (wdir </>) <=< nsToSource replFC)
          ((\case PhysicalIdrSrc ident => Just ident; _ => Nothing) . fst <=< isNonEmptyFC =<< loc)
-  if uri.path == p
+  if System.Path.parse (uriPathToSystemPath uri.path) == System.Path.parse p
      then do let related = Nothing -- TODO related diagnostics?
              pure $ buildDiagnostic Warning loc warningAnn related
      else pure $ buildDiagnostic Warning (toStart <$> loc) ("In" <++> pretty0 p <+> colon <++> warningAnn) Nothing
@@ -148,7 +148,7 @@ errorToDiagnostic caps uri err = do
   let wdir = defs.options.dirs.working_dir
   p <- maybe (pure uri.path) (pure . (wdir </>) <=< nsToSource replFC)
          ((\case PhysicalIdrSrc ident => Just ident; _ => Nothing) . fst <=< isNonEmptyFC =<< loc)
-  if uri.path == p
+  if System.Path.parse (uriPathToSystemPath uri.path) == System.Path.parse p
      then do let related = (flip toMaybe (getRelatedErrors uri err) <=< relatedInformation) =<< caps
              pure $ buildDiagnostic Error loc error related
      else pure $ buildDiagnostic Error (toStart <$> loc) ("In" <++> pretty0 p <+> colon <++> error) Nothing

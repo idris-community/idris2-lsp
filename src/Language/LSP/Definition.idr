@@ -40,7 +40,7 @@ mkLocation' origin (sline, scol) (eline, ecol) = do
         pure (pkg_dir_abs </> toPath modIdent <.> ext))
     | _ => logD GotoDefinition "Can't find file for module \{show modIdent}" >> pure Nothing
 
-  let fname_abs_uri = "file://\{fname_abs}"
+  let fname_abs_uri = "file://\{systemPathToURIPath fname_abs}"
 
   -- Escape is needed, filename may contain characters reserved in URI, like whitespace
   let Right uri = escapeAndParseURI fname_abs_uri

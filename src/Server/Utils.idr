@@ -20,6 +20,7 @@ import Libraries.Data.PosMap
 import Server.Configuration
 import System.File
 import System
+import System.Info
 
 ||| Gets a specific component of a reference, using the supplied projection.
 export
@@ -30,6 +31,10 @@ export
 uncons' : List a -> Maybe (a, List a)
 uncons' [] = Nothing
 uncons' (x :: xs) = Just (x, xs)
+
+export
+headerLineEnd : String
+headerLineEnd = if isWindows then "\n" else "\r\n"
 
 ||| Reads a single header from an LSP message on the supplied file handle.
 ||| Headers end with the string "\r\n".
@@ -42,7 +47,7 @@ fGetHeader handle = do
     | Left err => pure $ Left err
   -- TODO: reading up to a string should probably be handled directly by the FFI primitive
   --       or at least in a more efficient way in Idris2
-  if isSuffixOf "\r\n" l
+  if isSuffixOf headerLineEnd l
      then pure $ Right l
      else (map (l ++)) <$> fGetHeader handle
 
@@ -255,3 +260,19 @@ Show Position where
 export
 Show Range where
   show (MkRange start end) = "\{show start} -- \{show end}"
+
+export
+systemPathToURIPath : String -> String
+systemPathToURIPath p = if not isWindows then p else
+  let p1 = fastPack (map (\c => if c == '\\' then '/' else c) (fastUnpack p))
+  in case strUncons p1 of
+    Just ('/', _) => p1
+    _ => strCons '/' p1
+
+export
+uriPathToSystemPath : String -> String
+uriPathToSystemPath p = if not isWindows then p else
+  let p1 = case strUncons p of
+        Just ('/', tail) => tail
+        _ => p
+  in fastPack (map (\c => if c == '/' then '\\' else c) (fastUnpack p1))
