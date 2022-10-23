@@ -93,6 +93,7 @@ replResultToDoc (ConsoleWidthSet Nothing) = pure (reflow "Set consolewidth to au
 replResultToDoc (ColorSet b) = pure (reflow (if b then "Set color on" else "Set color off"))
 replResultToDoc (VersionIs x) = pure (pretty0 (showVersion True x))
 replResultToDoc (RequestedHelp) = pure (pretty0 displayHelp)
+replResultToDoc (RequestedDetails details) = pure (pretty0 details)
 replResultToDoc (Edited (DisplayEdit Empty)) = pure (pretty0 "")
 replResultToDoc (Edited (DisplayEdit xs)) = pure xs
 replResultToDoc (Edited (EditError x)) = pure x
