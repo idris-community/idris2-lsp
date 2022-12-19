@@ -26,7 +26,7 @@ mkLocation' origin (sline, scol) (eline, ecol) = do
   let PhysicalIdrSrc modIdent = origin
     | _ => logD GotoDefinition "Origin doesn't have an Idris file attached to it \{show origin}" >> pure Nothing
   let wdir = defs.options.dirs.working_dir
-  let pkg_dirs = filter (/= ".") defs.options.dirs.extra_dirs
+  let pkg_dirs = filter (/= ".") (defs.options.dirs.extra_dirs ++ defs.options.dirs.package_dirs)
   let exts = show <$> listOfExtensions
   Just fname_abs <- catch
       (Just . (wdir </>) <$> nsToSource replFC modIdent) -- Try local source first
