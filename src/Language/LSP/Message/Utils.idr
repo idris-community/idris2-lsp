@@ -10,16 +10,6 @@ import Language.LSP.Message.Derive
 
 %default total
 
--- TODO: Upstream this implementations.
-public export
-Foldable (Pair a) where
-  foldr f init (_, input) = f input init
-  null _ = False
-
-public export
-Traversable (Pair a) where
-  traverse f (x, y) = (x,) <$> f y
-
 public export
 Eq JSON where
   JNull        == JNull        = True
