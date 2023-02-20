@@ -118,7 +118,7 @@ warningToDiagnostic : Ref Ctxt Defs
 warningToDiagnostic caps uri warning = do
   defs <- get Ctxt
   warningAnn <- pwarning (killWarningLoc warning)
-  let loc = getWarningLoc warning
+  let loc = Just (getWarningLoc warning)
   let wdir = defs.options.dirs.working_dir
   p <- maybe (pure uri.path) (pure . (wdir </>) <=< nsToSource replFC)
          ((\case PhysicalIdrSrc ident => Just ident; _ => Nothing) . fst <=< isNonEmptyFC =<< loc)
