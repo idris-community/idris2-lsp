@@ -15,6 +15,7 @@ import Language.LSP.Message.Location
 import Language.LSP.Message.URI
 import Language.LSP.Message.SemanticTokens
 import public Libraries.Data.PosMap
+import Server.Severity
 import System.File
 
 ||| Label for the configuration reference.
@@ -31,6 +32,8 @@ record LSPConfiguration where
   outputHandle : File
   ||| File handle where to put log messages.
   logHandle : File
+  ||| Level of logging; everything lighter than this will be ignored.
+  logSeverity : Severity
   ||| If the initialization protocol has succeded, it contains the client configuration.
   ||| @see https://microsoft.github.io/language-server-protocol/specifications/specification-3-16/#initialize
   initialized : Maybe InitializeParams
@@ -64,6 +67,7 @@ defaultConfig =
     { inputHandle             = stdin
     , outputHandle            = stdout
     , logHandle               = stderr
+    , logSeverity             = Debug
     , initialized             = Nothing
     , isShutdown              = False
     , openFile                = Nothing

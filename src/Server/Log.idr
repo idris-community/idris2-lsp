@@ -3,54 +3,17 @@
 ||| (C) The Idris Community, 2021
 module Server.Log
 
-import Core.Core
 import Core.Context.Context
+import Core.Core
 import Core.Directory
 import Server.Configuration
+import Server.Severity
 import Server.Utils
 import System.Directory
 import System.File
 import System.Path
 
 %default total
-
-||| Type for the severity of logging messages.
-||| Levels are roughly categorised as follow:
-||| - Debug    Messages targeted only for developing purposes
-||| - Info     Messages for progress without unexpected behaviour or errors
-||| - Warning  Messages for unsupported requests or wrong configurations 
-||| - Error    Messages for either server or compiler error which are unexpected but recoverable
-||| - Critical Messages for error that require immediate stopping of the server
-public export
-data Severity = Debug | Info | Warning | Error | Critical
-
-Cast Severity Integer where
-  cast Debug    = 0
-  cast Info     = 1
-  cast Warning  = 2
-  cast Error    = 3
-  cast Critical = 4
-
-export
-Eq Severity where
-  Debug    == Debug    = True
-  Info     == Info     = True
-  Warning  == Warning  = True
-  Error    == Error    = True
-  Critical == Critical = True
-  _ == _ = False
-
-export
-Show Severity where
-  show Debug    = "DEBUG"
-  show Info     = "INFO"
-  show Warning  = "WARNING"
-  show Error    = "ERROR"
-  show Critical = "CRITICAL"
-
-export
-Ord Severity where
-  compare x y = compare (cast {to = Integer} x) (cast y)
 
 public export
 data Topic
@@ -106,35 +69,37 @@ Show Topic where
 
 ||| Logs a string with the provided severity level.
 export
-log : Ref LSPConf LSPConfiguration => Severity -> Topic -> String -> Core ()
+log : Ref LSPConf LSPConfiguration => Severity -> Topic -> Lazy String -> Core ()
 log severity topic msg = do
   logHandle <- gets LSPConf logHandle
-  coreLift_ $ fPutStrLn logHandle "LOG \{show severity}:\{show topic}: \{msg}"
-  coreLift $ fflush logHandle
+  logSeverity <- gets LSPConf logSeverity
+  when (severity >= logSeverity) $ do
+    coreLift_ $ fPutStrLn logHandle "LOG \{show severity}:\{show topic}: \{msg}"
+    coreLift $ fflush logHandle
 
 export
-logD : Ref LSPConf LSPConfiguration => Topic -> String -> Core ()
+logD : Ref LSPConf LSPConfiguration => Topic -> Lazy String -> Core ()
 logD = log Debug
 
 export
-logI : Ref LSPConf LSPConfiguration => Topic -> String -> Core ()
+logI : Ref LSPConf LSPConfiguration => Topic -> Lazy String -> Core ()
 logI = log Info
 
 export
-logW : Ref LSPConf LSPConfiguration => Topic -> String -> Core ()
+logW : Ref LSPConf LSPConfiguration => Topic -> Lazy String -> Core ()
 logW = log Warning
 
 export
-logE : Ref LSPConf LSPConfiguration => Topic -> String -> Core ()
+logE : Ref LSPConf LSPConfiguration => Topic -> Lazy String -> Core ()
 logE = log Error
 
 export
-logC : Ref LSPConf LSPConfiguration => Topic -> String -> Core ()
+logC : Ref LSPConf LSPConfiguration => Topic -> Lazy String -> Core ()
 logC = log Critical
 
 ||| Changes the log file location, if possible.
 export covering
-changeLogFile : Ref LSPConf LSPConfiguration => String -> Core ()
+changeLogFile : Ref LSPConf LSPConfiguration => Lazy String -> Core ()
 changeLogFile fname = do
   let True = isAbsolute fname
     | False => logE Configuration "Unable to change log file location: \{fname} is not an absolute path"
