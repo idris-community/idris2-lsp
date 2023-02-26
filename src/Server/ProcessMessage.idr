@@ -52,6 +52,7 @@ import Server.Capabilities
 import Server.Configuration
 import Server.Diagnostics
 import Server.Log
+import Server.Severity
 import Server.QuickFix
 import Server.Response
 import Server.SemanticTokens
@@ -167,6 +168,11 @@ processSettings (JObject xs) = do
            setPPrint ({ showMachineNames := b } pp)
            update LSPConf ({ cachedHovers := empty })
        Just _ => logE Configuration "Incorrect type for show machine names, expected boolean"
+       Nothing => pure ()
+  case lookup "logSeverity" xs of
+       Just (JString ll) =>
+         whenJust (parseSeverity ll) $ \l => update LSPConf ({ logSeverity := l})
+       Just _ => logE Configuration "Incorrect type for log severity, expected string"
        Nothing => pure ()
 processSettings _ = logE Configuration "Incorrect type for options"
 

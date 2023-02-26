@@ -52,6 +52,7 @@ Server options that can be set via the `initializationOptions` object in the ini
 |Option key|Type|Description|
 |----------|----|-----------|
 |`logFile`|`string`|Absolute location of the log file for the server (default: stderr)|
+|`logSeverity`|`string`|Logs a string with the provided severity level (default: Debug)|
 |`longActionTimeout`|`number`|Timeout in ms for long actions, e.g. expression search (default: 5000)|
 |`maxCodeActionResults`|`number`|Maximum number of multiple code actions for a single command, e.g. expression search (default: 5)|
 |`showImplicits`|`boolean`|Show implicits in hovers|
