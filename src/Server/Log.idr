@@ -22,6 +22,7 @@ data Topic
   | CaseSplit
   | Channel
   | CodeAction
+  | Completion
   | Configuration
   | Diagnostic
   | DocumentHighlight
@@ -48,6 +49,7 @@ Show Topic where
   show CaseSplit = "Request.CodeAction.CaseSplit"
   show Channel = "Communication.Channel"
   show CodeAction = "CodeAction"
+  show Completion = "Request.Completion"
   show Configuration = "Request.Configuration"
   show Diagnostic = "Notification.Diagnostic"
   show DocumentHighlight = "Request.DocumentHighlight"
