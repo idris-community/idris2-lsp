@@ -12,6 +12,7 @@ import Core.UnifyState
 import Data.List
 import Data.List1
 import Data.OneOf
+import Data.SortedMap
 import Data.SortedSet
 import Data.String
 import Idris.Doc.String
@@ -36,6 +37,8 @@ import Language.LSP.CodeAction.MakeCase
 import Language.LSP.CodeAction.MakeLemma
 import Language.LSP.CodeAction.MakeWith
 import Language.LSP.CodeAction.RefineHole
+import Language.LSP.Completion.Handler
+import Language.LSP.Completion.Info
 import Language.LSP.Definition
 import Language.LSP.DocumentHighlight
 import Language.LSP.DocumentSymbol
@@ -52,11 +55,12 @@ import Server.Capabilities
 import Server.Configuration
 import Server.Diagnostics
 import Server.Log
-import Server.Severity
 import Server.QuickFix
 import Server.Response
 import Server.SemanticTokens
+import Server.Severity
 import Server.Utils
+import Server.VirtualDocument
 import System
 import System.Clock
 import System.Directory
@@ -214,6 +218,8 @@ loadURI conf uri version = do
     | Left err => do let msg = "Cannot read file at \{show uri}"
                      logE Server msg
                      pure $ Left msg
+  update LSPConf ({ virtualDocuments $= insert uri (fromMaybe 0 version, res ++ "\n") })
+  --     A hack to solve some interesting edge-cases around missing newlines ^^^^^^^
   setSource res
   errs <- catch
             (buildDeps fname)
@@ -235,6 +241,8 @@ loadURI conf uri version = do
   sendDiagnostics caps uri version warnings errs
   defs <- get Ctxt
   put Ctxt ({ options->dirs->extra_dirs := extraDirs } defs)
+  cNames <- completionNames
+  update LSPConf ({completionCache $= insert uri cNames})
   pure $ Right ()
 
 loadIfNeeded : Ref LSPConf LSPConfiguration
@@ -455,10 +463,10 @@ handleRequest TextDocumentCodeLens params = whenActiveRequest $ \conf => do
   pure $ pure $ make MkNull
 
 handleRequest TextDocumentCompletion params = whenActiveRequest $ \conf => do
-  -- TODO: still unimplemented, but send empty message to avoid errors
-  -- in clients since it's a common request
-  logW Channel $ "Received an unsupported completion request"
-  pure $ pure $ make MkNull
+  logW Channel $ "Received an completion request for \{show params.textDocument.uri}"
+  case !(completion params) of
+    Nothing => pure $ pure $ make MkNull
+    Just cs => pure $ pure $ make cs
 
 handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf => do
   -- TODO: still unimplemented, but send empty message to avoid errors
@@ -543,6 +551,10 @@ handleNotification WorkspaceDidChangeConfiguration params = whenActiveNotificati
 handleNotification TextDocumentDidOpen params = whenActiveNotification $ \conf => do
   logI Channel "Received didOpen notification for \{show params.textDocument.uri}"
   ignore $ loadURI conf params.textDocument.uri (Just params.textDocument.version)
+  update LSPConf
+    { virtualDocuments
+        $= insert params.textDocument.uri (params.textDocument.version, params.textDocument.text)
+    }
 
 handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf => do
   logI Channel "Received didSave notification for \{show params.textDocument.uri}"
@@ -558,7 +570,14 @@ handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf =
 
 handleNotification TextDocumentDidChange params = whenActiveNotification $ \conf => do
   logI Channel "Received didChange notification for \{show params.textDocument.uri}"
-  update LSPConf ({ dirtyFiles $= insert params.textDocument.uri })
+  update LSPConf ({ dirtyFiles $= insert params.textDocument.uri})
+  whenJust !(gets LSPConf (lookup params.textDocument.uri . virtualDocuments)) $ \(v,content) => do
+    case changeVirtualContent params.contentChanges content of
+      Left e => do
+        update LSPConf ({ virtualDocuments $= delete params.textDocument.uri })
+        logE Server "didChange notification for \{show params.textDocument.uri} invalidated virtual file: \{e}"
+      Right n => do
+        update LSPConf ({ virtualDocuments $= insert params.textDocument.uri (params.textDocument.version, n)})
   logI Server "File \{show params.textDocument.uri} marked as dirty"
 
 handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf => do
@@ -570,6 +589,8 @@ handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf 
                   , dirtyFiles $= delete params.textDocument.uri
                   , errorFiles $= delete params.textDocument.uri
                   , semanticTokensSentFiles $= delete params.textDocument.uri
+                  , completionCache $= delete params.textDocument.uri
+                  , virtualDocuments $= delete params.textDocument.uri
                   })
   logI Server $ "File \{show params.textDocument.uri} closed"
 

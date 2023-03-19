@@ -4,19 +4,26 @@
 ||| (C) The Idris Community, 2021
 module Server.Configuration
 
-import Core.FC
-import Data.SortedSet
-import Data.SortedMap
-import Language.LSP.CodeAction
-import Language.LSP.Message.CodeAction
-import Language.LSP.Message.Initialize
-import Language.LSP.Message.Hover
-import Language.LSP.Message.Location
-import Language.LSP.Message.URI
-import Language.LSP.Message.SemanticTokens
 import public Libraries.Data.PosMap
+import public Libraries.Data.NameMap
+
+import Core.FC
+import Core.Name
+import Data.SortedMap
+import Data.SortedSet
+import Language.LSP.CodeAction
+import Language.LSP.Completion.Info
+import Language.LSP.Message.CodeAction
+import Language.LSP.Message.Hover
+import Language.LSP.Message.Initialize
+import Language.LSP.Message.Location
+import Language.LSP.Message.SemanticTokens
+import Language.LSP.Message.URI
 import Server.Severity
 import System.File
+import Data.String
+import Data.List1
+
 
 ||| Label for the configuration reference.
 public export
@@ -58,6 +65,10 @@ record LSPConfiguration where
   cachedHovers : PosMap (Range, Hover)
   ||| next id for requests to the server
   nextRequestId : Nat
+  ||| Caches for completions, created, updated when URIs are opened, extracted from Context.
+  completionCache : SortedMap DocumentURI (SortedMap Completion.Info.NameCategory (List Entry))
+  ||| Virtual file content caches
+  virtualDocuments : SortedMap DocumentURI (Int, String) -- Version content
 
 ||| Server default configuration. Uses standard input and standard output for input/output.
 export
@@ -79,4 +90,6 @@ defaultConfig =
     , cachedActions           = empty
     , cachedHovers            = empty
     , nextRequestId           = 0
+    , completionCache         = empty
+    , virtualDocuments        = empty
     }
