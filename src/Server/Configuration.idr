@@ -69,6 +69,8 @@ record LSPConfiguration where
   completionCache : SortedMap DocumentURI (SortedMap Completion.Info.NameCategory (List Entry))
   ||| Virtual file content caches
   virtualDocuments : SortedMap DocumentURI (Int, String) -- Version content
+  ||| Insert only function name for completions
+  briefCompletions : Bool
 
 ||| Server default configuration. Uses standard input and standard output for input/output.
 export
@@ -92,4 +94,5 @@ defaultConfig =
     , nextRequestId           = 0
     , completionCache         = empty
     , virtualDocuments        = empty
+    , briefCompletions       = False
     }

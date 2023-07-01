@@ -178,6 +178,9 @@ processSettings (JObject xs) = do
          whenJust (parseSeverity ll) $ \l => update LSPConf ({ logSeverity := l})
        Just _ => logE Configuration "Incorrect type for log severity, expected string"
        Nothing => pure ()
+  case lookup "briefCompletions" xs of
+      Just (JBoolean b) => update LSPConf ({ briefCompletions := b})
+      _ => pure ()
 processSettings _ = logE Configuration "Incorrect type for options"
 
 isDirty : Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
