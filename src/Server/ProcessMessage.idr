@@ -6,6 +6,8 @@ module Server.ProcessMessage
 
 import Core.Context
 import Core.Core
+import Core.Directory
+import Core.InitPrimitives
 import Core.Env
 import Core.Metadata
 import Core.UnifyState
@@ -21,6 +23,7 @@ import Idris.IDEMode.Holes
 import Idris.ModTree
 import Idris.Package
 import Idris.Pretty
+import Idris.ProcessIdr
 import Idris.REPL
 import Idris.REPL.Opts
 import Idris.Resugar
@@ -233,7 +236,18 @@ loadURI conf uri version = do
   --        a compiler change.
   -- NOTE on catch: It seems the compiler sometimes throws errors instead
   -- of accumulating them in the buildDeps.
-  unless (null errs) (update LSPConf ({ errorFiles $= insert uri }))
+  unless (null errs) $ do
+    update LSPConf ({ errorFiles $= insert uri })
+    -- ModTree 397--308 loads data into context from ttf/ttm if no errors
+    -- In case of error, we reprocess fname to populate metadata and syntax
+    logI Channel "Rebuild \{fname} due to errors"
+    modIdent <- ctxtPathToNS fname
+    let msgPrefix : Doc IdrisAnn = pretty0 ""
+    let buildMsg : Doc IdrisAnn = pretty0 modIdent
+    clearCtxt; addPrimitives
+    put MD (initMetadata (PhysicalIdrSrc modIdent))
+    ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
+
   resetProofState
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   update LSPConf ({ quickfixes := [], cachedActions := empty, cachedHovers := empty })
@@ -271,8 +285,7 @@ withURI : Ref LSPConf LSPConfiguration
        => InitializeParams
        -> URI -> Maybe Int -> Core (Either ResponseError a) -> Core (Either ResponseError a) -> Core (Either ResponseError a)
 withURI conf uri version d k = do
-  False <- isError uri
-    | _ => logW Server "Trying to load \{show uri} which has errors" >> d
+  when !(isError uri) $ ignore $ logW Server "Trying to load \{show uri} which has errors" >> d
   case !(loadIfNeeded conf uri version) of
        Right () => k
        Left err => do
