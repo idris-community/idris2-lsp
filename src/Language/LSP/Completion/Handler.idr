@@ -135,8 +135,8 @@ completionNames = do
         then Just (ns, un, n)
         else Nothing
 
-mkCompletionItem : String -> Entry -> Maybe CompletionItem
-mkCompletionItem w (MkEntry c n ty ar doc) =
+mkCompletionItem : Bool -> String -> Entry -> Maybe CompletionItem
+mkCompletionItem isBrief w (MkEntry c n ty ar doc) =
   let shortName = show $ dropNS n in
   let longName  = show n in
   let item = MkCompletionItem
@@ -158,7 +158,8 @@ mkCompletionItem w (MkEntry c n ty ar doc) =
         , command             = Nothing -- : Maybe Command
         , data_               = Nothing -- : Maybe JSON
         } in
-  let text = case ar of
+  let text : String = if isBrief then shortName
+                      else case ar of
               [] => shortName
               as => fastConcat
                       [ "("
@@ -215,6 +216,7 @@ completion : Ref Ctxt Defs
 completion params = do
   logI Completion "Completion for \{show params.textDocument.uri}"
   cache <- gets LSPConf completionCache
+  isBrief <- gets LSPConf briefCompletions
   let Just completions = lookup params.textDocument.uri cache
       | Nothing => do
           logE Completion "No completions found for \{show params.textDocument.uri}"
@@ -226,7 +228,7 @@ completion params = do
         then [CurrentNsName, InNestedNs]
         else [CurrentNsName, InNestedNs, OtherName, FieldName]
   let candidates = concat $ mapMaybe (flip lookup completions) nameCategories
-  let suggestions@(_ :: _) = List.mapMaybe (mkCompletionItem identifier) candidates
+  let suggestions@(_ :: _) = List.mapMaybe (mkCompletionItem isBrief identifier) candidates
       | [] => do
           logW Completion "No suggestion found for \{show params.textDocument.uri} \{show params.position}"
           pure Nothing
