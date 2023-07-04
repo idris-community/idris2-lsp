@@ -21,17 +21,17 @@
           projectName = "idris2api";
           src = idris;
           idrisLibraries = [ ];
-          dontBuild = true;
+          buildInputs = [ npkgs.gmp ];
           postConfigure = 
-          let 
-            versionString = builtins.replaceStrings ["."] [","] idris.version; #replace all "." by ","
-            gitRev = "ecf4765c4";
-          in
           ''
+          LONG_VERSION=$(idris2 --version)
+          ARR=($(echo $LONG_VERSION | sed 's/-/ /g; s/\./,/g' ))
+          VERSION="((''${ARR[-2]}), \"${idris.shortRev or "dirty"}\")"
+
           echo "-- @""generated" > src/IdrisPaths.idr
           echo 'module IdrisPaths' >> src/IdrisPaths.idr
-          echo 'export idrisVersion : ((Nat,Nat,Nat), String); idrisVersion = ((${versionString}), "${gitRev}")' >> src/IdrisPaths.idr
-          echo 'export yprefix : String; yprefix="./lib"' >> src/IdrisPaths.idr
+          echo "export idrisVersion : ((Nat,Nat,Nat), String); idrisVersion = $VERSION" >> src/IdrisPaths.idr
+          echo 'export yprefix : String; yprefix="~/.idris2"' >> src/IdrisPaths.idr
           '';
         };
 
@@ -67,7 +67,7 @@
           projectName = "lsp";
           src = ./.;
           idrisLibraries = [ contrib.installLibrary idris2-api.installLibrary ];
-          buildInputs = runtimeLibs ++ [npkgs.makeWrapper];
+          buildInputs = runtimeLibs ++ [ npkgs.makeWrapper ];
           postInstall = ''
           wrapProgram $out/bin/idris2-lsp --prefix IDRIS2_PACKAGE_PATH : ${lib-dirs}
           '';
