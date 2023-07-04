@@ -8,6 +8,25 @@ Language Server for Idris2.
 pack install-app lsp
 ```
 
+## Installation with Nix Flakes
+```bash
+nix profile install github:idris-community/idris2-lsp
+```
+
+Alternatively, add `idris2-lsp` to your `devShell`:
+```nix
+devShell = npkgs.mkShell {
+  buildInputs = [ ... idris2-lsp.defaultPackages.${system} ];
+  # ...
+}
+```
+
+and idris2-lsp will be available in your development shell
+```bash
+nix develop
+code # will connect to idris2-lsp
+```
+
 ## Manual Installation
 ```bash
 # If you already have idris2, uninstall idris2 unless you installed it from source
