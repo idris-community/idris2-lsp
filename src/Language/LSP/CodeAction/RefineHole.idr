@@ -18,6 +18,7 @@ import Language.LSP.CodeAction
 import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
 import Language.LSP.Message.Derive
+import Language.LSP.Utils
 import Language.Reflection
 import Libraries.Data.NameMap
 import Parser.Source
@@ -77,9 +78,9 @@ refineHole : Ref LSPConf LSPConfiguration
 refineHole params = do
   let True = isAllowed params.codeAction
     | False => logI RefineHole "Skipped" >> pure []
-  logI RefineHole "Checking for \{show params.codeAction.textDocument.uri} at \{show params.codeAction.range}" 
+  logI RefineHole "Checking for \{show params.codeAction.textDocument.uri} at \{show params.codeAction.range}"
   withSingleLine RefineHole params.codeAction (pure []) $ \line => do
-    nameLocs <- gets MD nameLocMap 
+    nameLocs <- gets MD nameLocMap
     let col = params.codeAction.range.start.character
     let Just (loc@(_, nstart, nend), holename) = findPointInTreeLoc (line, col) nameLocs
       | Nothing => logD RefineHole "No name found at \{show line}:\{show col}}" >> pure []

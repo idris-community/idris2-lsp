@@ -7,7 +7,7 @@ import Core.Context.Context
 import Core.Core
 import Core.Directory
 import Server.Configuration
-import Server.Severity
+import Language.LSP.Severity
 import Server.Utils
 import System.Directory
 import System.File

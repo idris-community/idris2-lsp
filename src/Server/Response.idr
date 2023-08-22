@@ -15,6 +15,7 @@ import Idris.Resugar
 import Idris.Syntax
 import Language.JSON
 import Language.LSP.Message
+import Language.LSP.Utils
 import Parser.Support
 import Server.Configuration
 import Server.Diagnostics

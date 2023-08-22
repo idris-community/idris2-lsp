@@ -3,56 +3,11 @@ version = 0.5.0
 
 opts = "-Wno-shadowing"
 
-depends = idris2, contrib
+depends = idris2, contrib, lsp-lib
 
 sourcedir = "src"
 
 main = Server.Main
 executable = idris2-lsp
-
-modules = Data.URI
-        , Language.JSON.Interfaces
-        , Language.LSP.Message
-        , Language.LSP.Message.CallHierarchy
-        , Language.LSP.Message.Cancel
-        , Language.LSP.Message.ClientCapabilities
-        , Language.LSP.Message.CodeAction
-        , Language.LSP.Message.CodeLens
-        , Language.LSP.Message.Command
-        , Language.LSP.Message.Completion
-        , Language.LSP.Message.Declaration
-        , Language.LSP.Message.Definition
-        , Language.LSP.Message.Derive
-        , Language.LSP.Message.Diagnostics
-        , Language.LSP.Message.DocumentColor
-        , Language.LSP.Message.DocumentFormatting
-        , Language.LSP.Message.DocumentHighlight
-        , Language.LSP.Message.DocumentLink
-        , Language.LSP.Message.DocumentSymbols
-        , Language.LSP.Message.FoldingRange
-        , Language.LSP.Message.Hover
-        , Language.LSP.Message.Implementation
-        , Language.LSP.Message.Initialize
-        , Language.LSP.Message.LinkedEditingRange
-        , Language.LSP.Message.Location
-        , Language.LSP.Message.Markup
-        , Language.LSP.Message.Message
-        , Language.LSP.Message.Method
-        , Language.LSP.Message.Moniker
-        , Language.LSP.Message.Progress
-        , Language.LSP.Message.References
-        , Language.LSP.Message.Registration
-        , Language.LSP.Message.RegularExpressions
-        , Language.LSP.Message.Rename
-        , Language.LSP.Message.SelectionRange
-        , Language.LSP.Message.SemanticTokens
-        , Language.LSP.Message.ServerCapabilities
-        , Language.LSP.Message.SignatureHelp
-        , Language.LSP.Message.TextDocument
-        , Language.LSP.Message.Trace
-        , Language.LSP.Message.URI
-        , Language.LSP.Message.Utils
-        , Language.LSP.Message.Window
-        , Language.LSP.Message.Workspace
 
 prebuild = "make src/Server/Generated.idr"

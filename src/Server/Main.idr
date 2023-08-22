@@ -22,6 +22,7 @@ import Idris.Version
 import IdrisPaths
 import Language.JSON
 import Language.LSP.Message
+import Language.LSP.Utils
 import Libraries.Utils.Path
 import Server.Configuration
 import Server.Log
@@ -60,7 +61,7 @@ parseHeader str =
 
 parseHeaderPart : (h : File) -> Core (Either FileError (Maybe Int))
 parseHeaderPart h = do
-  Right line <- fGetHeader h
+  Right line <- coreLift $ fGetHeader h
     | Left err => pure $ Left err
   case parseHeader line of
     Just (ContentLength l) => parseHeaderPart h *> pure (Right (Just l))

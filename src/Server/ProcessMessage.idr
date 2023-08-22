@@ -48,6 +48,9 @@ import Language.LSP.DocumentSymbol
 import Language.LSP.Message
 import Language.LSP.Metavars
 import Language.LSP.SignatureHelp
+import Language.LSP.VirtualDocument
+import Language.LSP.Utils
+import Language.LSP.Severity
 import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
 import Libraries.Data.String.Extra
@@ -61,9 +64,7 @@ import Server.Log
 import Server.QuickFix
 import Server.Response
 import Server.SemanticTokens
-import Server.Severity
 import Server.Utils
-import Server.VirtualDocument
 import System
 import System.Clock
 import System.Directory
