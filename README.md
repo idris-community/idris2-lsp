@@ -1,11 +1,11 @@
-# [WIP] idris2-lsp
+# idris2-lsp
 Language Server for Idris2.
 
 **NOTE: At this stage the LSP server requires an ipkg file to work correctly, for reference material about packages look [here](https://idris2.readthedocs.io/en/latest/tutorial/packages.html) and [here](https://idris2.readthedocs.io/en/latest/reference/packages.html). To start a new project with an ipkg, even for a single file, you can issue the `idris2 --init` command, which provides an interactive interface for package creation.**
 
 ## Installation with [Pack](https://github.com/stefan-hoeck/idris2-pack) (Recommended)
 ```bash
-pack install-app lsp
+pack install-app idris2-lsp # TODO: upload this to pack. Does pack automatically install lsp-lib as a dependency?
 ```
 
 ## Manual Installation
@@ -23,6 +23,10 @@ make all # Build Idris
 make install # Install Idris
 make install-with-src-libs # Install sources for libraries
 make install-with-src-api # Install the API with sources
+cd .. # Go back to the idris2-lsp directory
+git submodule update --init LSP-lib # Get the associated LSP-lib commit
+cd LSP-lib
+idris2 --install-with-src # Install the LSP library
 cd .. # Go back to the idris2-lsp directory
 make install # Install idris2-lsp
 ```
