@@ -88,7 +88,7 @@ findQuickfix caps uri err@(PatternVariableUnifies fc fct env n tm) =
     update LSPConf ({ quickfixes $= (codeAction ::) })
 findQuickfix caps uri err@(ValidCase fc _ (Left tm)) =
   whenJust (isNonEmptyFC fc) $ \fc => do
-    Just (f, args) <- (uncons' <=< init' <=< map words) <$> (getSourceLine (startLine fc + 1))
+    Just (f, args) <- (Utils.uncons' <=< init' <=< map words) <$> (getSourceLine (startLine fc + 1))
       | Nothing => logE QuickFix "Error while fetching source line" >> pure ()
     let line = unwords $ f :: args ++ ["=", "?\{f}_rhs_not_impossible"]
     diagnostic <- errorToDiagnostic caps uri err
