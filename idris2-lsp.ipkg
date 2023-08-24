@@ -1,5 +1,5 @@
-package lsp
-version = 0.5.0
+package idris2-lsp
+version = 0.6.0
 
 opts = "-Wno-shadowing"
 
