@@ -5,7 +5,7 @@ Language Server for Idris2.
 
 ## Installation with [Pack](https://github.com/stefan-hoeck/idris2-pack) (Recommended)
 ```bash
-pack install-app idris2-lsp # TODO: upload this to pack. Does pack automatically install lsp-lib as a dependency?
+pack install-app idris2-lsp
 ```
 
 ## Manual Installation
