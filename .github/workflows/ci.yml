@@ -13,7 +13,7 @@ env:
   SCHEME: scheme
 
 jobs:
-  build-idris2-with-api: 
+  build-idris2-with-api:
     runs-on: ubuntu-latest
     env:
       IDRIS2_CG: chez
@@ -72,6 +72,13 @@ jobs:
           sudo apt-get install -y chezscheme
           echo "$HOME/.idris2/bin" >> $GITHUB_PATH
           chmod +x $HOME/.idris2/bin/idris2 $HOME/.idris2/bin/idris2_app/*
+      - name: Get LSP-lib submodule
+        run: |
+          git submodule update --init LSP-lib
+      - name: Build and install LSP-lib
+        working-directory: LSP-lib
+        run: |
+          idris2 --install-with-src
       - name: build and test
         run: |
           make build && make test INTERACTIVE=''
