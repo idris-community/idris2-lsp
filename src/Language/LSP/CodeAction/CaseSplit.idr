@@ -12,6 +12,7 @@ import Language.JSON
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
+import Language.LSP.Utils
 import Server.Configuration
 import Server.Log
 import Server.Utils

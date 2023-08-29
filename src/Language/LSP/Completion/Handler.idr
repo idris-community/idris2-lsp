@@ -16,17 +16,18 @@ import Idris.Syntax
 import Language.JSON.Data
 import Language.LSP.Completion.Info
 import Language.LSP.Message
+import Language.LSP.Utils
+import Language.LSP.VirtualDocument
 import Libraries.Data.NameMap
 import Libraries.Data.UserNameMap
 import Server.Configuration
 import Server.Log
 import Server.Utils
-import Server.VirtualDocument
 
 %default total
 
 -- When a file is opened the context is filled with definitions.
--- 
+--
 -- Cache names from opened files.
 -- Update cache on saving a file.
 -- Remove cache on closing a file.
@@ -108,7 +109,7 @@ completionNames = do
         mdef <- lookupCtxtExact n ctxt
         case mdef of
           Nothing => pure Nothing
-          Just def => 
+          Just def =>
             let visible = (ns == currentNS defs) || (visibility def /= Private) in
             if visible
               then do
@@ -123,9 +124,9 @@ completionNames = do
                     , documentation = show doc
                     }
               else pure Nothing)
-    inImportedNamespaces 
+    inImportedNamespaces
   let completionEntries = catMaybes visibleExportedNames
-  logD Completion "Found \{show (length completionEntries)} completion entries." 
+  logD Completion "Found \{show (length completionEntries)} completion entries."
   pure $ foldl (\m , c => mergeWith (++) m (singleton c.category [c])) empty completionEntries
   where
     accessibleName : List Namespace -> Name -> Maybe (Namespace, UserName, Name)

@@ -13,6 +13,7 @@ import Language.JSON
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
+import Language.LSP.Utils
 import Libraries.Data.PosMap
 import Parser.Unlit
 import Server.Configuration

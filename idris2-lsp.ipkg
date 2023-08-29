@@ -1,0 +1,13 @@
+package idris2-lsp
+version = 0.6.0
+
+opts = "-Wno-shadowing"
+
+depends = idris2, contrib, lsp-lib
+
+sourcedir = "src"
+
+main = Server.Main
+executable = idris2-lsp
+
+prebuild = "make src/Server/Generated.idr"

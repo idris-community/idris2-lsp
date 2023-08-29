@@ -19,7 +19,7 @@ import Language.LSP.Message.Initialize
 import Language.LSP.Message.Location
 import Language.LSP.Message.SemanticTokens
 import Language.LSP.Message.URI
-import Server.Severity
+import Language.LSP.Severity
 import System.File
 import Data.String
 import Data.List1

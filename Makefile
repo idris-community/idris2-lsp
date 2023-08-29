@@ -22,14 +22,14 @@ VERSION_TAG ?= $(GIT_SHA1)
 .PHONY: build FORCE
 
 build: src/Server/Generated.idr
-	$(IDRIS2) --build lsp.ipkg
+	$(IDRIS2) --build idris2-lsp.ipkg
 
 clean:
-	$(IDRIS2) --clean lsp.ipkg
+	$(IDRIS2) --clean idris2-lsp.ipkg
 	$(RM) -r build
 
 repl: src/Server/Generated.idr
-	rlwrap $(IDRIS2) --repl lsp.ipkg
+	rlwrap $(IDRIS2) --repl idris2-lsp.ipkg
 
 testbin:
 	@${MAKE} -C tests testbin
