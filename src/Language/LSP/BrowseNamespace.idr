@@ -13,6 +13,7 @@ import Idris.Syntax
 import Language.LSP.Definition
 import Language.LSP.Message
 import Libraries.Data.NameMap
+import Libraries.Data.WithDefault
 import Parser.Source
 import Parser.Rule.Source
 import Server.Configuration
@@ -23,7 +24,7 @@ visible : Defs -> Name -> Core Bool
 visible defs n = do 
   Just def <- lookupCtxtExact n (gamma defs)
     | Nothing => pure False
-  pure $ visibility def /= Private
+  pure $ collapseDefault (visibility def) /= Private
 
 inNS : Namespace -> Name -> Bool
 inNS ns (NS xns (UN _)) = ns `isParentOf` xns

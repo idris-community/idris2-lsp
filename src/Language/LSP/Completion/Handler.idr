@@ -20,6 +20,7 @@ import Language.LSP.Utils
 import Language.LSP.VirtualDocument
 import Libraries.Data.NameMap
 import Libraries.Data.UserNameMap
+import Libraries.Data.WithDefault
 import Server.Configuration
 import Server.Log
 import Server.Utils
@@ -110,7 +111,7 @@ completionNames = do
         case mdef of
           Nothing => pure Nothing
           Just def =>
-            let visible = (ns == currentNS defs) || (visibility def /= Private) in
+            let visible = (ns == currentNS defs) || (collapseDefault (visibility def) /= Private) in
             if visible
               then do
                 ty <- prettyType (const ()) def.type
