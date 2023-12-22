@@ -5,6 +5,8 @@ opts = "-Wno-shadowing"
 
 depends = idris2, contrib, lsp-lib
 
+langversion >= 0.7.0
+
 sourcedir = "src"
 
 main = Server.Main
