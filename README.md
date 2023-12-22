@@ -16,7 +16,7 @@ nix profile install github:idris-community/idris2-lsp
 Alternatively, add `idris2-lsp` to your `devShell`:
 ```nix
 devShell = npkgs.mkShell {
-  buildInputs = [ ... idris2-lsp.defaultPackages.${system} ];
+  buildInputs = [ ... idris2-lsp.defaultPackage.${system} ];
   # ...
 }
 ```
