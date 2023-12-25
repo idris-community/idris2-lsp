@@ -1,9 +1,11 @@
 package idris2-lsp
-version = 0.6.0
+version = 0.7.0
 
 opts = "-Wno-shadowing"
 
 depends = idris2, contrib, lsp-lib
+
+langversion >= 0.7.0
 
 sourcedir = "src"
 
