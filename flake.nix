@@ -56,8 +56,8 @@
             '';
           };
         in rec {
-          lsp = lspPkg.executable; 
-          default = lsp;
+          idris2-lsp = lspPkg.executable; 
+          default = idris2-lsp;
         } // idrisPkgs
       );
     };
