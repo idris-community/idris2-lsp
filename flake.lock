@@ -1,0 +1,105 @@
+{
+  "nodes": {
+    "flake-utils": {
+      "locked": {
+        "lastModified": 1667395993,
+        "narHash": "sha256-nuEHfE/LcWyuSWnS8t12N1wc105Qtau+/OdUAjtQ0rA=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "5aed5285a952e0b949eb3ba02c12fa4fcfef535f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "idris": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "idris-emacs-src": "idris-emacs-src",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1704039270,
+        "narHash": "sha256-L/K76xsyEPIqOK0mfDLBf6z0LDN5H3cHFgxqmZA05Hs=",
+        "owner": "mattpolzin",
+        "repo": "Idris2",
+        "rev": "2ff3bfcad31684f4dad3ac63f089a00808daa756",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mattpolzin",
+        "ref": "nix-idrisapi",
+        "repo": "Idris2",
+        "type": "github"
+      }
+    },
+    "idris-emacs-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1666078909,
+        "narHash": "sha256-oYNHFIpcrFfPb4sXJwEBFKeH+PB4AGCrAFrfBrSTCeo=",
+        "owner": "redfish64",
+        "repo": "idris2-mode",
+        "rev": "3bcb52a65c488f31c99d20f235f6050418a84c9d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "redfish64",
+        "repo": "idris2-mode",
+        "type": "github"
+      }
+    },
+    "lsp-lib": {
+      "inputs": {
+        "idris": [
+          "idris"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1704060392,
+        "narHash": "sha256-CLxFioWbOLiJp5U67XNLncWnEsVesScPOoDQcZIGk9A=",
+        "owner": "mattpolzin",
+        "repo": "LSP-lib",
+        "rev": "28b37fa0b17d43f2294e45ecf9f143a2eb46ecc2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mattpolzin",
+        "ref": "nix-flake",
+        "repo": "LSP-lib",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1703499205,
+        "narHash": "sha256-lF9rK5mSUfIZJgZxC3ge40tp1gmyyOXZ+lRY3P8bfbg=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "e1fa12d4f6c6fe19ccb59cac54b5b3f25e160870",
+        "type": "github"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "type": "indirect"
+      }
+    },
+    "root": {
+      "inputs": {
+        "idris": "idris",
+        "lsp-lib": "lsp-lib",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
