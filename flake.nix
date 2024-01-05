@@ -64,6 +64,14 @@
           idrisLibraries = [idrisPkgs.idris2-api lspLibPkg.lsp-lib];
           buildInputs = [pkgs.makeWrapper];
           postInstall = ''
+            # TODO: upstream some of this installation cleanup to the buildIdris helper.
+            # Not all of these ENV var modifications are always needed, but the juggling
+            # of files in the next 3 lines and the inclusion of the support lib in the
+            # LD_LIBRARY_PATH is always going to be important I believe.
+            rm $out/bin/idris2-lsp
+            mv $out/bin/idris2-lsp_app/idris2-lsp.so $out/bin/idris2-lsp
+            rm -rf $out/bin/idris2-lsp_app
+
             wrapProgram $out/bin/idris2-lsp \
               --run 'export IDRIS2_PREFIX=''${IDRIS2_PREFIX-"$HOME/.idris2"}' \
               --suffix IDRIS2_LIBS ':' "${supportLibrariesPath}" \
