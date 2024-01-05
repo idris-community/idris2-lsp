@@ -5,8 +5,7 @@
     nixpkgs.url = "github:nixos/nixpkgs";
 
     idris = {
-      # tmp url:
-      url = "github:mattpolzin/Idris2/nix-idrisapi";
+      url = "github:idris-lang/Idris2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

@@ -85,16 +85,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1704039270,
-        "narHash": "sha256-L/K76xsyEPIqOK0mfDLBf6z0LDN5H3cHFgxqmZA05Hs=",
-        "owner": "mattpolzin",
+        "lastModified": 1704491951,
+        "narHash": "sha256-T1BP4QwbsMVIaTvjQCZvwXp2PwqycnpR6krsf0LUGx4=",
+        "owner": "idris-lang",
         "repo": "Idris2",
-        "rev": "2ff3bfcad31684f4dad3ac63f089a00808daa756",
+        "rev": "8746f1671b14ac80c1b986a7a5679fa9e556fc25",
         "type": "github"
       },
       "original": {
-        "owner": "mattpolzin",
-        "ref": "nix-idrisapi",
+        "owner": "idris-lang",
         "repo": "Idris2",
         "type": "github"
       }
@@ -125,11 +124,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1704060392,
-        "narHash": "sha256-CLxFioWbOLiJp5U67XNLncWnEsVesScPOoDQcZIGk9A=",
+        "lastModified": 1704496910,
+        "narHash": "sha256-tlRZdUZQLwsPejW4rSjOeRLhofa9tT6kq6KLKW67Kus=",
         "owner": "mattpolzin",
         "repo": "LSP-lib",
-        "rev": "28b37fa0b17d43f2294e45ecf9f143a2eb46ecc2",
+        "rev": "f0dac7d9e77d3f60e0315257e9a2b238ea5a225f",
         "type": "github"
       },
       "original": {
@@ -141,11 +140,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1704079039,
-        "narHash": "sha256-i6rMk51D9y1bWiIYiS+jbp/TzmYt1khF5Uv+Bl+YUMI=",
+        "lastModified": 1704497359,
+        "narHash": "sha256-i6LgDTXhOhCRIhy8Og4PYvqs1R559flBSOxAjRLZM0Y=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "2b8295bf1e4be78b062e558bcf3b6abcb928466c",
+        "rev": "0fa5a936f203acc1b11ed20fe002320944a8363b",
         "type": "github"
       },
       "original": {
