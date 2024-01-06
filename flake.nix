@@ -71,12 +71,10 @@
           '';
         };
       in rec {
-        packages =
-          rec {
+        packages = idrisPkgs // (rec {
             idris2-lsp = lspPkg.executable;
             default = idris2-lsp;
-          }
-          // idrisPkgs;
+        });
         formatter = alejandra.packages.${system}.default;
       }
     );
