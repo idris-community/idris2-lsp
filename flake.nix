@@ -5,7 +5,7 @@
     nixpkgs.url = "github:nixos/nixpkgs";
 
     idris = {
-      url = "github:idris-lang/Idris2";
+      url = "github:mattpolzin/Idris2/fix-install-output-buildIdris";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -63,21 +63,11 @@
           idrisLibraries = [idrisPkgs.idris2-api lspLibPkg.lsp-lib];
           buildInputs = [pkgs.makeWrapper];
           postInstall = ''
-            # TODO: upstream some of this installation cleanup to the buildIdris helper.
-            # Not all of these ENV var modifications are always needed, but the juggling
-            # of files in the next 3 lines and the inclusion of the support lib in the
-            # LD_LIBRARY_PATH is always going to be important I believe.
-            rm $out/bin/idris2-lsp
-            mv $out/bin/idris2-lsp_app/idris2-lsp.so $out/bin/idris2-lsp
-            rm -rf $out/bin/idris2-lsp_app
-
             wrapProgram $out/bin/idris2-lsp \
               --run 'export IDRIS2_PREFIX=''${IDRIS2_PREFIX-"$HOME/.idris2"}' \
               --suffix IDRIS2_LIBS ':' "${supportLibrariesPath}" \
               --suffix IDRIS2_DATA ':' "${supportSharePath}" \
-              --suffix IDRIS2_PACKAGE_PATH ':' "${globalLibrariesPath}" \
-              --suffix LD_LIBRARY_PATH ':' "${supportLibrariesPath}" \
-              --suffix DYLD_LIBRARY_PATH ':' "${supportLibrariesPath}" \
+              --suffix IDRIS2_PACKAGE_PATH ':' "${globalLibrariesPath}"
           '';
         };
       in rec {
