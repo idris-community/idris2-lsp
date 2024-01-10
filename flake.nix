@@ -5,13 +5,12 @@
     nixpkgs.url = "github:nixos/nixpkgs";
 
     idris = {
-      url = "github:mattpolzin/Idris2/fix-install-output-buildIdris";
+      url = "github:idris-lang/Idris2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     lsp-lib = {
-      # tmp url:
-      url = "github:mattpolzin/LSP-lib/nix-flake";
+      url = "github:idris-community/LSP-lib";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.idris.follows = "idris";
     };
@@ -32,18 +31,19 @@
     lib = nixpkgs.lib;
     # support the same systems as Idris2
     systems = builtins.attrNames idris.packages;
-    forEachSystem = with lib; mkOutputs: let
-      outputsForSystem = system:
-        concatMapAttrs (k: v: {${k}.${system} = v;}) (mkOutputs system);
-    in
-      foldl' recursiveUpdate {} (map outputsForSystem systems);
+    forEachSystem = with lib;
+      mkOutputs: let
+        outputsForSystem = system:
+          concatMapAttrs (k: v: {${k}.${system} = v;}) (mkOutputs system);
+      in
+        foldl' recursiveUpdate {} (map outputsForSystem systems);
   in
     forEachSystem (
       system: let
         pkgs = nixpkgs.legacyPackages.${system};
         idrisPkgs = idris.packages.${system};
         buildIdris = idris.buildIdris.${system};
-        lspLibPkg = lsp-lib.packages.${system};
+        lspLib = lsp-lib.packages.${system}.default;
         supportLibrariesPath = lib.makeLibraryPath [idrisPkgs.support];
         supportSharePath = lib.makeSearchPath "share" [idrisPkgs.support];
 
@@ -60,7 +60,7 @@
         lspPkg = buildIdris {
           projectName = "idris2-lsp";
           src = ./.;
-          idrisLibraries = [idrisPkgs.idris2-api lspLibPkg.lsp-lib];
+          idrisLibraries = [idrisPkgs.idris2-api lspLib];
           buildInputs = [pkgs.makeWrapper];
           postInstall = ''
             wrapProgram $out/bin/idris2-lsp \
@@ -71,10 +71,12 @@
           '';
         };
       in rec {
-        packages = idrisPkgs // (rec {
+        packages =
+          idrisPkgs
+          // rec {
             idris2-lsp = lspPkg.executable;
             default = idris2-lsp;
-        });
+          };
         formatter = alejandra.packages.${system}.default;
       }
     );
