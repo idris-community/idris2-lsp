@@ -124,11 +124,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1704845948,
-        "narHash": "sha256-tlRZdUZQLwsPejW4rSjOeRLhofa9tT6kq6KLKW67Kus=",
+        "lastModified": 1705528926,
+        "narHash": "sha256-nZvAGvLcCk/xIajWUz6x/bjl9pMxu99cEQ3sZMLLZJw=",
         "owner": "idris-community",
         "repo": "LSP-lib",
-        "rev": "5fa42e295472abeb2dfe6a148ce2a66070075708",
+        "rev": "a251c301193acad641d4975fef5d7729587088c8",
         "type": "github"
       },
       "original": {
