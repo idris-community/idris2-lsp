@@ -58,9 +58,10 @@
         globalLibrariesPath = builtins.concatStringsSep ":" globalLibraries;
 
         lspPkg = buildIdris {
-          projectName = "idris2-lsp";
+          ipkgName = "idris2-lsp";
+          inherit (idris) version;
           src = ./.;
-          idrisLibraries = [idrisPkgs.idris2-api lspLib];
+          idrisLibraries = [idrisPkgs.idris2Api lspLib];
           buildInputs = [pkgs.makeWrapper];
           postInstall = ''
             wrapProgram $out/bin/idris2-lsp \
@@ -74,8 +75,8 @@
         packages =
           idrisPkgs
           // rec {
-            idris2-lsp = lspPkg.executable;
-            default = idris2-lsp;
+            idris2Lsp = lspPkg.executable;
+            default = idris2Lsp;
           };
         formatter = alejandra.packages.${system}.default;
       }
