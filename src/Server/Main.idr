@@ -5,6 +5,7 @@ module Server.Main
 
 import Core.Context
 import Core.Core
+import Core.Directory
 import Core.InitPrimitives
 import Core.Metadata
 import Core.UnifyState
@@ -182,6 +183,7 @@ startServer =
                                   Just cg => setCG cg
                                   Nothing => throw (InternalError ("Unknown code generator " ++ show e))
                    Nothing => pure ()
+              addPackageSearchPath !pkgGlobalDirectory
               addPkgDir "prelude" anyBounds
               addPkgDir "base" anyBounds
               addDataDir (prefix_dir (dirs (options defs)) </> ("idris2-" ++ showVersion False Idris.Version.version) </> "support")
