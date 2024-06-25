@@ -22,11 +22,11 @@
   };
 
   outputs = {
-    self,
     nixpkgs,
     alejandra,
     idris,
     lsp-lib,
+    ...
   }: let
     lib = nixpkgs.lib;
     # support the same systems as Idris2
@@ -71,7 +71,7 @@
               --suffix IDRIS2_PACKAGE_PATH ':' "${globalLibrariesPath}"
           '';
         };
-      in rec {
+      in {
         packages =
           idrisPkgs
           // rec {
