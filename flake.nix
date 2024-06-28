@@ -9,23 +9,36 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    lsp-lib = {
+    lspLib = {
       url = "github:idris-community/LSP-lib";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.idris.follows = "idris";
+      inputs.idris2Lsp.follows = "idris2Lsp";
     };
 
     alejandra = {
       url = "github:kamadorueda/alejandra/3.0.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # chicken-and-egg situation: we don't want the version of the
+    # LSP we use to develop this package to use the version of Idris
+    # we are currently developing against or else you could not use
+    # a functioning LSP while addressing breaking changes.
+    idris2Lsp = {
+      url = "github:idris-community/idris2-lsp";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.alejandra.follows = "alejandra";
+    };
   };
 
   outputs = {
+    self,
     nixpkgs,
     alejandra,
     idris,
-    lsp-lib,
+    lspLib,
+    idris2Lsp,
     ...
   }: let
     lib = nixpkgs.lib;
@@ -43,13 +56,12 @@
         pkgs = nixpkgs.legacyPackages.${system};
         idrisPkgs = idris.packages.${system};
         buildIdris = idris.buildIdris.${system};
-        lspLib = lsp-lib.packages.${system}.default;
+        lspLib' = lspLib.packages.${system}.default;
         supportLibrariesPath = lib.makeLibraryPath [idrisPkgs.support];
         supportSharePath = lib.makeSearchPath "share" [idrisPkgs.support];
 
         globalLibraries = let
           idrName = "idris2-${idris.version}";
-          libSuffix = "lib/${idrName}";
         in [
           "\\$HOME/.nix-profile/lib/${idrName}"
           "/run/current-system/sw/lib/${idrName}"
@@ -61,7 +73,7 @@
           ipkgName = "idris2-lsp";
           inherit (idris) version;
           src = ./.;
-          idrisLibraries = [idrisPkgs.idris2Api lspLib];
+          idrisLibraries = [idrisPkgs.idris2Api lspLib'];
           buildInputs = [pkgs.makeWrapper];
           postInstall = ''
             wrapProgram $out/bin/idris2-lsp \
@@ -79,6 +91,15 @@
             default = idris2Lsp;
           };
         formatter = alejandra.packages.${system}.default;
+        devShells = {
+          default = nixpkgs.legacyPackages.${system}.mkShell {
+            inputsFrom = [self.packages.${system}.default];
+            packages = [
+              idris2Lsp.packages.${system}.default
+              idrisPkgs.idris2
+            ];
+          };
+        };
       }
     );
 }
