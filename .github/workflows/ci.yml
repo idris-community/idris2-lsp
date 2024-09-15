@@ -48,11 +48,12 @@ jobs:
           make all && make install
           make install-api
       - name: Artifact Idris2 with API
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: installed-idris2-with-api
           path: ~/.idris2/
           retention-days: 1
+          include-hidden-files: true
   build:
     runs-on: ubuntu-latest
     needs: build-idris2-with-api
@@ -63,7 +64,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Download Idris2 with API Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: installed-idris2-with-api
           path: ~/.idris2/
