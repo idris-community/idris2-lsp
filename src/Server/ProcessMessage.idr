@@ -228,8 +228,8 @@ loadURI conf uri version = do
   update LSPConf ({ virtualDocuments $= insert uri (fromMaybe 0 version, res ++ "\n") })
   --     A hack to solve some interesting edge-cases around missing newlines ^^^^^^^
   setSource res
-  errs <- catch
-            (buildDeps fname)
+  errs <- catch (do mods <- getBuildMods EmptyFC [] fname
+                    buildMods EmptyFC 1 (length mods) mods)
             (\err => do
               logE Server "Caught error which shouldn't be leaked while loading file: \{show err}"
               pure [err])
@@ -256,6 +256,10 @@ loadURI conf uri version = do
   defs <- get Ctxt
   session <- getSession
   let warnings = if session.warningsAsErrors then [] else reverse (warnings defs)
+  -- use cached warnings if file hasn't changed
+  warnings <- gets LSPConf (fromMaybe warnings . lookup uri . warningDocuments)
+  update LSPConf { warningDocuments $= insert uri warnings }
+
   sendDiagnostics caps uri version warnings errs
   defs <- get Ctxt
   put Ctxt ({ options->dirs->extra_dirs := extraDirs } defs)
@@ -587,7 +591,7 @@ handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf =
 
 handleNotification TextDocumentDidChange params = whenActiveNotification $ \conf => do
   logI Channel "Received didChange notification for \{show params.textDocument.uri}"
-  update LSPConf ({ dirtyFiles $= insert params.textDocument.uri})
+  update LSPConf ({ dirtyFiles $= insert params.textDocument.uri, warningDocuments $= delete params.textDocument.uri })
   whenJust !(gets LSPConf (lookup params.textDocument.uri . virtualDocuments)) $ \(v,content) => do
     case changeVirtualContent params.contentChanges content of
       Left e => do

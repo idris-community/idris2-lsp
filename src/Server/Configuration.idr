@@ -7,6 +7,7 @@ module Server.Configuration
 import public Libraries.Data.PosMap
 import public Libraries.Data.NameMap
 
+import Core.Core
 import Core.FC
 import Core.Name
 import Data.SortedMap
@@ -69,6 +70,8 @@ record LSPConfiguration where
   completionCache : SortedMap DocumentURI (SortedMap Completion.Info.NameCategory (List Entry))
   ||| Virtual file content caches
   virtualDocuments : SortedMap DocumentURI (Int, String) -- Version content
+  ||| Warnings cache
+  warningDocuments : SortedMap DocumentURI (List Warning)
   ||| Insert only function name for completions
   briefCompletions : Bool
 
@@ -94,5 +97,6 @@ defaultConfig =
     , nextRequestId           = 0
     , completionCache         = empty
     , virtualDocuments        = empty
-    , briefCompletions       = False
+    , warningDocuments        = empty
+    , briefCompletions        = False
     }
