@@ -29,6 +29,7 @@ data Topic
   | DocumentSymbol
   | ExprSearch
   | GenerateDef
+  | GenerateDefNext
   | GotoDefinition
   | Hover
   | Intro
@@ -56,6 +57,7 @@ Show Topic where
   show DocumentSymbol = "Request.DocumentSymbol"
   show ExprSearch = "Request.CodeAction.ExprSearch"
   show GenerateDef = "Request.CodeAction.GenerateDef"
+  show GenerateDefNext = "Request.CodeAction.GenerateDefNext"
   show GotoDefinition = "Request.GotoDefinition"
   show Hover = "Request.Hover"
   show Intro = "Request.CodeAction.Intro"
