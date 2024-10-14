@@ -237,18 +237,25 @@ loadURI conf uri version = do
   --        a compiler change.
   -- NOTE on catch: It seems the compiler sometimes throws errors instead
   -- of accumulating them in the buildDeps.
-  unless (null errs) $ do
-    update LSPConf ({ errorFiles $= insert uri })
-    -- ModTree 397--308 loads data into context from ttf/ttm if no errors
-    -- In case of error, we reprocess fname to populate metadata and syntax
-    logI Channel "Rebuild \{fname} due to errors"
-    modIdent <- ctxtPathToNS fname
-    let msgPrefix : Doc IdrisAnn = pretty0 ""
-    let buildMsg : Doc IdrisAnn = pretty0 modIdent
-    clearCtxt; addPrimitives
-    put MD (initMetadata (PhysicalIdrSrc modIdent))
-    ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
-
+  if (null errs) then do
+      -- this was previously in buildDeps, broken out so we have access
+      -- to warnings
+      clearCtxt; addPrimitives
+      modIdent <- ctxtPathToNS fname
+      put MD (initMetadata (PhysicalIdrSrc modIdent))
+      mainttc <- getTTCFileName fname "ttc"
+      readAsMain mainttc
+      -- Load the associated metadata for interactive editing
+      mainttm <- getTTCFileName fname "ttm"
+      readFromTTM mainttm
+    else do
+      update LSPConf ({ errorFiles $= insert uri })
+      modIdent <- ctxtPathToNS fname
+      let msgPrefix : Doc IdrisAnn = pretty0 ""
+      let buildMsg : Doc IdrisAnn = pretty0 modIdent
+      clearCtxt; addPrimitives
+      put MD (initMetadata (PhysicalIdrSrc modIdent))
+      ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
   resetProofState
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   update LSPConf ({ quickfixes := [], cachedActions := empty, cachedHovers := empty })
