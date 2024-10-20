@@ -24,31 +24,6 @@ import TTImp.Interactive.ExprSearch
 import TTImp.TTImp
 import TTImp.TTImp.Functor
 
-printClause : Ref Ctxt Defs
-           => Ref Syn SyntaxInfo
-           => Maybe String -> Nat -> ImpClause -> Core String
-printClause l i (PatClause _ lhsraw rhsraw) = do
-  lhs <- pterm $ map defaultKindedName lhsraw
-  rhs <- pterm $ map defaultKindedName rhsraw
-  pure $ relit l "\{pack (replicate i ' ')}\{show lhs} = \{show rhs}"
-printClause l i (WithClause _ lhsraw rig wvraw prf flags csraw) = do
-  lhs <- pterm $ map defaultKindedName lhsraw
-  wval <- pterm $ map defaultKindedName wvraw
-  cs <- traverse (printClause l (i + 2)) csraw
-  pure (relit l ((pack (replicate i ' ')
-         ++ show lhs
-         ++ " with \{showCount rig}(" ++ show wval ++ ")"
-         ++ maybe "" (\ nm => " proof " ++ show nm) prf
-         ++ "\n"))
-         ++ showSep "\n" cs)
-printClause l i (ImpossibleClause _ lhsraw) = do
-  do lhs <- pterm $ map defaultKindedName lhsraw
-     pure $ relit l "\{pack (replicate i ' ')}\{show lhs} impossible"
-
-number : Nat -> List a -> List (Nat, a)
-number n [] = []
-number n (x :: xs) = (n, x) :: number (S n) xs
-
 generateDefNextKind : CodeActionKind
 generateDefNextKind = Other "refactor.rewrite.GenerateDefNext"
 
@@ -73,6 +48,13 @@ buildCodeAction uri edit =
     , data_       = Nothing
     }
 
+-- first blank line going forward (in contrast to reversed implementation found in
+-- some other code actions.
+findBlankLine : List String -> Int -> Int
+findBlankLine [] acc = acc
+findBlankLine (x :: xs) acc = if trim x == "" then acc else findBlankLine xs (acc + 1)
+
+-- reproduced from compiler repo because it is not exported there (as of now)
 nextGenDef : {auto c : Ref Ctxt Defs} ->
              {auto u : Ref UST UState} ->
              {auto o : Ref ROpts REPLOpts} ->
@@ -117,41 +99,51 @@ generateDefNext params = do
                            Just (l, _) => l /= line
       when staleDefs $ do
         fuel <- gets LSPConf searchLimit
-        results <- lookupDefExact n defs.gamma
-        case results of
+        existingDef <- lookupDefExact n defs.gamma
+        case existingDef of
           Just None => do
-             catch (do searchdefs <- makeDefN (\p, n => onLine line p) fuel n -- makeDefSort (\p, n => onLine line p) fuel mostUsed n
-                       logD GenerateDefNext "got \{show $ length searchdefs} results"
-                       let sd' : Search (FC, List ImpClause) = foldr (\n,acc => n :: pure acc) Nil searchdefs
-                       update ROpts { gdResult := Just (line, pure sd') }
---                        Just _ <- nextGenDef 0
---                          | Nothing => pure ()
---                        logD GenerateDefNext "skipped one result"
---                        Just _ <- nextGenDef 0
---                          | Nothing => pure ()
---                        logD GenerateDefNext "got second result"
---                        Just _ <- nextGenDef 0
---                          | Nothing => pure ()
---                        logD GenerateDefNext "got third result"
+             catch (do searchdefs <- makeDefSort (\p, n => onLine line p) fuel mostUsed n
+                       update ROpts { gdResult := Just (line, pure searchdefs) }
                        pure ())
                    (\case Timeout _ => logI GenerateDefNext "Timed out" >> pure ()
                           err => logC GenerateDefNext "Unexpected error while searching" >> throw err)
           Just _ => logD GenerateDefNext "There is already a definition for \{show n}" >> pure ()
           Nothing => logD GenerateDefNext "Couldn't find type declaration at line \{show line}" >> pure ()
 
-      Just (line, (fc, cs)) <- nextGenDef 0
+      Just (line', (fc, cs)) <- nextGenDef 0
         | Nothing => logD GenerateDefNext "No more results" >> pure []
       let l : Nat = integerToNat $ cast $ startCol (toNonEmptyFC fc)
-      Just srcLine <- getSourceLine line
+      Just srcLine <- getSourceLine line'
         | Nothing => logE GenerateDefNext "Source line \{show line} not found" >> pure []
       let (markM, srcLineUnlit) = isLitLine srcLine
       lines <- traverse (printClause markM l) cs
 
       put Ctxt defs
 
-      let docURI = params.textDocument.uri
       let newLine = endLine loc + 1
-      let rng = MkRange (MkPosition newLine 0) (MkPosition newLine 0) -- insert
+
+      -- Not having an easy time figuring out how to determine how many
+      -- following lines should be replaced if there's a definition there
+      -- already (cycling defs and not on first one). probably just use
+      -- whitespace.
+      defToOverride <- lookupDefExact n defs.gamma
+      rng <- case defToOverride of
+           Nothing => do
+             logD GenerateDefNext "No def to override, inserting new def" 
+             pure $ MkRange (MkPosition newLine 0) (MkPosition newLine 0) -- insert
+           (Just None) => do
+             logD GenerateDefNext "No def to override, inserting new def" 
+             pure $ MkRange (MkPosition newLine 0) (MkPosition newLine 0) -- insert
+           (Just (PMDef pminfo args treeCT treeRT pats)) => do
+             src <- String.lines <$> getSource
+             let srcFromDef = drop (integerToNat (cast line)) src
+             let blank = findBlankLine srcFromDef line
+             pure $ MkRange (MkPosition newLine 0) (MkPosition blank 0) -- replace
+           (Just _) => do
+             logE GenerateDefNext "UNEXPECTED"
+             pure $ MkRange (MkPosition newLine 0) (MkPosition newLine 0) -- insert
+
+      let docURI = params.textDocument.uri
 
       action <- do
         let edit = MkTextEdit rng (String.unlines lines)

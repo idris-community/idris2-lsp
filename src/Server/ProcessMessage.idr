@@ -250,7 +250,6 @@ loadURI conf uri version = do
     put MD (initMetadata (PhysicalIdrSrc modIdent))
     ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
 
---   resetProofState
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   update LSPConf ({ quickfixes := [], cachedActions := empty, cachedHovers := empty })
   traverse_ (findQuickfix caps uri) errs

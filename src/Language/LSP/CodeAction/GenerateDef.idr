@@ -22,31 +22,6 @@ import TTImp.Interactive.GenerateDef
 import TTImp.TTImp
 import TTImp.TTImp.Functor
 
-printClause : Ref Ctxt Defs
-           => Ref Syn SyntaxInfo
-           => Maybe String -> Nat -> ImpClause -> Core String
-printClause l i (PatClause _ lhsraw rhsraw) = do
-  lhs <- pterm $ map defaultKindedName lhsraw
-  rhs <- pterm $ map defaultKindedName rhsraw
-  pure $ relit l "\{pack (replicate i ' ')}\{show lhs} = \{show rhs}"
-printClause l i (WithClause _ lhsraw rig wvraw prf flags csraw) = do
-  lhs <- pterm $ map defaultKindedName lhsraw
-  wval <- pterm $ map defaultKindedName wvraw
-  cs <- traverse (printClause l (i + 2)) csraw
-  pure (relit l ((pack (replicate i ' ')
-         ++ show lhs
-         ++ " with \{showCount rig}(" ++ show wval ++ ")"
-         ++ maybe "" (\ nm => " proof " ++ show nm) prf
-         ++ "\n"))
-         ++ showSep "\n" cs)
-printClause l i (ImpossibleClause _ lhsraw) = do
-  do lhs <- pterm $ map defaultKindedName lhsraw
-     pure $ relit l "\{pack (replicate i ' ')}\{show lhs} impossible"
-
-number : Nat -> List a -> List (Nat, a)
-number n [] = []
-number n (x :: xs) = (n, x) :: number (S n) xs
-
 generateDefKind : CodeActionKind
 generateDefKind = Other "refactor.rewrite.GenerateDef"
 
