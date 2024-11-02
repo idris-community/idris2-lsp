@@ -35,6 +35,7 @@ import Language.LSP.CodeAction.AddClause
 import Language.LSP.CodeAction.CaseSplit
 import Language.LSP.CodeAction.ExprSearch
 import Language.LSP.CodeAction.GenerateDef
+import Language.LSP.CodeAction.GenerateDefNext
 import Language.LSP.CodeAction.Intro
 import Language.LSP.CodeAction.MakeCase
 import Language.LSP.CodeAction.MakeLemma
@@ -249,7 +250,6 @@ loadURI conf uri version = do
     put MD (initMetadata (PhysicalIdrSrc modIdent))
     ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
 
-  resetProofState
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   update LSPConf ({ quickfixes := [], cachedActions := empty, cachedHovers := empty })
   traverse_ (findQuickfix caps uri) errs
@@ -440,9 +440,10 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
         makeCaseAction <- makeCase params
         introActions <- map Just <$> intro params
         generateDefActions <- map Just <$> generateDef params
+        generateDefNextActions <- map Just <$> generateDefNext params
         let resp = flatten $ quickfixActions
                                ++ [splitAction, lemmaAction, withAction, clauseAction, makeCaseAction]
-                               ++ introActions ++ generateDefActions ++ exprSearchActions
+                               ++ introActions ++ generateDefActions ++ generateDefNextActions ++ exprSearchActions
         pure $ pure $ make resp)
     where
       flatten : List (Maybe CodeAction) -> List (OneOf [Command, CodeAction])
