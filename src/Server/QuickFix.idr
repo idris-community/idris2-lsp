@@ -77,7 +77,7 @@ findQuickfix : Ref LSPConf LSPConfiguration
             -> Core ()
 findQuickfix caps uri (WhenUnifying fc _ _ x y err) = findQuickfix caps uri err
 findQuickfix caps uri (InType _ _ err) = findQuickfix caps uri err
-findQuickfix caps uri (InCon _ _ err) = findQuickfix caps uri err
+findQuickfix caps uri (InCon _ err) = findQuickfix caps uri err
 findQuickfix caps uri (InLHS _ _ err) = findQuickfix caps uri err
 findQuickfix caps uri (InRHS _ _ err) = findQuickfix caps uri err
 findQuickfix caps uri err@(PatternVariableUnifies fc fct env n tm) =
