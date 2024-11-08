@@ -68,7 +68,7 @@ getRelatedErrors uri (WhenUnifying fc _ _ x y _) =
   ]
 getRelatedErrors uri (ValidCase _ _ (Right err)) = getRelatedErrors uri err
 getRelatedErrors uri (InType _ _ err) = getRelatedErrors uri err
-getRelatedErrors uri (InCon _ _ err) = getRelatedErrors uri err
+getRelatedErrors uri (InCon _ err) = getRelatedErrors uri err
 getRelatedErrors uri (InLHS _ _ err) = getRelatedErrors uri err
 getRelatedErrors uri (InRHS _ _ err) = getRelatedErrors uri err
 getRelatedErrors _ _ = []
