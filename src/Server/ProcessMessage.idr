@@ -17,6 +17,7 @@ import Data.OneOf
 import Data.SortedMap
 import Data.SortedSet
 import Data.String
+import Idris.CommandLine
 import Idris.Doc.String
 import Idris.Error
 import Idris.IDEMode.Holes
@@ -202,7 +203,7 @@ loadURI : Ref LSPConf LSPConfiguration
        => Ref ROpts REPLOpts
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
-  logI Server "Loading file \{show uri}"
+  logI Channel "Loading file \{show uri}"
   defs <- get Ctxt
   let extraDirs = defs.options.dirs.extra_dirs
   update LSPConf ({ openFile := Just (uri, fromMaybe 0 version) })
@@ -213,42 +214,73 @@ loadURI conf uri version = do
     | Nothing => do let msg = "Cannot find the parent folder for \{show uri}"
                     logE Server msg
                     pure $ Left msg
-  True <- coreLift $ changeDir startFolder
-    | False => do let msg = "Cannot change current directory to \{show startFolder}, folder of \{show startFile}"
-                  logE Server msg
-                  pure $ Left msg
-  Right fname <- catch (maybe (Left "Cannot find the ipkg file") Right <$> findIpkg (Just fpath))
-                       (pure . Left . show)
-    | Left err => do let msg = "Cannot load ipkg file for \{show uri}: \{show err}"
-                     logE Server msg
+  -- Save CWD
+  cwd <- getWorkingDir
+  Right packageFilePath <- catch
+    (maybe
+       (Left (InternalError "Cannot find the .ipkg file"))
+       Right
+      <$>
+     [| gets LSPConf ipkgFile <+> coreLift (findIpkgFile <&> (<&> (\(dir, name, _) => dir </> name))) |]
+    )
+    (pure . Left)
+    | Left err => do let msg = "Cannot load .ipkg file: \{show err}"
+                     logE Channel msg
                      pure $ Left msg
-  Right res <- coreLift $ File.ReadWrite.readFile fname
-    | Left err => do let msg = "Cannot read file at \{show uri}"
-                     logE Server msg
+  logI Server ".ipkg file set to: \{packageFilePath}"
+  Right packageFileSource <- coreLift $ File.ReadWrite.readFile packageFilePath
+    | Left err => do let msg = "Cannot read .ipkg at \{packageFilePath} with CWD \{!getWorkingDir}"
+                     logE Channel msg
                      pure $ Left msg
-  update LSPConf ({ virtualDocuments $= insert uri (fromMaybe 0 version, res ++ "\n") })
-  --     A hack to solve some interesting edge-cases around missing newlines ^^^^^^^
-  setSource res
+  logI Server ".ipkg file read!"
+  let Just (packageFileDir, packageFileName) = splitParent packageFilePath
+      | _ => throw $ InternalError "Tried to split empty string"
+  let True = isSuffixOf ".ipkg" packageFileName
+      | _ => do let msg = "Packages must have an '.ipkg' extension: \{packageFilePath}"
+                logE Channel msg
+                pure $ Left msg
+  -- The CWD should be set to that of the .ipkg file
+  setWorkingDir packageFileDir
+  -- Using local packageFileName as we are now in the directory containing that file
+  -- Idris assumes that CWD and the directory of the .ipkg file coincide
+  pkg <- parsePkgFile True packageFileName
+  logI Channel ".ipkg file parsed!"
+  whenJust (builddir pkg) setBuildDir
+  setOutputDir (outputdir pkg)
+  logI Channel "Type checking..."
   errs <- catch
-            (buildDeps fname)
+            (do clock0 <- coreLift (clockTime Monotonic)
+                errs <- check pkg []
+                clock1 <- coreLift (clockTime Monotonic)
+                let dif = timeDifference clock1 clock0
+                logI Server "Type-checking finished in \{show (toNano dif)}ns with \{show (length errs)} errors"
+                pure errs
+            )
+            -- FIXME: the compiler always dumps the errors on stdout, requires
+            --        a compiler change.
+            -- NOTE on catch: It seems the compiler sometimes throws errors instead
+            -- of accumulating them while building a project.
             (\err => do
               logE Server "Caught error which shouldn't be leaked while loading file: \{show err}"
               pure [err])
-  -- FIXME: the compiler always dumps the errors on stdout, requires
-  --        a compiler change.
-  -- NOTE on catch: It seems the compiler sometimes throws errors instead
-  -- of accumulating them in the buildDeps.
-  unless (null errs) $ do
-    update LSPConf ({ errorFiles $= insert uri })
-    -- ModTree 397--308 loads data into context from ttf/ttm if no errors
-    -- In case of error, we reprocess fname to populate metadata and syntax
-    logI Channel "Rebuild \{fname} due to errors"
-    modIdent <- ctxtPathToNS fname
-    let msgPrefix : Doc IdrisAnn = pretty0 ""
-    let buildMsg : Doc IdrisAnn = pretty0 modIdent
-    clearCtxt; addPrimitives
-    put MD (initMetadata (PhysicalIdrSrc modIdent))
-    ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
+
+  errs <- case null errs of
+    True => do -- On success, reload the main ttc in a clean context
+      clearCtxt; addPrimitives
+      modIdent <- ctxtPathToNS fpath
+      put MD (initMetadata (PhysicalIdrSrc modIdent))
+      mainttc <- getTTCFileName fpath "ttc"
+      log "import" 10 $ "Reloading " ++ show mainttc ++ " from " ++ fpath
+      errs0 <- catch ([] <$ readAsMain mainttc) $ (\err => pure [err])
+
+
+      -- Load the associated metadata for interactive editing
+      mainttm <- getTTCFileName fpath "ttm"
+      log "import" 10 $ "Reloading " ++ show mainttm
+      errs1 <- catch ([] <$ readFromTTM mainttm) (\err => pure [err])
+      pure (errs0 ++ errs1)
+    False => pure errs
+
 
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   update LSPConf ({ quickfixes := [], cachedActions := empty, cachedHovers := empty })
@@ -261,6 +293,9 @@ loadURI conf uri version = do
   put Ctxt ({ options->dirs->extra_dirs := extraDirs } defs)
   cNames <- completionNames
   update LSPConf ({completionCache $= insert uri cNames})
+  logI Channel "File loaded!"
+  -- Reset CWD
+  setWorkingDir cwd
   pure $ Right ()
 
 loadIfNeeded : Ref LSPConf LSPConfiguration
@@ -290,7 +325,6 @@ withURI conf uri version d k = do
   case !(loadIfNeeded conf uri version) of
        Right () => k
        Left err => do
-         logE Server "Error while loading \{show uri}: \{show err}"
          pure $ Left (MkResponseError (Custom 3) err JNull)
 
 ||| Guard for requests that requires a successful initialization before being allowed.
@@ -519,6 +553,14 @@ handleRequest WorkspaceExecuteCommand
     str <- render doc
     setColor c
     pure $ Right (JString str)
+handleRequest WorkspaceExecuteCommand
+  (MkExecuteCommandParams partialResultToken "setIpkg" (Just [json])) = whenActiveRequest $ \conf => do
+    logI Channel "Received setIpkg command request"
+    let Just ipkg = fromJSON {a = String} json
+      | Nothing => pure $ Left (invalidParams "Expected String")
+    update LSPConf {ipkgFile := Just ipkg}
+    logI Channel "Set .ipkg file to \{ipkg}"
+    pure $ Right (JObject [])
 handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "metavars" _) = whenActiveRequest $ \conf => do
   logI Channel "Received metavars command request"
   Right . toJSON <$> metavarsCmd

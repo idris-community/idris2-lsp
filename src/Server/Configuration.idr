@@ -71,6 +71,8 @@ record LSPConfiguration where
   virtualDocuments : SortedMap DocumentURI (Int, String) -- Version content
   ||| Insert only function name for completions
   briefCompletions : Bool
+  ||| Maybe specified .ipkg file
+  ipkgFile : Maybe String
 
 ||| Server default configuration. Uses standard input and standard output for input/output.
 export
@@ -94,5 +96,6 @@ defaultConfig =
     , nextRequestId           = 0
     , completionCache         = empty
     , virtualDocuments        = empty
-    , briefCompletions       = False
+    , briefCompletions        = False
+    , ipkgFile                = Nothing
     }
