@@ -189,7 +189,7 @@ processSettings (JObject xs) = do
       _ => pure ()
   case lookup "ipkgPath" xs of
       Just (JString path) => update LSPConf ({ ipkgPath := Just path})
-      _ => pure ()
+      _ => update LSPConf ({ ipkgPath := Nothing})
 processSettings _ = logE Configuration "Incorrect type for options"
 
 isDirty : Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
