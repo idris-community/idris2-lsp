@@ -71,12 +71,12 @@ parseHeaderPart h = do
     Nothing => pure $ Right Nothing
 
 handleMessage : Ref LSPConf LSPConfiguration
-             => Ref Ctxt Defs
-             => Ref UST UState
-             => Ref Syn SyntaxInfo
-             => Ref MD Metadata
-             => Ref ROpts REPLOpts
-             => Core ()
+            => Ref Ctxt Defs
+            => Ref UST UState
+            => Ref Syn SyntaxInfo
+            => Ref MD Metadata
+            => Ref ROpts REPLOpts
+            => Core ()
 handleMessage = do
   inputHandle <- gets LSPConf inputHandle
   Right (Just l) <- parseHeaderPart inputHandle
@@ -150,21 +150,13 @@ runServer : Ref LSPConf LSPConfiguration
          => Core ()
 runServer = handleMessage >> runServer
 
-processCommandLineArgs : Ref LSPConf LSPConfiguration => List String -> Core ()
-processCommandLineArgs [] = pure ()
-processCommandLineArgs [ipkgFile] = do
-  update LSPConf {ipkgFile := Just ipkgFile}
-  logI Server "Set .ipkg file to \{ipkgFile}"
-processCommandLineArgs _ = throw (InternalError "Unexpected number of arguments")
-
-startServer : List String -> IO ()
-startServer extraCommandLineArgs =
+startServer : IO ()
+startServer =
   coreRun (do l <- newRef LSPConf defaultConfig
               defs <- initDefs
               c <- newRef Ctxt defs
               s <- newRef Syn initSyntax
               addPrimitives
-              processCommandLineArgs extraCommandLineArgs
               bprefix <- coreLift $ idrisGetEnv "IDRIS2_PREFIX"
               the (Core ()) $ case bprefix of
                    Just p => setPrefix p
@@ -215,8 +207,9 @@ printVersion = do
 
 main : IO ()
 main = do
-  (_ :: args) <- getArgs
+  (_::args) <- getArgs
     | _ => putStrLn "Invalid command line"
   case args of
     ["--version"] => printVersion
-    args => startServer args
+    [] => startServer
+    _ => putStrLn "Invalid Arguments"

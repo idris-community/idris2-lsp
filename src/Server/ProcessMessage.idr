@@ -187,6 +187,9 @@ processSettings (JObject xs) = do
   case lookup "briefCompletions" xs of
       Just (JBoolean b) => update LSPConf ({ briefCompletions := b})
       _ => pure ()
+  case lookup "ipkgPath" xs of
+      Just (JString path) => update LSPConf ({ ipkgPath := Just path})
+      _ => pure ()
 processSettings _ = logE Configuration "Incorrect type for options"
 
 isDirty : Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
@@ -221,7 +224,7 @@ loadURI conf uri version = do
        (Left (InternalError "Cannot find the .ipkg file"))
        Right
       <$>
-     [| gets LSPConf ipkgFile <+> coreLift (findIpkgFile <&> (<&> (\(dir, name, _) => dir </> name))) |]
+     [| gets LSPConf ipkgPath <+> coreLift (findIpkgFile <&> (<&> (\(dir, name, _) => dir </> name))) |]
     )
     (pure . Left)
     | Left err => do let msg = "Cannot load .ipkg file: \{show err}"
@@ -553,14 +556,6 @@ handleRequest WorkspaceExecuteCommand
     str <- render doc
     setColor c
     pure $ Right (JString str)
-handleRequest WorkspaceExecuteCommand
-  (MkExecuteCommandParams partialResultToken "setIpkg" (Just [json])) = whenActiveRequest $ \conf => do
-    logI Channel "Received setIpkg command request"
-    let Just ipkg = fromJSON {a = String} json
-      | Nothing => pure $ Left (invalidParams "Expected String")
-    update LSPConf {ipkgFile := Just ipkg}
-    logI Channel "Set .ipkg file to \{ipkg}"
-    pure $ Right (JObject [])
 handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "metavars" _) = whenActiveRequest $ \conf => do
   logI Channel "Received metavars command request"
   Right . toJSON <$> metavarsCmd
