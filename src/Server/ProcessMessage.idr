@@ -208,7 +208,7 @@ loadURI : Ref LSPConf LSPConfiguration
        => Ref Syn SyntaxInfo
        => Ref MD Metadata
        => Ref ROpts REPLOpts
-       => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
+       => InitializeParams -> URI -> Maybe Int -> Core (Either () ())
 loadURI conf uri version = do
   logI Channel "Loading file \{show uri}"
   defs <- get Ctxt
@@ -220,7 +220,7 @@ loadURI conf uri version = do
   let Just (startFolder, startFile) = splitParent fpath
     | Nothing => do let msg = "Cannot find the parent folder for \{show uri}"
                     logE Server msg
-                    pure $ Left msg
+                    pure $ Left ()
   -- Save CWD
   cwd <- getWorkingDir
   Right packageFilePath <- catch
@@ -233,19 +233,19 @@ loadURI conf uri version = do
     (pure . Left)
     | Left err => do let msg = "Cannot load .ipkg file: \{show err}"
                      logE Channel msg
-                     pure $ Left msg
+                     pure $ Left ()
   logI Channel ".ipkg file configured to: \{packageFilePath}"
   Right packageFileSource <- coreLift $ File.ReadWrite.readFile packageFilePath
     | Left err => do let msg = "Cannot read .ipkg at \{packageFilePath} with CWD \{!getWorkingDir}"
                      logE Channel msg
-                     pure $ Left msg
+                     pure $ Left ()
   logI Channel ".ipkg file read!"
   let Just (packageFileDir, packageFileName) = splitParent packageFilePath
       | _ => throw $ InternalError "Tried to split empty string"
   let True = isSuffixOf ".ipkg" packageFileName
       | _ => do let msg = "Packages must have an '.ipkg' extension: \{packageFilePath}"
                 logE Channel msg
-                pure $ Left msg
+                pure $ Left ()
   -- The CWD should be set to that of the .ipkg file
   setWorkingDir packageFileDir
   -- Using local packageFileName as we are now in the directory containing that file
@@ -311,7 +311,7 @@ loadIfNeeded : Ref LSPConf LSPConfiguration
             => Ref Syn SyntaxInfo
             => Ref MD Metadata
             => Ref ROpts REPLOpts
-            => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
+            => InitializeParams -> URI -> Maybe Int -> Core (Either () ())
 loadIfNeeded conf uri version = do
   Just (oldUri, oldVersion) <- gets LSPConf openFile
     | Nothing => loadURI conf uri version
@@ -332,7 +332,7 @@ withURI conf uri version d k = do
   case !(loadIfNeeded conf uri version) of
        Right () => k
        Left err => do
-         pure $ Left (MkResponseError (Custom 3) err JNull)
+         pure $ Left (MkResponseError (Custom 3) "Loading \{show uri} failed (see the logs for more info)" JNull)
 
 ||| Guard for requests that requires a successful initialization before being allowed.
 whenInitializedRequest : Ref LSPConf LSPConfiguration => (InitializeParams -> Core (Either ResponseError a)) -> Core (Either ResponseError a)
