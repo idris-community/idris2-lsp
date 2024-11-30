@@ -234,12 +234,12 @@ loadURI conf uri version = do
     | Left err => do let msg = "Cannot load .ipkg file: \{show err}"
                      logE Channel msg
                      pure $ Left msg
-  logI Server ".ipkg file set to: \{packageFilePath}"
+  logI Channel ".ipkg file configured to: \{packageFilePath}"
   Right packageFileSource <- coreLift $ File.ReadWrite.readFile packageFilePath
     | Left err => do let msg = "Cannot read .ipkg at \{packageFilePath} with CWD \{!getWorkingDir}"
                      logE Channel msg
                      pure $ Left msg
-  logI Server ".ipkg file read!"
+  logI Channel ".ipkg file read!"
   let Just (packageFileDir, packageFileName) = splitParent packageFilePath
       | _ => throw $ InternalError "Tried to split empty string"
   let True = isSuffixOf ".ipkg" packageFileName
@@ -260,7 +260,7 @@ loadURI conf uri version = do
                 errs <- check pkg []
                 clock1 <- coreLift (clockTime Monotonic)
                 let dif = timeDifference clock1 clock0
-                logI Server "Type-checking finished in \{show (toNano dif)}ns with \{show (length errs)} errors"
+                logI Channel "Type-checking finished in \{show (toNano dif)}ns with \{show (length errs)} errors"
                 pure errs
             )
             -- FIXME: the compiler always dumps the errors on stdout, requires
