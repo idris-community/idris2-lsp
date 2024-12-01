@@ -5,10 +5,12 @@ module Server.Response
 
 import Core.Context
 import Core.Core
+import Core.Directory
 import Core.Env
 import Core.FC
 import Data.OneOf
 import Data.String
+import Data.List
 import Idris.Pretty
 import Idris.REPL.Opts
 import Idris.Resugar
@@ -22,6 +24,7 @@ import Server.Diagnostics
 import Server.Log
 import Server.Utils
 import System.File
+import System.Path
 
 ||| Header for messages on-the-wire.
 ||| By specification only Content-Length is mandatory.
@@ -115,28 +118,64 @@ sendUnknownResponseMessage err = do
   writeResponse (toJSON {a = ResponseMessage Initialize} (Failure (make MkNull) err))
   logI Channel "Sent response to unknown method"
 
-||| Sends a LSP `Diagnostic` message for a given, potentially versioned, source
-||| that produces some errors.
+groupByFile : Ref Ctxt Defs => List Error -> Core (List (Maybe String, List1 Error))
+groupByFile list = do
+  withFileName <- traverse (\err => pure (!(getFilePath err), err)) list
+  pure $ map pull (groupBy sameFileName withFileName)
+ where
+  pull : List1 (a, b) -> (a, List1 b)
+  pull ((x, y) ::: []) = (x, singleton y)
+  pull ((_, y) ::: t :: ts) = mapSnd (y `cons`) (pull (t ::: ts))
+
+  sameFileName : (Maybe String, Error) -> (Maybe String, Error) -> Bool
+  sameFileName = on (==) fst
+
+  getFilePath : Error -> Core (Maybe String)
+  getFilePath err = do
+    defs <- get Ctxt
+    let wdir = defs.options.dirs.working_dir
+    let loc = getErrorLoc err
+    traverseOpt (pure . (wdir </>) <=< nsToSource replFC) ((\case PhysicalIdrSrc ident => Just ident; _ => Nothing) . fst <=< isNonEmptyFC =<< loc)
+
+||| Sends a LSP `Diagnostic` message for the whole project
 |||
 ||| @caps The client capabilities related to diagnostics
-||| @uri The source URI.
 ||| @version Optional source version.
 ||| @errs Errors produced while trying to check the source.
+||| @return list of files that contain at least one error
 export
 sendDiagnostics : Ref LSPConf LSPConfiguration
                => Ref Syn SyntaxInfo
                => Ref Ctxt Defs
                => Ref ROpts REPLOpts
                => (caps : Maybe PublishDiagnosticsClientCapabilities)
-               -> (uri : DocumentURI)
-               -> (version : Maybe Int)
                -> (warnings : List Warning)
                -> (errs : List Error)
-               -> Core ()
-sendDiagnostics caps uri version warnings errs = do
-  warningDiagnostics <- traverse (warningToDiagnostic caps uri) warnings
-  errorDiagnostics <- traverse (errorToDiagnostic caps uri) errs
-  let diagnostics = warningDiagnostics ++ errorDiagnostics
-  let params = MkPublishDiagnosticsParams uri version diagnostics
-  logI Diagnostic "Sending diagnostic message for \{show uri}"
+               -> Core (List DocumentURI)
+sendDiagnostics caps warnings errs = do
+  catMaybes <$> for !(groupByFile errs) mbForFile
+ where
+  forFile : DocumentURI -> List Error -> Core ()
+  forFile uri errs = do
+    warningDiagnostics <- traverse (warningToDiagnostic caps) warnings
+    errorDiagnostics <- traverse (errorToDiagnostic caps) errs
+    let diagnostics = warningDiagnostics ++ errorDiagnostics
+    let params = MkPublishDiagnosticsParams uri Nothing diagnostics
+    logI Diagnostic "Sending diagnostic message for \{show uri}"
+    sendNotificationMessage TextDocumentPublishDiagnostics params
+
+  mbForFile : (Maybe String, List1 Error) -> Core (Maybe DocumentURI)
+  mbForFile (Nothing, _) = pure Nothing -- TODO: Currently silently suppressed, not good
+  mbForFile (Just path, errs) = Just (pathToURI path) <$ forFile (pathToURI path) (forget errs)
+
+export
+sendEmptyDiagnostic : Ref LSPConf LSPConfiguration
+                   => Ref Syn SyntaxInfo
+                   => Ref Ctxt Defs
+                   => Ref ROpts REPLOpts
+                   => DocumentURI
+                   -> Core ()
+sendEmptyDiagnostic uri = do
+  let params = MkPublishDiagnosticsParams uri Nothing []
+  logI Diagnostic "Sending empty diagnostic message for \{show uri}"
   sendNotificationMessage TextDocumentPublishDiagnostics params

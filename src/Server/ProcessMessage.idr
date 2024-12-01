@@ -217,10 +217,6 @@ loadURI conf uri version = do
   update ROpts { evalResultName := Nothing }
   resetContext (Virtual Interactive)
   let fpath = uriPathToSystemPath uri.path
-  let Just (startFolder, startFile) = splitParent fpath
-    | Nothing => do let msg = "Cannot find the parent folder for \{show uri}"
-                    logE Server msg
-                    pure $ Left ()
   -- Save CWD
   cwd <- getWorkingDir
   Right packageFilePath <- catch
@@ -263,10 +259,8 @@ loadURI conf uri version = do
                 logI Channel "Type-checking finished in \{show (toNano dif)}ns with \{show (length errs)} errors"
                 pure errs
             )
-            -- FIXME: the compiler always dumps the errors on stdout, requires
+            -- FIXME: the compiler sometimes dumps the errors on stdout, requires
             --        a compiler change.
-            -- NOTE on catch: It seems the compiler sometimes throws errors instead
-            -- of accumulating them while building a project.
             (\err => do
               logE Server "Caught error which shouldn't be leaked while loading file: \{show err}"
               pure [err])
@@ -275,17 +269,9 @@ loadURI conf uri version = do
     True => do -- On success, reload the main ttc in a clean context
       clearCtxt; addPrimitives
       modIdent <- ctxtPathToNS fpath
-      put MD (initMetadata (PhysicalIdrSrc modIdent))
       mainttc <- getTTCFileName fpath "ttc"
       log "import" 10 $ "Reloading " ++ show mainttc ++ " from " ++ fpath
-      errs0 <- catch ([] <$ readAsMain mainttc) $ (\err => pure [err])
-
-
-      -- Load the associated metadata for interactive editing
-      mainttm <- getTTCFileName fpath "ttm"
-      log "import" 10 $ "Reloading " ++ show mainttm
-      errs1 <- catch ([] <$ readFromTTM mainttm) (\err => pure [err])
-      pure (errs0 ++ errs1)
+      catch ([] <$ readAsMain mainttc) $ (\err => pure [err])
     False => pure errs
 
 
@@ -295,7 +281,11 @@ loadURI conf uri version = do
   defs <- get Ctxt
   session <- getSession
   let warnings = if session.warningsAsErrors then [] else reverse (warnings defs)
-  sendDiagnostics caps uri version warnings errs
+  -- Clear out all previously issued diagnostics
+  for_ !(SortedSet.toList <$> gets LSPConf errorFiles) sendEmptyDiagnostic
+  filesWithErrors <- sendDiagnostics caps warnings errs
+  logI Channel "Files containing errors: \{show filesWithErrors}"
+  update LSPConf { errorFiles := SortedSet.fromList filesWithErrors }
   defs <- get Ctxt
   put Ctxt ({ options->dirs->extra_dirs := extraDirs } defs)
   cNames <- completionNames
@@ -539,8 +529,18 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
     Nothing <- gets LSPConf (lookup params.textDocument.uri . semanticTokensSentFiles)
       | Just tokens => pure $ pure $ (make $ tokens)
     withURI conf params.textDocument.uri Nothing (pure $ Left (MkResponseError RequestCancelled "Document Errors" JNull)) $ do
+      -- Load the associated metadata for interactive editing
+      let fpath = uriPathToSystemPath params.textDocument.uri.path
+      modIdent <- ctxtPathToNS fpath
+      -- put MD (initMetadata (PhysicalIdrSrc modIdent))
+      -- TODO: Reset everything related to *that* file only!
+      mainttm <- getTTCFileName fpath "ttm"
+      log "import" 10 $ "Reloading " ++ show mainttm
+      [] <- catch ([] <$ readFromTTM mainttm) (\err => pure [err])
+       | _ => pure $ Left (MkResponseError RequestCancelled "Couldn't load TTM for the file" JNull)
+      Right src <- coreLift $ File.ReadWrite.readFile fpath
+        | Left err => pure $ Left (MkResponseError RequestCancelled "Couldn't read the file" JNull)
       md <- get MD
-      src <- getSource
       let srcLines = lines src
       let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
       tokens <- getSemanticTokens md getLineLength
@@ -619,7 +619,6 @@ handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf =
   logI Channel "Received didSave notification for \{show params.textDocument.uri}"
   update LSPConf (
     { dirtyFiles $= delete params.textDocument.uri
-    , errorFiles $= delete params.textDocument.uri
     , semanticTokensSentFiles $= delete params.textDocument.uri
     })
   ignore $ loadURI conf params.textDocument.uri Nothing
