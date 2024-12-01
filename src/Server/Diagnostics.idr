@@ -113,20 +113,15 @@ warningToDiagnostic : Ref Ctxt Defs
             => Ref Syn SyntaxInfo
             => Ref ROpts REPLOpts
             => (caps : Maybe PublishDiagnosticsClientCapabilities)
-            -> (uri : URI)
             -> (warning : Warning)
             -> Core Diagnostic
-warningToDiagnostic caps uri warning = do
+warningToDiagnostic caps warning = do
   defs <- get Ctxt
   warningAnn <- pwarning (killWarningLoc warning)
   let loc = Just (getWarningLoc warning)
   let wdir = defs.options.dirs.working_dir
-  p <- maybe (pure uri.path) (pure . (wdir </>) <=< nsToSource replFC)
-         ((\case PhysicalIdrSrc ident => Just ident; _ => Nothing) . fst <=< isNonEmptyFC =<< loc)
-  if System.Path.parse (uriPathToSystemPath uri.path) == System.Path.parse p
-     then do let related = Nothing -- TODO related diagnostics?
-             pure $ buildDiagnostic Warning loc warningAnn related
-     else pure $ buildDiagnostic Warning (toStart <$> loc) ("In" <++> pretty0 p <+> colon <++> warningAnn) Nothing
+  let related = Nothing -- TODO related diagnostics?
+  pure (buildDiagnostic Warning loc warningAnn related)
 
 
 ||| Computes a LSP `Diagnostic` from a compiler error.
@@ -136,20 +131,15 @@ warningToDiagnostic caps uri warning = do
 ||| @err The compiler error.
 export
 errorToDiagnostic : Ref Ctxt Defs
-            => Ref Syn SyntaxInfo
-            => Ref ROpts REPLOpts
-            => (caps : Maybe PublishDiagnosticsClientCapabilities)
-            -> (uri : URI)
-            -> (error : Error)
-            -> Core Diagnostic
-errorToDiagnostic caps uri err = do
+                 => Ref Syn SyntaxInfo
+                 => Ref ROpts REPLOpts
+                 => (caps : Maybe PublishDiagnosticsClientCapabilities)
+                 -> (error : Error)
+                 -> Core Diagnostic
+errorToDiagnostic caps err = do
   defs <- get Ctxt
   error <- perror (killErrorLoc err)
   let loc = getErrorLoc err
   let wdir = defs.options.dirs.working_dir
-  p <- maybe (pure uri.path) (pure . (wdir </>) <=< nsToSource replFC)
-         ((\case PhysicalIdrSrc ident => Just ident; _ => Nothing) . fst <=< isNonEmptyFC =<< loc)
-  if System.Path.parse (uriPathToSystemPath uri.path) == System.Path.parse p
-     then do let related = (flip toMaybe (getRelatedErrors uri err) <=< relatedInformation) =<< caps
-             pure $ buildDiagnostic Error loc error related
-     else pure $ buildDiagnostic Error (toStart <$> loc) ("In" <++> pretty0 p <+> colon <++> error) Nothing
+  let related = Nothing -- TODO
+  pure (buildDiagnostic Error loc error related)

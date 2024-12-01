@@ -1,0 +1,5 @@
+[custom.all.idris2-lsp]
+type = "local"
+path = "."
+ipkg = "idris2-lsp.ipkg"
+packagePath = true
