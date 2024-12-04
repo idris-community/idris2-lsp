@@ -94,7 +94,8 @@ printClause l i (WithClause _ lhsraw rig wvraw prf flags csraw) = do
   pure (relit l ((pack (replicate i ' ')
          ++ show lhs
          ++ " with \{showCount rig}(" ++ show wval ++ ")"
-         ++ maybe "" (\ nm => " proof " ++ show nm) prf
+            -- TODO: remove `the` after fix idris-lang/Idris2#3418
+         ++ maybe "" (the (_ -> _) $ \(rg, nm) => " proof " ++ showCount rg ++ show nm) prf
          ++ "\n"))
          ++ showSep "\n" cs)
 printClause l i (ImpossibleClause _ lhsraw) = do
