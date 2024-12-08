@@ -463,6 +463,15 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
     (do quickfixActions <- if maybe True (CodeActionKind.QuickFix `elem`) params.context.only
                               then map Just <$> gets LSPConf quickfixes
                               else pure []
+        let fpath = uriPathToSystemPath params.textDocument.uri.path
+        setMainFile (Just fpath)
+        Right src <- coreLift $ File.ReadWrite.readFile fpath
+          | Left err => pure $ Left (MkResponseError RequestCancelled "Couldn't read the file source file" JNull)
+        setSource src
+        modIdent <- ctxtPathToNS fpath
+        mainttm <- getTTCFileName fpath "ttm"
+        [] <- catch ([] <$ readFromTTM mainttm) (\err => pure [err])
+         | _ => pure $ Left (MkResponseError RequestCancelled "Couldn't load TTM for the file" JNull)
         exprSearchActions <- map Just <$> exprSearch params
         splitAction <- caseSplit params
         lemmaAction <- makeLemma params
