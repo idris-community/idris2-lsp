@@ -47,8 +47,6 @@ record LSPConfiguration where
   ||| True if the client has completed the shutdown protocol.
   ||| @see https://microsoft.github.io/language-server-protocol/specifications/specification-3-16/#shutdown
   isShutdown : Bool
-  ||| The currently loaded file, if any, and its version.
-  openFile : Maybe (DocumentURI, Int)
   ||| Files with modification not saved. Command will fail on these files.
   dirtyFiles : SortedSet DocumentURI
   ||| Files with errors
@@ -85,7 +83,6 @@ defaultConfig =
     , logSeverity             = Debug
     , initialized             = Nothing
     , isShutdown              = False
-    , openFile                = Nothing
     , dirtyFiles              = empty
     , errorFiles              = empty
     , semanticTokensSentFiles = empty

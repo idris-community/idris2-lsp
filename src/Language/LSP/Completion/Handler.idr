@@ -82,6 +82,7 @@ arguments (PrimVal fc c)                               = []
 arguments (Erased fc why)                              = []
 arguments (TType fc n)                                 = []
 
+-- PERF: This is currently *very* slow. It can take up 5-10 seconds for when running this on this (idris2-lsp) project
 export
 covering
 completionNames : Ref Ctxt Defs
