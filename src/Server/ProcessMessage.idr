@@ -72,6 +72,9 @@ import System.Clock
 import System.Directory
 import System.File
 
+toMillis : Integer -> Integer
+toMillis = cast {to = Integer} . (/ 1000000.0) . cast {to = Double}
+
 ||| Mostly copied from Idris.REPL.displayResult.
 partial
 replResultToDoc : Ref Ctxt Defs
@@ -213,7 +216,6 @@ loadURI conf uri version = do
   logI Channel "Loading file \{show uri}"
   defs <- get Ctxt
   let extraDirs = defs.options.dirs.extra_dirs
-  update LSPConf ({ openFile := Just (uri, fromMaybe 0 version) })
   update ROpts { evalResultName := Nothing }
   resetContext (Virtual Interactive)
   let fpath = uriPathToSystemPath uri.path
@@ -256,7 +258,7 @@ loadURI conf uri version = do
                 errs <- check pkg []
                 clock1 <- coreLift (clockTime Monotonic)
                 let dif = timeDifference clock1 clock0
-                logI Channel "Type-checking finished in \{show (toNano dif)}ns with \{show (length errs)} errors"
+                logI Channel "Type-checking finished in \{show (toMillis (toNano dif))}ms with \{show (length errs)} errors"
                 pure errs
             )
             -- FIXME: the compiler sometimes dumps the errors on stdout, requires
@@ -288,26 +290,13 @@ loadURI conf uri version = do
   update LSPConf { errorFiles := SortedSet.fromList filesWithErrors }
   defs <- get Ctxt
   put Ctxt ({ options->dirs->extra_dirs := extraDirs } defs)
-  cNames <- completionNames
-  update LSPConf ({completionCache $= insert uri cNames})
+  -- FIX: This is crazy slow (and unused?)
+  -- cNames <- completionNames
+  -- update LSPConf ({completionCache $= insert uri cNames})
   logI Channel "File loaded!"
   -- Reset CWD
   setWorkingDir cwd
   pure $ Right ()
-
-loadIfNeeded : Ref LSPConf LSPConfiguration
-            => Ref Ctxt Defs
-            => Ref UST UState
-            => Ref Syn SyntaxInfo
-            => Ref MD Metadata
-            => Ref ROpts REPLOpts
-            => InitializeParams -> URI -> Maybe Int -> Core (Either () ())
-loadIfNeeded conf uri version = do
-  Just (oldUri, oldVersion) <- gets LSPConf openFile
-    | Nothing => loadURI conf uri version
-  if (oldUri == uri && (isNothing version || (Just oldVersion) == version))
-     then pure $ Right ()
-     else loadURI conf uri version
 
 withURI : Ref LSPConf LSPConfiguration
        => Ref Ctxt Defs
@@ -319,10 +308,21 @@ withURI : Ref LSPConf LSPConfiguration
        -> URI -> Maybe Int -> Core (Either ResponseError a) -> Core (Either ResponseError a) -> Core (Either ResponseError a)
 withURI conf uri version d k = do
   when !(isError uri) $ ignore $ logW Server "Trying to load \{show uri} which has errors" >> d
-  case !(loadIfNeeded conf uri version) of
-       Right () => k
-       Left err => do
-         pure $ Left (MkResponseError (Custom 3) "Loading \{show uri} failed (see the logs for more info)" JNull)
+  logI Channel "Loading metadata for file: \{show uri}"
+  clock0 <- coreLift (clockTime Monotonic)
+  let fpath = uriPathToSystemPath uri.path
+  setMainFile (Just fpath)
+  Right src <- coreLift $ File.ReadWrite.readFile fpath
+    | Left err => pure $ Left (MkResponseError RequestCancelled "Couldn't read the file source file" JNull)
+  setSource src
+  modIdent <- ctxtPathToNS fpath
+  mainttm <- getTTCFileName fpath "ttm"
+  [] <- catch ([] <$ readFromTTM mainttm) (\err => pure [err])
+   | _ => pure $ Left (MkResponseError RequestCancelled "Couldn't load TTM for the file" JNull)
+  clock1 <- coreLift (clockTime Monotonic)
+  let dif = timeDifference clock1 clock0
+  logI Channel "Loading metadata finished in \{show (toMillis (toNano dif))}ms"
+  k
 
 ||| Guard for requests that requires a successful initialization before being allowed.
 whenInitializedRequest : Ref LSPConf LSPConfiguration => (InitializeParams -> Core (Either ResponseError a)) -> Core (Either ResponseError a)
@@ -463,15 +463,6 @@ handleRequest TextDocumentCodeAction params = whenActiveRequest $ \conf => do
     (do quickfixActions <- if maybe True (CodeActionKind.QuickFix `elem`) params.context.only
                               then map Just <$> gets LSPConf quickfixes
                               else pure []
-        let fpath = uriPathToSystemPath params.textDocument.uri.path
-        setMainFile (Just fpath)
-        Right src <- coreLift $ File.ReadWrite.readFile fpath
-          | Left err => pure $ Left (MkResponseError RequestCancelled "Couldn't read the file source file" JNull)
-        setSource src
-        modIdent <- ctxtPathToNS fpath
-        mainttm <- getTTCFileName fpath "ttm"
-        [] <- catch ([] <$ readFromTTM mainttm) (\err => pure [err])
-         | _ => pure $ Left (MkResponseError RequestCancelled "Couldn't load TTM for the file" JNull)
         exprSearchActions <- map Just <$> exprSearch params
         splitAction <- caseSplit params
         lemmaAction <- makeLemma params
@@ -538,15 +529,9 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
     Nothing <- gets LSPConf (lookup params.textDocument.uri . semanticTokensSentFiles)
       | Just tokens => pure $ pure $ (make $ tokens)
     withURI conf params.textDocument.uri Nothing (pure $ Left (MkResponseError RequestCancelled "Document Errors" JNull)) $ do
-      -- Load the associated metadata for interactive editing
+      logI Channel "Loading semantic tokens for file: \{show (params.textDocument.uri)}"
+      clock0 <- coreLift (clockTime Monotonic)
       let fpath = uriPathToSystemPath params.textDocument.uri.path
-      modIdent <- ctxtPathToNS fpath
-      -- put MD (initMetadata (PhysicalIdrSrc modIdent))
-      -- TODO: Reset everything related to *that* file only!
-      mainttm <- getTTCFileName fpath "ttm"
-      log "import" 10 $ "Reloading " ++ show mainttm
-      [] <- catch ([] <$ readFromTTM mainttm) (\err => pure [err])
-       | _ => pure $ Left (MkResponseError RequestCancelled "Couldn't load TTM for the file" JNull)
       Right src <- coreLift $ File.ReadWrite.readFile fpath
         | Left err => pure $ Left (MkResponseError RequestCancelled "Couldn't read the file" JNull)
       md <- get MD
@@ -554,6 +539,9 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
       let getLineLength = \lineNum => maybe 0 (cast . length) $ elemAt srcLines (integerToNat (cast lineNum))
       tokens <- getSemanticTokens md getLineLength
       update LSPConf ({ semanticTokensSentFiles $= insert params.textDocument.uri tokens })
+      clock1 <- coreLift (clockTime Monotonic)
+      let dif = timeDifference clock1 clock0
+      logI Channel "Loading semantic tokens finished in \{show (toMillis (toNano dif))}ms"
       pure $ pure $ (make $ tokens)
 handleRequest WorkspaceExecuteCommand
   (MkExecuteCommandParams partialResultToken "repl" (Just [json])) = whenActiveRequest $ \conf => do
@@ -649,8 +637,7 @@ handleNotification TextDocumentDidChange params = whenActiveNotification $ \conf
 
 handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf => do
   logI Channel "Received didClose notification for \{show params.textDocument.uri}"
-  update LSPConf ({ openFile := Nothing
-                  , quickfixes := []
+  update LSPConf ({ quickfixes := []
                   , cachedActions := empty
                   , cachedHovers := empty
                   , dirtyFiles $= delete params.textDocument.uri
