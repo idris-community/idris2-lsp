@@ -67,7 +67,7 @@ renderDataTypeInfo n d@(DCon tag arity newtypeArg) = do
 renderDataTypeInfo n d@(TCon tag arity parampos detpos flags mutwith datacons detagabbleBy) = do
   -- Render the data structure information for the type.
   context <- gets Ctxt gamma
-  constructors <- for datacons $ \dn => case !(lookupDefName dn context) of
+  constructors <- for (fromMaybe [] datacons) $ \dn => case !(lookupDefName dn context) of
     [(_, _, DCon _ _ _)] => do
       fullName <- getFullName dn
       pure $ Just " | \{show fullName} ..."
