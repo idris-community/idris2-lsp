@@ -106,7 +106,7 @@ exprSearch' params hints = do
       [(n, nidx, PMDef pi [] (STerm _ tm) _ _)] => case holeInfo pi of
         NotHole => logD ExprSearch "\{show name} is not a metavariable" >> pure []
         SolvedHole locs => do
-          (_ ** (env, tm')) <- dropLamsTm locs [] <$> normaliseHoles defs [] tm
+          (_ ** (env, tm')) <- dropLamsTm locs ScopeEmpty <$> normaliseHoles defs ScopeEmpty tm
           itm <- resugar env tm'
           pure [showPTerm itm]
       _ => logD ExprSearch "\{show name} is not a metavariable" >> pure []

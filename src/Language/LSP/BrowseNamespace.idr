@@ -61,7 +61,7 @@ buildDocumentSymbol n = do
                   (TCon {}) => Constructor
                   (Hole {}) => Variable
                   _ => Null
-  ty <- resugar [] =<< normaliseHoles defs [] def.type
+  ty <- resugar ScopeEmpty =<< normaliseHoles defs ScopeEmpty def.type
   pure $ Just $ MkSymbolInformation
     { name = "\{show $ dropNS n} : \{show ty}"
     , kind = kind
