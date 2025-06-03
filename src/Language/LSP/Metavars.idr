@@ -63,7 +63,7 @@ getUserHolesData = do
   ms <- getUserHoles
   globs <- concat <$> traverse (flip lookupCtxtName defs.gamma) ms
   let holesWithArgs = mapMaybe (\(n, i, gdef) => pure (n, gdef, !(isHole gdef))) globs
-  traverse (\(n, gdef, args) => (, gdef.location) <$> holeData defs [] n args gdef.type) holesWithArgs
+  traverse (\(n, gdef, args) => (, gdef.location) <$> holeData defs Env.empty n args gdef.type) holesWithArgs
 
 ||| Returns the list of metavariables visible in the current context with their location.
 ||| JSON schema for a single metavariable:

@@ -124,15 +124,15 @@ displayType : Ref Ctxt Defs
            => Ref Syn SyntaxInfo
            => Defs -> (Name, Int, GlobalDef) -> Core (Doc IdrisAnn)
 displayType defs (n, i, gdef) =
-  maybe (do tm <- resugar [] =<< normaliseHoles defs [] (type gdef)
+  maybe (do tm <- resugar Env.empty =<< normaliseHoles defs Env.empty (type gdef)
             pure (pretty0 !(aliasName (fullname gdef)) <++> colon <++> prettyTerm tm))
-        (\num => reAnnotate Syntax <$> prettyHole defs [] n num (type gdef))
+        (\num => reAnnotate Syntax <$> prettyHole defs Env.empty n num (type gdef))
         (isHole gdef)
 
 displayTerm : Ref Ctxt Defs
            => Ref Syn SyntaxInfo
            => Defs -> ClosedTerm -> Core (Doc IdrisAnn)
-displayTerm defs = map prettyTerm . (resugar [] <=< normaliseHoles defs [])
+displayTerm defs = map prettyTerm . (resugar Env.empty <=< normaliseHoles defs Env.empty)
 
 processSettings : Ref Ctxt Defs => Ref LSPConf LSPConfiguration => JSON -> Core ()
 processSettings (JObject xs) = do

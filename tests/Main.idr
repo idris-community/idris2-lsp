@@ -14,4 +14,4 @@ main = runner
   [ testPaths "lsp" allTests
   ] where
     testPaths : String -> TestPool -> TestPool
-    testPaths dir = record { testCases $= map ((dir ++ "/") ++) }
+    testPaths dir = { testCases $= map ((dir ++ "/") ++) }
