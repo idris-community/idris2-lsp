@@ -45,7 +45,7 @@ dropLams _ tm = tm
 
 dropLamsTm : {vars : _} -> Nat -> Env Term vars -> Term vars -> (vars' ** (Env Term vars', Term vars'))
 dropLamsTm Z env tm = (_ ** (env, tm))
-dropLamsTm (S k) env (Bind _ _ b sc) = dropLamsTm k (env :< b) sc
+dropLamsTm (S k) env (Bind _ _ b sc) = dropLamsTm k (Env.bind env b) sc
 dropLamsTm _ env tm = (_ ** (env, tm))
 
 buildCodeAction : Name -> URI -> Range -> String -> CodeAction
@@ -106,7 +106,7 @@ exprSearch' params hints = do
       [(n, nidx, PMDef pi [<] (STerm _ tm) _ _)] => case holeInfo pi of
         NotHole => logD ExprSearch "\{show name} is not a metavariable" >> pure []
         SolvedHole locs => do
-          (_ ** (env, tm')) <- dropLamsTm locs ScopeEmpty <$> normaliseHoles defs ScopeEmpty tm
+          (_ ** (env, tm')) <- dropLamsTm locs Env.empty <$> normaliseHoles defs Env.empty tm
           itm <- resugar env tm'
           pure [showPTerm itm]
       _ => logD ExprSearch "\{show name} is not a metavariable" >> pure []

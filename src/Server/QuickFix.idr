@@ -43,7 +43,7 @@ addMissingCases : Ref Ctxt Defs
                => String -> List ClosedTerm -> Nat -> Core String
 addMissingCases n [] k = pure ""
 addMissingCases n (x :: xs) k =
-  [| pure "\{!(pshow ScopeEmpty x)} = ?\{n}_missing_case_\{show k}\n" ++ addMissingCases n xs (S k) |]
+  [| pure "\{!(pshow Env.empty x)} = ?\{n}_missing_case_\{show k}\n" ++ addMissingCases n xs (S k) |]
 
 findBlankLine : List String -> Int -> Int
 findBlankLine [] acc = acc
