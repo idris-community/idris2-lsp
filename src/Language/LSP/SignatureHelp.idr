@@ -61,10 +61,10 @@ renderDataTypeInfo n d@(DCon tag arity newtypeArg) = do
         fullName <- getFullName rn
         case !(lookupDefName fullName context) of
           -- Render the TCon for this DCon
-          [(defName, _, tcon@(TCon _ _ _ _ _ _ _ _))] => renderDataTypeInfo defName tcon
+          [(defName, _, tcon@(TCon _ _ _ _ _ _ _))] => renderDataTypeInfo defName tcon
           _ => pure Nothing
       _ => pure Nothing
-renderDataTypeInfo n d@(TCon tag arity parampos detpos flags mutwith datacons detagabbleBy) = do
+renderDataTypeInfo n d@(TCon arity parampos detpos flags mutwith datacons detagabbleBy) = do
   -- Render the data structure information for the type.
   context <- gets Ctxt gamma
   constructors <- for (fromMaybe [] datacons) $ \dn => case !(lookupDefName dn context) of
