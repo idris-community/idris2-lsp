@@ -20,13 +20,13 @@ jobs:
       IDRIS2_TESTS_CG: chez
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Get Idris2 commit
         id: get-idris2-commit
         run: echo "idris2-commit=$(git rev-parse @:./Idris2)" >> $GITHUB_ENV
       - name: Cache Idris2 with API
         id: cache-idris2-with-api
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.idris2/
           key: ${{ env.idris2-commit }}-idris2-with-api
@@ -62,7 +62,7 @@ jobs:
       IDRIS2_TESTS_CG: chez
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Download Idris2 with API Artifact
         uses: actions/download-artifact@v4
         with:
