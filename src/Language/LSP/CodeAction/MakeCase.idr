@@ -30,7 +30,7 @@ isHole defs n = do
   Just def <- lookupCtxtExact n (gamma defs)
     | Nothing => pure False
   pure $ case definition def of
-    Hole _ _ => True
+    Hole {} => True
     _ => False
 
 export
