@@ -22,8 +22,8 @@ import Server.Log
 pShowMN : {vars : _} -> Term vars -> Env Term vars -> Doc IdrisAnn -> Doc IdrisAnn
 pShowMN (Local _ _ _ p) env acc =
   case dropAllNS (nameAt p) of
-       MN _ _ => acc <++> parens ("implicitly bound at" <++> pretty0 (getBinderLoc p env))
-       _      => acc
+       MN {} => acc <++> parens ("implicitly bound at" <++> pretty0 (getBinderLoc p env))
+       _     => acc
 pShowMN _ _ acc = acc
 
 pshow : {vars : _}
