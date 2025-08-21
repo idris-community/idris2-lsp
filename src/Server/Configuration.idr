@@ -47,8 +47,6 @@ record LSPConfiguration where
   ||| True if the client has completed the shutdown protocol.
   ||| @see https://microsoft.github.io/language-server-protocol/specifications/specification-3-16/#shutdown
   isShutdown : Bool
-  ||| The currently loaded file, if any, and its version.
-  openFile : Maybe (DocumentURI, Int)
   ||| Files with modification not saved. Command will fail on these files.
   dirtyFiles : SortedSet DocumentURI
   ||| Files with errors
@@ -71,6 +69,8 @@ record LSPConfiguration where
   virtualDocuments : SortedMap DocumentURI (Int, String) -- Version content
   ||| Insert only function name for completions
   briefCompletions : Bool
+  ||| Maybe specified path to the .ipkg file
+  ipkgPath : Maybe String
 
 ||| Server default configuration. Uses standard input and standard output for input/output.
 export
@@ -83,7 +83,6 @@ defaultConfig =
     , logSeverity             = Debug
     , initialized             = Nothing
     , isShutdown              = False
-    , openFile                = Nothing
     , dirtyFiles              = empty
     , errorFiles              = empty
     , semanticTokensSentFiles = empty
@@ -94,5 +93,6 @@ defaultConfig =
     , nextRequestId           = 0
     , completionCache         = empty
     , virtualDocuments        = empty
-    , briefCompletions       = False
+    , briefCompletions        = False
+    , ipkgPath                = Nothing
     }

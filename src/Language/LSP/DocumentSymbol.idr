@@ -60,13 +60,9 @@ documentSymbol : Ref Ctxt Defs
               => Ref LSPConf LSPConfiguration
               => DocumentSymbolParams -> Core (List SymbolInformation)
 documentSymbol params = do
-  logI DocumentSymbol "Making for \{show params.textDocument.uri}"
-  Just (uri, _) <- gets LSPConf openFile
-    | Nothing => logE DocumentSymbol "No open file" >> pure []
-  let True = uri == params.textDocument.uri
-    | False => do
-        logD DocumentSymbol "Expected request for the currently opened file \{show uri}, instead received \{show params.textDocument.uri}"
-        pure []
+  let uri = params.textDocument.uri
+  logI DocumentSymbol "Making for \{show uri}"
+
   defs <- get Ctxt
   -- Get the current and visible namespaces from the context
   let currentNamespaces = defs.currentNS :: defs.nestedNS

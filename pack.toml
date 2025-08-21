@@ -1,0 +1,17 @@
+[idris2]
+url   = "https://github.com/idris-lang/Idris2"
+commit  = "913b74960461be07d4cd3a82208f1a4e66113efb"
+
+[custom.all.lsp-lib]
+type        = "github"
+url         = "https://github.com/idris-community/lsp-lib"
+commit      = "ca77e80a392b8cfeee3aaeb150069957699cdb82"
+ipkg        = "lsp-lib.ipkg"
+packagePath = false
+
+
+[custom.all.idris2-lsp]
+type = "local"
+path = "."
+ipkg = "idris2-lsp.ipkg"
+packagePath = true
