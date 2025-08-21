@@ -52,7 +52,7 @@ record Metavar where
 
 showName : Name -> Bool
 showName (UN Underscore) = False
-showName (MN _ _) = False
+showName (MN {}) = False
 showName _ = True
 
 getUserHolesData : Ref Ctxt Defs
