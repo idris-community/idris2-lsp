@@ -180,23 +180,29 @@ processSettings (JObject xs) = do
          when (pp.showMachineNames /= b) $ do
            setPPrint ({ showMachineNames := b } pp)
            update LSPConf ({ cachedHovers := empty })
+         logI Configuration "Show machine names set to \{show b}"
        Just _ => logE Configuration "Incorrect type for show machine names, expected boolean"
        Nothing => pure ()
   case lookup "logSeverity" xs of
        Just (JString ll) =>
-         whenJust (parseSeverity ll) $ \l => update LSPConf ({ logSeverity := l})
+         case parseSeverity ll of
+           Just l => update LSPConf ({ logSeverity := l}) >> logI Configuration "Log severity set to \{show l}"
+           Nothing => logE Configuration "Incorrect string for log severity"
        Just _ => logE Configuration "Incorrect type for log severity, expected string"
        Nothing => pure ()
   case lookup "briefCompletions" xs of
-      Just (JBoolean b) => update LSPConf ({ briefCompletions := b})
+      Just (JBoolean b) => do
+        update LSPConf ({ briefCompletions := b})
+        logI Configuration "Brief completions set to \{show b}"
       _ => pure ()
   case lookup "ipkgPath" xs of
       Just (JString path) => do
-        logI Channel "Set .ipkg path to \{path}"
         update LSPConf ({ ipkgPath := Just path})
-      _ => do
-        logI Channel "Unset .ipkg path"
+        logI Channel "Ipkg path set to \{path}"
+      Just (JString "default") => do
         update LSPConf ({ ipkgPath := Nothing})
+        logI Channel "Ipkg path unset"
+      _ => pure ()
 processSettings _ = logE Configuration "Incorrect type for options"
 
 isDirty : Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
@@ -306,23 +312,25 @@ withURI : Ref LSPConf LSPConfiguration
        => Ref ROpts REPLOpts
        => InitializeParams
        -> URI -> Maybe Int -> Core (Either ResponseError a) -> Core (Either ResponseError a) -> Core (Either ResponseError a)
-withURI conf uri version d k = do
-  when !(isError uri) $ ignore $ logW Server "Trying to load \{show uri} which has errors" >> d
-  logI Channel "Loading metadata for file: \{show uri}"
-  clock0 <- coreLift (clockTime Monotonic)
-  let fpath = uriPathToSystemPath uri.path
-  setMainFile (Just fpath)
-  Right src <- coreLift $ File.ReadWrite.readFile fpath
-    | Left err => pure $ Left (MkResponseError RequestCancelled "Couldn't read the file source file" JNull)
-  setSource src
-  modIdent <- ctxtPathToNS fpath
-  mainttm <- getTTCFileName fpath "ttm"
-  [] <- catch ([] <$ readFromTTM mainttm) (\err => pure [err])
-   | _ => pure $ Left (MkResponseError RequestCancelled "Couldn't load TTM for the file" JNull)
-  clock1 <- coreLift (clockTime Monotonic)
-  let dif = timeDifference clock1 clock0
-  logI Channel "Loading metadata finished in \{show (toMillis (toNano dif))}ms"
-  k
+withURI conf uri version d k =
+  case !(isError uri) of
+    True => logI Server "Trying to load \{show uri} which has errors" >> d
+    False => do
+      logI Channel "Loading metadata for file: \{show uri}"
+      clock0 <- coreLift (clockTime Monotonic)
+      let fpath = uriPathToSystemPath uri.path
+      setMainFile (Just fpath)
+      Right src <- coreLift $ File.ReadWrite.readFile fpath
+        | Left err => pure $ Left (MkResponseError RequestCancelled "Couldn't read the file source file" JNull)
+      setSource src
+      modIdent <- ctxtPathToNS fpath
+      mainttm <- getTTCFileName fpath "ttm"
+      [] <- catch ([] <$ readFromTTM mainttm) (\err => pure [err])
+       | _ => pure $ Left (MkResponseError RequestCancelled "Couldn't load TTM for the file" JNull)
+      clock1 <- coreLift (clockTime Monotonic)
+      let dif = timeDifference clock1 clock0
+      logI Channel "Loading metadata finished in \{show (toMillis (toNano dif))}ms"
+      k
 
 ||| Guard for requests that requires a successful initialization before being allowed.
 whenInitializedRequest : Ref LSPConf LSPConfiguration => (InitializeParams -> Core (Either ResponseError a)) -> Core (Either ResponseError a)
