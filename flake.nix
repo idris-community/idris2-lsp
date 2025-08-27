@@ -29,6 +29,12 @@
       url = "github:idris-community/idris2-lsp";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.alejandra.follows = "alejandra";
+
+      # This stops the flake system from recursing over and over until the earliest idris2Lsp.
+      # It does that by breaking the recursion by introducing a **fake** idris2Lsp for the next
+      # level down. It will not break anything, since idris2Lsp doesn't use idris2Lsp to build
+      # itself, it is only here to be provided in the developer shell
+      inputs.idris2Lsp.follows = "nixpkgs";
     };
   };
 
