@@ -29,6 +29,13 @@
       url = "github:idris-community/idris2-lsp";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.alejandra.follows = "alejandra";
+
+      # break recursion
+      inputs.idris2Lsp.inputs.nixpkgs.follows = "nixpkgs";
+      inputs.idris2Lsp.inputs.idris.follows = "idris";
+      inputs.idris2Lsp.inputs.lspLib.follows = "lspLib";
+      inputs.idris2Lsp.inputs.alejandra.follows = "alejandra";
+      inputs.idris2Lsp.inputs.idris2Lsp.follows = "idris2Lsp";
     };
   };
 
