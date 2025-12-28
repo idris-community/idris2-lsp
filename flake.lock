@@ -106,11 +106,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1756810080,
-        "narHash": "sha256-CY3px/8GAwDL1cXDWY1TJh3h5WDVzC+giuTlcwrUhF4=",
+        "lastModified": 1765964722,
+        "narHash": "sha256-NBXSDN9oNXP7Q3SWocvMXdwQP+pAEOBnHLA0dBqnjVY=",
         "owner": "idris-lang",
         "repo": "Idris2",
-        "rev": "77f59382c39f1fe4cf209d5be6efa1350755e533",
+        "rev": "0e9b01d0400593fa99b320c56f6e77406a4eb968",
         "type": "github"
       },
       "original": {
@@ -122,15 +122,15 @@
     "idris-emacs-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1666078909,
-        "narHash": "sha256-oYNHFIpcrFfPb4sXJwEBFKeH+PB4AGCrAFrfBrSTCeo=",
-        "owner": "redfish64",
+        "lastModified": 1734683778,
+        "narHash": "sha256-8SIseFPHpdDO0uG3u65xJ0CHNfVu5O36meONZI7oorw=",
+        "owner": "idris-community",
         "repo": "idris2-mode",
-        "rev": "3bcb52a65c488f31c99d20f235f6050418a84c9d",
+        "rev": "5b4513692124de34aac13985bf48f756d9a8248f",
         "type": "github"
       },
       "original": {
-        "owner": "redfish64",
+        "owner": "idris-community",
         "repo": "idris2-mode",
         "type": "github"
       }
@@ -164,11 +164,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1755781462,
-        "narHash": "sha256-/DNfM6EyxsksvgerJLB4uFgKANGgYe60sNuDeWlDqqQ=",
+        "lastModified": 1757515244,
+        "narHash": "sha256-uYmg9Jd98RiO5SpRFox2xNAxY4nocPuK//zxuaIi/DM=",
         "owner": "idris-community",
         "repo": "idris2-lsp",
-        "rev": "10d7b1357be56e00c1be2cb3fdb78270a8172f50",
+        "rev": "81344545c134c8e7105ecf1fdd7a1caae6647035",
         "type": "github"
       },
       "original": {
@@ -196,11 +196,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1755029558,
-        "narHash": "sha256-PRbjCpqn47HUTd0DaEPU8V1aWGPei2l/mgmodKLUFSo=",
+        "lastModified": 1755781462,
+        "narHash": "sha256-/DNfM6EyxsksvgerJLB4uFgKANGgYe60sNuDeWlDqqQ=",
         "owner": "idris-community",
         "repo": "idris2-lsp",
-        "rev": "2e38e3ee05894c42ac581fddda2a90f3be8a664d",
+        "rev": "10d7b1357be56e00c1be2cb3fdb78270a8172f50",
         "type": "github"
       },
       "original": {
@@ -219,11 +219,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1755736001,
-        "narHash": "sha256-GfUyY3p9AcMbPiuAA2niKd6Mlf8S94uh4QcxxTRyp/k=",
+        "lastModified": 1756810080,
+        "narHash": "sha256-CY3px/8GAwDL1cXDWY1TJh3h5WDVzC+giuTlcwrUhF4=",
         "owner": "idris-lang",
         "repo": "Idris2",
-        "rev": "adfba5bf0fae917146325483dd25e1a95db033aa",
+        "rev": "77f59382c39f1fe4cf209d5be6efa1350755e533",
         "type": "github"
       },
       "original": {
@@ -289,11 +289,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1756838409,
-        "narHash": "sha256-WLmRAuWwgEwY1/hLLyukwpSJCeMrKJknjFH+nz69O0A=",
+        "lastModified": 1766945954,
+        "narHash": "sha256-y2HSblNCU+fMMngUvBpwcQrMGwwiwx8JkTTOvan5kdc=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "f7f6c96ea7b6d29510edf1482d62f62b1c141090",
+        "rev": "6d49d6c89073e30d3f95f2af5febdb1181bc8c5b",
         "type": "github"
       },
       "original": {
