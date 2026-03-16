@@ -47,6 +47,7 @@ import Language.LSP.Definition
 import Language.LSP.DocumentHighlight
 import Language.LSP.DocumentSymbol
 import Language.LSP.Message
+import Language.LSP.Message.DocumentFormatting
 import Language.LSP.Metavars
 import Language.LSP.SignatureHelp
 import Language.LSP.VirtualDocument
@@ -205,7 +206,6 @@ loadURI conf uri version = do
   logI Server "Loading file \{show uri}"
   defs <- get Ctxt
   let extraDirs = defs.options.dirs.extra_dirs
-  update LSPConf ({ openFile := Just (uri, fromMaybe 0 version) })
   update ROpts { evalResultName := Nothing }
   resetContext (Virtual Interactive)
   let fpath = uriPathToSystemPath uri.path
@@ -261,6 +261,7 @@ loadURI conf uri version = do
   put Ctxt ({ options->dirs->extra_dirs := extraDirs } defs)
   cNames <- completionNames
   update LSPConf ({completionCache $= insert uri cNames})
+  update LSPConf ({ openFile := Just (uri, fromMaybe 0 version) })
   pure $ Right ()
 
 loadIfNeeded : Ref LSPConf LSPConfiguration
@@ -332,6 +333,306 @@ whenNotShutdownNotification k =
 ||| whenInitializedNotification + whenNotShutdownNotification
 whenActiveNotification : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
 whenActiveNotification = whenNotShutdownNotification . whenInitializedNotification
+
+||| Format Idris2 source code.
+||| This is a syntax-based formatter that normalizes whitespace and indentation.
+||| 
+||| @options The formatting options from the client (tab size, insert spaces, etc.)
+||| @src The source code to format
+||| @isLiterate True if the source is Literate Idris (.lidr)
+||| @returns The formatted source code
+export
+formatIdrisSource : FormattingOptions -> String -> Bool -> String
+formatIdrisSource options src isLiterate =
+  -- Helper: Normalize line endings (Windows \r\n and old Mac \r to Unix \n)
+  let goLine : List Char -> List Char
+      goLine [] = []
+      goLine ('\r' :: '\n' :: xs) = '\n' :: goLine xs  -- CRLF -> LF
+      goLine ('\r' :: xs) = '\n' :: goLine xs  -- CR -> LF
+      goLine (c :: xs) = c :: goLine xs
+  
+      normalizedSrc = pack $ goLine (unpack src)
+      lineList : List String
+      lineList = lines normalizedSrc
+      
+      -- Step 2: Convert tabs to spaces if insertSpaces is true
+      tabSize : Nat
+      tabSize = cast options.tabSize
+      
+      convertIndent : String -> String
+      convertIndent line = 
+        if options.insertSpaces
+           then pack $ goTab (unpack line)
+           else line
+        where
+          goTab : List Char -> List Char
+          goTab [] = []
+          goTab ('\t' :: xs) = replicate tabSize ' ' ++ goTab xs
+          goTab (c :: xs) = c :: goTab xs
+      
+      -- Literate Idris: Only process lines starting with '>'
+      processLiterate : String -> String
+      processLiterate line =
+        if isPrefixOf ">" line
+           then ">" ++ processLine (substr 1 (length line) line)
+           else line
+        where
+          processLine : String -> String
+          processLine l =
+            let withIndent = convertIndent l
+                withTrim = if options.trimTrailingWhitespace == Just True
+                              then trimTrailing withIndent
+                              else withIndent
+             in withTrim
+          where
+            trimTrailing : String -> String
+            trimTrailing = pack . reverse . dropWhile isSpace . reverse . unpack
+      
+      passedIndent : List String
+      passedIndent = if isLiterate 
+                      then map processLiterate lineList
+                      else map convertIndent lineList
+      
+      -- Step 3: Trim trailing whitespace from each line if option is set
+      trimTrailingWS : String -> String
+      trimTrailingWS = pack . reverse . dropWhile isSpace . reverse . unpack
+
+      -- Collapse multiple consecutive interior spaces to one space.
+      -- Preserves leading indentation. Skips string literals and -- comments.
+      collapseInteriorSpaces : String -> String
+      collapseInteriorSpaces line =
+        let chars   = unpack line
+            leading = takeWhile isSpace chars
+            rest    = dropWhile isSpace chars
+         in pack (leading ++ collapseContent rest False)
+        where
+          collapseContent : List Char -> Bool -> List Char
+          collapseContent [] _ = []
+          collapseContent ('"' :: xs) inStr = '"' :: collapseContent xs (not inStr)
+          collapseContent ('\\' :: c :: xs) True = '\\' :: c :: collapseContent xs True
+          collapseContent ('-' :: '-' :: xs) False = '-' :: '-' :: xs
+          collapseContent (c :: xs) True = c :: collapseContent xs True
+          collapseContent (' ' :: ' ' :: xs) False = collapseContent (' ' :: xs) False
+          collapseContent (c :: xs) False = c :: collapseContent xs False
+
+      -- Ensure a space after commas (outside strings/char literals/comments).
+      -- Skips `,)`, `,]`, `,}` and already-spaced `, `.
+      -- Tracks both "..." strings and '...' char literals to avoid mangling them.
+      spaceAfterCommas : String -> String
+      spaceAfterCommas line = pack $ go (unpack line) False False
+        where
+          -- inStr: inside "..." | inChar: inside '...'
+          go : List Char -> (inStr : Bool) -> (inChar : Bool) -> List Char
+          go [] _ _ = []
+          -- String literal toggle
+          go ('"' :: xs) False inChar = '"' :: go xs True inChar
+          go ('"' :: xs) True  inChar = '"' :: go xs False inChar
+          go ('\\' :: c :: xs) True inChar = '\\' :: c :: go xs True inChar
+          -- Char literal: open, escape inside, close
+          go ('\'' :: xs) False False = '\'' :: go xs False True
+          go ('\\' :: c :: xs) False True = '\\' :: c :: go xs False True
+          go ('\'' :: xs) False True  = '\'' :: go xs False False
+          -- Line comment: pass rest verbatim (normal mode only)
+          go ('-' :: '-' :: xs) False False = '-' :: '-' :: xs
+          -- Inside string or char: pass verbatim
+          go (c :: xs) True  inChar = c :: go xs True inChar
+          go (c :: xs) False True   = c :: go xs False True
+          -- Comma in normal mode
+          go (',' :: c :: xs) False False =
+            if c == ' ' || c == ')' || c == ']' || c == '}'
+               then ',' :: go (c :: xs) False False
+               else ',' :: ' ' :: go (c :: xs) False False
+          go (',' :: []) False False = [',']
+          go (c :: xs) inStr inChar = c :: go xs inStr inChar
+
+      -- Ensure a single space after `--` in line comments.
+      -- Leaves `---` dividers and `--|` doc-style comments untouched.
+      spaceAfterLineComment : String -> String
+      spaceAfterLineComment line = pack $ go (unpack line) False
+        where
+          fixComment : List Char -> List Char
+          fixComment [] = []
+          fixComment (' ' :: xs) = ' ' :: xs   -- already spaced
+          fixComment ('-' :: xs) = '-' :: xs   -- divider ---
+          fixComment ('|' :: xs) = '|' :: xs   -- doc-style --|
+          fixComment cs          = ' ' :: cs   -- add space
+
+          go : List Char -> Bool -> List Char
+          go [] _ = []
+          go ('"' :: xs) inStr = '"' :: go xs (not inStr)
+          go ('\\' :: c :: xs) True = '\\' :: c :: go xs True
+          go (c :: xs) True = c :: go xs True
+          go ('-' :: '-' :: rest) False = '-' :: '-' :: fixComment rest
+          go (c :: xs) False = c :: go xs False
+
+      -- Ensure a space before and after ':' in type annotations.
+      -- Skips '::' (cons), ':=' (record update), already-spaced ': '.
+      -- Skips inside strings, char literals, and line comments.
+      spaceAroundColon : String -> String
+      spaceAroundColon line = pack $ go (unpack line) False False Nothing
+        where
+          go : List Char -> (inStr : Bool) -> (inChar : Bool) -> (prev : Maybe Char) -> List Char
+          go [] _ _ _ = []
+          go ('"' :: xs) False inChar _ = '"' :: go xs True  inChar (Just '"')
+          go ('"' :: xs) True  inChar _ = '"' :: go xs False inChar (Just '"')
+          go ('\\' :: c :: xs) True inChar _ = '\\' :: c :: go xs True inChar (Just c)
+          go ('\'' :: xs) False False _ = '\'' :: go xs False True  (Just '\'')
+          go ('\\' :: c :: xs) False True _ = '\\' :: c :: go xs False True (Just c)
+          go ('\'' :: xs) False True  _ = '\'' :: go xs False False (Just '\'')
+          go ('-' :: '-' :: xs) False False _ = '-' :: '-' :: xs
+          go (c :: xs) True  inChar _ = c :: go xs True  inChar (Just c)
+          go (c :: xs) False True   _ = c :: go xs False True  (Just c)
+          -- Skip :: (cons) and := (record update)
+          go (':' :: ':' :: xs) False False _ = ':' :: ':' :: go xs False False (Just ':')
+          go (':' :: '=' :: xs) False False _ = ':' :: '=' :: go xs False False (Just '=')
+          -- Single colon: ensure space before (from prev) and space after
+          go (':' :: rest) False False prev =
+            let before = case prev of
+                           Just c  => if c == ' ' then [] else [' ']
+                           Nothing => []
+                after  = case rest of
+                           (' ' :: _) => []
+                           []         => []
+                           _          => [' ']
+             in before ++ [':'] ++ after ++ go rest False False (Just ':')
+          go (c :: xs) inStr inChar _ = c :: go xs inStr inChar (Just c)
+
+      processLine : String -> String
+      processLine line =
+        let withTrim      = if options.trimTrailingWhitespace == Just True
+                               then trimTrailingWS line
+                               else line
+            withCollapsed = collapseInteriorSpaces withTrim
+            withCommas    = spaceAfterCommas withCollapsed
+            withColon     = spaceAroundColon withCommas
+            withComment   = spaceAfterLineComment withColon
+         in withComment
+      
+      -- For literate idris, we've already handled the lines
+      pass1 : List String
+      pass1 = if isLiterate then passedIndent else map processLine passedIndent
+
+      -- Step 4-8: Structural normalization (ONLY for non-literate files for now)
+      finalLines : List String
+      finalLines = if isLiterate
+                      then pass1
+                      else normalizeStructure pass1
+        where
+          normalizeStructure : List String -> List String
+          normalizeStructure linesInput =
+            let collapseBlanks : List String -> List String
+                collapseBlanks [] = []
+                collapseBlanks (x :: xs) = x :: go False xs
+                  where
+                    go : Bool -> List String -> List String
+                    go wasBlank [] = []
+                    go wasBlank (y :: ys) =
+                      let isBlank = trim y == ""
+                       in if isBlank && wasBlank
+                             then go True ys  -- skip consecutive blank
+                             else y :: go isBlank ys
+
+                dropWhileEnd : (a -> Bool) -> List a -> List a
+                dropWhileEnd p = reverse . dropWhile p . reverse
+
+                isModuleLine : String -> Bool
+                isModuleLine line = isPrefixOf "module" (trim line)
+                
+                ensureSingleBlank : List String -> List String
+                ensureSingleBlank [] = [""]
+                ensureSingleBlank (y :: ys) =
+                  if trim y == ""
+                     then "" :: ys  -- already blank
+                     else "" :: y :: ys  -- insert blank
+                
+                ensureModuleBlank : List String -> List String
+                ensureModuleBlank [] = []
+                ensureModuleBlank (x :: xs) =
+                  if isModuleLine x
+                     then x :: ensureSingleBlank xs
+                     else x :: xs
+
+                normalizeImports : List String -> List String
+                normalizeImports linesIn = go False [] linesIn
+                  where
+                    needBlankBeforeImports : List String -> Bool
+                    needBlankBeforeImports [] = False
+                    needBlankBeforeImports (y :: _) =
+                      not (isModuleLine y) && trim y /= ""
+                    
+                    go : Bool -> List String -> List String -> List String
+                    go inImports acc [] = 
+                      let acc' = if inImports then "" :: acc else acc
+                       in reverse acc'
+                    go inImports acc (x :: xs) =
+                      let isImport = isPrefixOf "import" (trim x)
+                          isBlank = trim x == ""
+                       in if isImport
+                             then
+                               let acc' = if not inImports && needBlankBeforeImports acc
+                                             then "" :: acc
+                                             else acc
+                                in go True (x :: acc') xs
+                             else if isBlank && inImports
+                                     then go True acc xs  -- skip blanks and STAY in import block
+                                     else
+                                       -- End of import block, add blank after
+                                       let acc' = if inImports then "" :: acc else acc
+                                        in go False (x :: acc') xs
+                                        
+                collapsed = collapseBlanks linesInput
+                trimmedLeading = dropWhile (\s => trim s == "") collapsed
+                trimmedTrailing = dropWhileEnd (\s => trim s == "") trimmedLeading
+                withModuleBlank = ensureModuleBlank trimmedTrailing
+                withImportSpacing = normalizeImports withModuleBlank
+             in withImportSpacing
+
+      -- Step 9: Check if we should add final newline
+      hadContent : Bool
+      hadContent = not (null finalLines)
+
+      -- Step 10: unlines always adds a trailing newline
+   in if hadContent then unlines finalLines else ""
+
+formatLine : FormattingOptions -> Bool -> String -> String
+formatLine options isLiterate line =
+  if isLiterate
+     then if isPrefixOf ">" line
+             then ">" ++ formatLine' (substr 1 (length line) line)
+             else line
+     else formatLine' line
+  where
+    formatLine' : String -> String
+    formatLine' l =
+      let goTab : Nat -> List Char -> List Char
+          goTab size [] = []
+          goTab size ('\t' :: xs) = replicate size ' ' ++ goTab size xs
+          goTab size (c :: xs) = c :: goTab size xs
+          
+          tabSize = integerToNat (cast options.tabSize)
+          withSpaces = if options.insertSpaces
+                          then pack $ goTab tabSize (unpack l)
+                          else l
+          trimTrailing : String -> String
+          trimTrailing = pack . reverse . dropWhile isSpace . reverse . unpack
+          withTrim = if options.trimTrailingWhitespace == Just True
+                        then trimTrailing withSpaces
+                        else withSpaces
+       in withTrim
+
+generateTextEdits' : Int -> List String -> List String -> List TextEdit
+generateTextEdits' startLine oldLines newLines = go startLine oldLines newLines
+  where
+    go : Int -> List String -> List String -> List TextEdit
+    go line [] [] = []
+    go line [] (n :: ns) = []
+    go line (o :: os) [] = []
+    go line (o :: os) (n :: ns) =
+      if o == n
+         then go (line + 1) os ns
+         else 
+           let range = MkRange (MkPosition line 0) (MkPosition line (cast $ length o))
+            in MkTextEdit range n :: go (line + 1) os ns
 
 export
 handleRequest :
@@ -505,6 +806,62 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
       tokens <- getSemanticTokens md getLineLength
       update LSPConf ({ semanticTokensSentFiles $= insert params.textDocument.uri tokens })
       pure $ pure $ (make $ tokens)
+
+handleRequest TextDocumentFormatting params = whenActiveRequest $ \conf => do
+  logI Channel "Received formatting request for \{show params.textDocument.uri}"
+  -- Formatting only needs the raw text; bypass withURI/loadIfNeeded so it
+  -- works on first save and on files with type errors.
+  let uri = params.textDocument.uri
+  Just (_, src) <- gets LSPConf (lookup uri . virtualDocuments)
+    | Nothing => do logW Formatting "No virtual document for \{show uri}, skipping format"
+                    pure $ pure $ make (the (List TextEdit) [])
+  let srcLines = lines src
+  let isLiterate = isSuffixOf ".lidr" uri.path
+  let formattedSrc = formatIdrisSource params.options src isLiterate
+  -- Replace the entire document with a single edit to avoid conflicting
+  -- sequential-apply issues (e.g. a line-content edit followed by a
+  -- newline-insert edit referencing the original column).
+  let numLines = cast (length srcLines)
+  let endPos = if isSuffixOf "\n" src
+                  then MkPosition numLines 0
+                  else MkPosition (numLines - 1) (cast $ maybe 0 length (last' srcLines))
+  let edits : List TextEdit = if src == formattedSrc
+                 then []
+                 else [MkTextEdit (MkRange (MkPosition 0 0) endPos) formattedSrc]
+  logD Formatting "Formatted document: generated \{show (length edits)} edits"
+  pure $ pure $ make edits
+
+handleRequest TextDocumentRangeFormatting params = whenActiveRequest $ \conf => do
+  logI Channel "Received range formatting request for \{show params.textDocument.uri}"
+  withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
+    src <- getSource
+    let srcLines = lines src
+    let startLine = params.range.start.line
+    let endLine = params.range.end.line
+    let relevantLines = take (integerToNat (cast $ endLine - startLine + 1)) (drop (integerToNat (cast startLine)) srcLines)
+    let isLiterate = isSuffixOf ".lidr" params.textDocument.uri.path
+    let formattedLines = map (formatLine params.options isLiterate) relevantLines
+    let edits = generateTextEdits' (cast startLine) relevantLines formattedLines
+    logD Formatting "Formatted range: generated \{show (length edits)} edits"
+    pure $ pure $ make edits
+
+handleRequest TextDocumentOnTypeFormatting params = whenActiveRequest $ \conf => do
+  logI Channel "Received on-type formatting request for \{show params.textDocument.uri}"
+  withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
+    src <- getSource
+    let srcLines = lines src
+    let lineNum = params.position.line - 1
+    let Just line = elemAt srcLines (integerToNat (cast lineNum))
+      | Nothing => pure $ pure $ make $ MkNull
+    let isLiterate = isSuffixOf ".lidr" params.textDocument.uri.path
+    let formatted = formatLine params.options isLiterate line
+    if formatted == line
+       then pure $ pure $ make $ MkNull
+       else do
+         let range = MkRange (MkPosition (cast lineNum) 0) (MkPosition (cast lineNum) (cast $ length line))
+         let edit : TextEdit = MkTextEdit range formatted
+         pure $ pure $ make (the (List TextEdit) [edit])
+
 handleRequest WorkspaceExecuteCommand
   (MkExecuteCommandParams partialResultToken "repl" (Just [json])) = whenActiveRequest $ \conf => do
     logI Channel "Received repl command request"

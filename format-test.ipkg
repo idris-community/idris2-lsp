@@ -1,0 +1,11 @@
+package format-test
+
+depends = idris2, contrib, lsp-lib
+
+sourcedir = "src"
+
+main = Server.FormatTest
+
+executable = format-test
+
+prebuild = "make src/Server/Generated.idr"

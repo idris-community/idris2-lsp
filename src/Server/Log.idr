@@ -28,6 +28,7 @@ data Topic
   | DocumentHighlight
   | DocumentSymbol
   | ExprSearch
+  | Formatting
   | GenerateDef
   | GenerateDefNext
   | GotoDefinition
@@ -56,6 +57,7 @@ Show Topic where
   show DocumentHighlight = "Request.DocumentHighlight"
   show DocumentSymbol = "Request.DocumentSymbol"
   show ExprSearch = "Request.CodeAction.ExprSearch"
+  show Formatting = "Request.Formatting"
   show GenerateDef = "Request.CodeAction.GenerateDef"
   show GenerateDefNext = "Request.CodeAction.GenerateDefNext"
   show GotoDefinition = "Request.GotoDefinition"

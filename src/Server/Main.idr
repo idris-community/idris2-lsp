@@ -31,7 +31,6 @@ import Server.ProcessMessage
 import Server.Response
 import Server.Utils
 import Server.Version
-import Idris.Version
 import System
 import System.Directory
 import System.File

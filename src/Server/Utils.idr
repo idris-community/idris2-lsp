@@ -114,3 +114,31 @@ toStart : FC -> FC
 toStart (MkFC f _ _) = MkFC f (0, 0) (0, 0)
 toStart (MkVirtualFC f _ _) = MkVirtualFC f (0, 0) (0, 0)
 toStart EmptyFC = EmptyFC
+
+||| Generate a list of TextEdits by comparing old and new lines.
+||| This is a simple line-based diff that works well for formatting.
+export
+generateTextEdits : List String -> List String -> List TextEdit
+generateTextEdits oldLines newLines =
+  let edits = go 0 oldLines newLines
+   in edits
+  where
+    go : Int -> List String -> List String -> List TextEdit
+    go line [] [] = []
+    -- Lines added at the end
+    go line [] (n :: ns) = 
+      let range = MkRange (MkPosition line 0) (MkPosition line 0)
+          text = if null ns then n else n ++ "\n"
+       in MkTextEdit range text :: go (line + 1) [] ns
+    -- Lines removed from the end
+    go line (o :: os) [] =
+      let range = MkRange (MkPosition line 0) (MkPosition (line + 1) 0)
+       in MkTextEdit range "" :: go (line + 1) os []
+    -- Compare existing lines
+    go line (o :: os) (n :: ns) =
+      if o == n
+         then go (line + 1) os ns
+         else 
+           let range = MkRange (MkPosition line 0) (MkPosition line (cast $ length o))
+            in MkTextEdit range n :: go (line + 1) os ns
+
