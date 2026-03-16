@@ -815,9 +815,9 @@ formatIdrisSourceImpl doStructural options src isLiterate =
                     needBlankBeforeImports (y :: _) =
                       not (isModuleLine y) && trim y /= ""
 
-                    -- Flush sorted imports into acc (acc is in reverse output order)
+                    -- Flush sorted, deduplicated imports into acc (acc is in reverse output order)
                     flushImports : List String -> List String -> List String
-                    flushImports importBuf acc = reverse (sort importBuf) ++ acc
+                    flushImports importBuf acc = reverse (nub (sort importBuf)) ++ acc
 
                     go : Bool -> List String -> List String -> List String -> List String
                     go inImports importBuf acc [] =
@@ -842,12 +842,74 @@ formatIdrisSourceImpl doStructural options src isLiterate =
                                                      else acc
                                         in go False [] (x :: acc') xs
                                         
+                -- Remove blank lines between a type signature and its definition.
+                -- Heuristic: if line x looks like "name : Type" and the next
+                -- non-blank line y starts with the same name at the same
+                -- indentation and looks like a definition (not another sig),
+                -- drop the blanks between them.
+                removeSigDefBlank : List String -> List String
+                removeSigDefBlank [] = []
+                removeSigDefBlank (x :: xs) =
+                  case getSigName x of
+                    Nothing => x :: removeSigDefBlank xs
+                    Just (ws, name) =>
+                      let (blanks, rest) = span (\s => trim s == "") xs
+                       in case rest of
+                            [] => x :: blanks
+                            (y :: ys) =>
+                              if isDefFor ws name y
+                                 then x :: removeSigDefBlank (y :: ys)
+                                 else x :: blanks ++ removeSigDefBlank rest
+                  where
+                    leadingWS : String -> String
+                    leadingWS = pack . takeWhile isSpace . unpack
+
+                    identChars : List Char -> List Char
+                    identChars = takeWhile (\c => isAlphaNum c || c == '_' || c == '\'')
+
+                    -- Keywords that start lines but are NOT type signatures
+                    sigKeywords : List String
+                    sigKeywords = [ "data ", "record ", "where", "let ", "module "
+                                  , "import ", "namespace ", "mutual", "interface "
+                                  , "implementation ", "covering ", "total "
+                                  , "partial ", "export ", "public ", "private "
+                                  , "using ", "parameters " ]
+
+                    getSigName : String -> Maybe (String, String)
+                    getSigName line =
+                      let ws      = leadingWS line
+                          trimmed = trim line
+                       in if any (`isPrefixOf` trimmed) sigKeywords || trimmed == ""
+                             then Nothing
+                             else
+                               let ident = identChars (unpack trimmed)
+                                   rest  = drop (length ident) (unpack trimmed)
+                                in if null ident then Nothing
+                                   else case rest of
+                                     (' ' :: ':' :: ' ' :: _) => Just (ws, pack ident)
+                                     _ => Nothing
+
+                    isDefFor : String -> String -> String -> Bool
+                    isDefFor ws name line =
+                      let lineWS  = leadingWS line
+                          trimmed = trim line
+                          ident   = pack $ identChars (unpack trimmed)
+                          after   = drop (length name) (unpack trimmed)
+                       in lineWS == ws && ident == name &&
+                          case after of
+                            []          => True
+                            (' ' :: _)  => True
+                            ('(' :: _)  => True  -- pattern arg
+                            ('{' :: _)  => True  -- implicit arg
+                            _ => False
+
                 collapsed = collapseBlanks linesInput
                 trimmedLeading = dropWhile (\s => trim s == "") collapsed
                 trimmedTrailing = dropWhileEnd (\s => trim s == "") trimmedLeading
                 withModuleBlank = ensureModuleBlank trimmedTrailing
                 withImportSpacing = normalizeImports withModuleBlank
-             in withImportSpacing
+                withSigDef = removeSigDefBlank withImportSpacing
+             in withSigDef
 
       -- Step 9: Check if we should add final newline
       hadContent : Bool

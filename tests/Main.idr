@@ -18,3 +18,4 @@ tryIt : Rec -> Rec
 tryIt (MkRec name) = ?tryIt_rhs_0
 
 someOther : String -> Nat
+someOther s = ?todo01

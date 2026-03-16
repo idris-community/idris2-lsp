@@ -358,6 +358,38 @@ main = do
   check "sorts imports without module declaration"
     "import Data.List\nimport Data.Vect\n\nfoo : Nat\n"
     (fmt "import Data.Vect\nimport Data.List\nfoo : Nat\n")
+  check "deduplicates imports"
+    "module Main\n\nimport Data.List\nimport Data.Vect\n\nfoo : Nat\n"
+    (fmt "module Main\n\nimport Data.List\nimport Data.List\nimport Data.Vect\nfoo : Nat\n")
+  check "deduplicates imports after sorting"
+    "module Main\n\nimport Data.List\nimport Data.Vect\n\nfoo : Nat\n"
+    (fmt "module Main\n\nimport Data.Vect\nimport Data.List\nimport Data.List\nfoo : Nat\n")
+
+  section "Type signature and definition cohesion"
+  check "removes blank between sig and def"
+    "foo : Nat\nfoo = 42\n"
+    (fmt "foo : Nat\n\nfoo = 42\n")
+  check "removes blank between sig and def with args"
+    "foo : Nat -> Nat\nfoo x = x + 1\n"
+    (fmt "foo : Nat -> Nat\n\nfoo x = x + 1\n")
+  check "removes blank between sig and def with pattern"
+    "foo : Maybe Nat -> Nat\nfoo (Just x) = x\n"
+    (fmt "foo : Maybe Nat -> Nat\n\nfoo (Just x) = x\n")
+  check "removes blank between sig and def with implicit"
+    "foo : { n : Nat } -> Nat\nfoo { n } = n\n"
+    (fmt "foo : {n : Nat} -> Nat\n\nfoo {n} = n\n")
+  check "does not remove blank between unrelated lines"
+    "foo : Nat\n\nbar : Nat\n"
+    (fmt "foo : Nat\n\nbar : Nat\n")
+  check "does not remove blank after data declaration"
+    "data Foo : Type\n\nfoo : Foo\n"
+    (fmt "data Foo : Type\n\nfoo : Foo\n")
+  check "preserves already-adjacent sig and def"
+    "foo : Nat\nfoo = 42\n"
+    (fmt "foo : Nat\nfoo = 42\n")
+  check "handles indented sig and def in where block"
+    "main : IO ()\nmain = pure ()\n  where\n    helper : Nat\n    helper = 0\n"
+    (fmt "main : IO ()\nmain = pure ()\n  where\n    helper : Nat\n\n    helper = 0\n")
 
   section "Range formatting (no structural normalization)"
   check "applies spacing rules to range"
