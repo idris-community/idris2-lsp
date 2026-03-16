@@ -335,15 +335,8 @@ whenActiveNotification : Ref LSPConf LSPConfiguration => (InitializeParams -> Co
 whenActiveNotification = whenNotShutdownNotification . whenInitializedNotification
 
 ||| Format Idris2 source code.
-||| This is a syntax-based formatter that normalizes whitespace and indentation.
-||| 
-||| @options The formatting options from the client (tab size, insert spaces, etc.)
-||| @src The source code to format
-||| @isLiterate True if the source is Literate Idris (.lidr)
-||| @returns The formatted source code
-export
-formatIdrisSource : FormattingOptions -> String -> Bool -> String
-formatIdrisSource options src isLiterate =
+formatIdrisSourceImpl : (doStructural : Bool) -> FormattingOptions -> String -> Bool -> String
+formatIdrisSourceImpl doStructural options src isLiterate =
   -- Helper: Normalize line endings (Windows \r\n and old Mac \r to Unix \n)
   let goLine : List Char -> List Char
       goLine [] = []
@@ -497,6 +490,260 @@ formatIdrisSource options src isLiterate =
              in before ++ [':'] ++ after ++ go rest False False (Just ':')
           go (c :: xs) inStr inChar _ = c :: go xs inStr inChar (Just c)
 
+      -- Ensure a space before and after '->' and '=>'.
+      -- Skips inside strings, char literals, and line comments.
+      -- Note: '--' is already caught as a line comment before '->' can match.
+      spaceAroundArrows : String -> String
+      spaceAroundArrows line = pack $ go (unpack line) False False Nothing
+        where
+          addSpaces : List Char -> Maybe Char -> List Char -> List Char -> List Char
+          addSpaces token prev rest continue =
+            let before = case prev of
+                           Just c  => if c == ' ' then [] else [' ']
+                           Nothing => []
+                after  = case rest of
+                           (' ' :: _) => []
+                           []         => []
+                           _          => [' ']
+             in before ++ token ++ after ++ continue
+
+          go : List Char -> (inStr : Bool) -> (inChar : Bool) -> (prev : Maybe Char) -> List Char
+          go [] _ _ _ = []
+          go ('"' :: xs) False inChar _ = '"' :: go xs True  inChar (Just '"')
+          go ('"' :: xs) True  inChar _ = '"' :: go xs False inChar (Just '"')
+          go ('\\' :: c :: xs) True inChar _ = '\\' :: c :: go xs True inChar (Just c)
+          go ('\'' :: xs) False False _ = '\'' :: go xs False True  (Just '\'')
+          go ('\\' :: c :: xs) False True _ = '\\' :: c :: go xs False True (Just c)
+          go ('\'' :: xs) False True  _ = '\'' :: go xs False False (Just '\'')
+          go ('-' :: '-' :: xs) False False _ = '-' :: '-' :: xs
+          go (c :: xs) True  inChar _ = c :: go xs True  inChar (Just c)
+          go (c :: xs) False True   _ = c :: go xs False True  (Just c)
+          -- -> arrow
+          go ('-' :: '>' :: rest) False False prev =
+            addSpaces ['-', '>'] prev rest (go rest False False (Just '>'))
+          -- => arrow
+          go ('=' :: '>' :: rest) False False prev =
+            addSpaces ['=', '>'] prev rest (go rest False False (Just '>'))
+          go (c :: xs) inStr inChar _ = c :: go xs inStr inChar (Just c)
+
+      -- Ensure spaces around '=' and '=='.
+      -- Skips: =>, <=, >=, /=, := (multi-char operators using =).
+      -- Skips inside strings, char literals, and line comments.
+      spaceAroundEquals : String -> String
+      spaceAroundEquals line = pack $ go (unpack line) False False Nothing
+        where
+          addSpaces : List Char -> Maybe Char -> List Char -> List Char -> List Char
+          addSpaces token prev rest continue =
+            let before = case prev of
+                           Just c  => if c == ' ' then [] else [' ']
+                           Nothing => []
+                after  = case rest of
+                           (' ' :: _) => []
+                           []         => []
+                           _          => [' ']
+             in before ++ token ++ after ++ continue
+
+          -- Is this char one that forms a multi-char operator with '='?
+          isOpChar : Char -> Bool
+          isOpChar c = c == '<' || c == '>' || c == '/' || c == ':' || c == '='
+
+          go : List Char -> (inStr : Bool) -> (inChar : Bool) -> (prev : Maybe Char) -> List Char
+          go [] _ _ _ = []
+          go ('"' :: xs) False inChar _ = '"' :: go xs True  inChar (Just '"')
+          go ('"' :: xs) True  inChar _ = '"' :: go xs False inChar (Just '"')
+          go ('\\' :: c :: xs) True inChar _ = '\\' :: c :: go xs True inChar (Just c)
+          go ('\'' :: xs) False False _ = '\'' :: go xs False True  (Just '\'')
+          go ('\\' :: c :: xs) False True _ = '\\' :: c :: go xs False True (Just c)
+          go ('\'' :: xs) False True  _ = '\'' :: go xs False False (Just '\'')
+          go ('-' :: '-' :: xs) False False _ = '-' :: '-' :: xs
+          go (c :: xs) True  inChar _ = c :: go xs True  inChar (Just c)
+          go (c :: xs) False True   _ = c :: go xs False True  (Just c)
+          -- == : handle as unit before single =
+          go ('=' :: '=' :: rest) False False prev =
+            addSpaces ['=', '='] prev rest (go rest False False (Just '='))
+          -- = followed by > (=>) or preceded by op char: skip
+          go ('=' :: '>' :: rest) False False prev =
+            '=' :: '>' :: go rest False False (Just '>')
+          go ('=' :: rest) False False (Just prev) =
+            if isOpChar prev
+               then '=' :: go rest False False (Just '=')  -- part of <=, >=, /=, :=
+               else addSpaces ['='] (Just prev) rest (go rest False False (Just '='))
+          go ('=' :: rest) False False Nothing =
+            addSpaces ['='] Nothing rest (go rest False False (Just '='))
+          go (c :: xs) inStr inChar _ = c :: go xs inStr inChar (Just c)
+
+      -- Ensure spaces around '|', '||', and '<-'.
+      -- '|||' doc comments are passed verbatim.
+      -- Skips inside strings, char literals, and line comments.
+      spaceAroundPipeAndBind : String -> String
+      spaceAroundPipeAndBind line = pack $ go (unpack line) False False Nothing
+        where
+          addSpaces : List Char -> Maybe Char -> List Char -> List Char -> List Char
+          addSpaces token prev rest continue =
+            let before = case prev of
+                           Just c  => if c == ' ' then [] else [' ']
+                           Nothing => []
+                after  = case rest of
+                           (' ' :: _) => []
+                           []         => []
+                           _          => [' ']
+             in before ++ token ++ after ++ continue
+
+          go : List Char -> (inStr : Bool) -> (inChar : Bool) -> (prev : Maybe Char) -> List Char
+          go [] _ _ _ = []
+          go ('"' :: xs) False inChar _ = '"' :: go xs True  inChar (Just '"')
+          go ('"' :: xs) True  inChar _ = '"' :: go xs False inChar (Just '"')
+          go ('\\' :: c :: xs) True inChar _ = '\\' :: c :: go xs True inChar (Just c)
+          go ('\'' :: xs) False False _ = '\'' :: go xs False True  (Just '\'')
+          go ('\\' :: c :: xs) False True _ = '\\' :: c :: go xs False True (Just c)
+          go ('\'' :: xs) False True  _ = '\'' :: go xs False False (Just '\'')
+          go ('-' :: '-' :: xs) False False _ = '-' :: '-' :: xs
+          go (c :: xs) True  inChar _ = c :: go xs True  inChar (Just c)
+          go (c :: xs) False True   _ = c :: go xs False True  (Just c)
+          -- ||| doc comment: pass rest verbatim
+          go ('|' :: '|' :: '|' :: xs) False False _ = '|' :: '|' :: '|' :: xs
+          -- || logical or
+          go ('|' :: '|' :: rest) False False prev =
+            addSpaces ['|', '|'] prev rest (go rest False False (Just '|'))
+          -- single |
+          go ('|' :: rest) False False prev =
+            addSpaces ['|'] prev rest (go rest False False (Just '|'))
+          -- <- do-notation bind
+          go ('<' :: '-' :: rest) False False prev =
+            addSpaces ['<', '-'] prev rest (go rest False False (Just '-'))
+          -- && logical and
+          go ('&' :: '&' :: rest) False False prev =
+            addSpaces ['&', '&'] prev rest (go rest False False (Just '&'))
+          -- ++ concatenation
+          go ('+' :: '+' :: rest) False False prev =
+            addSpaces ['+', '+'] prev rest (go rest False False (Just '+'))
+          go (c :: xs) inStr inChar _ = c :: go xs inStr inChar (Just c)
+
+      -- Ensure a space after '{' and before '}' in record literals/updates.
+      -- Skips '{}' (empty), '{-' (block comment start), and '-}' (block comment end).
+      -- Skips inside strings, char literals, and line comments.
+      spaceInsideBraces : String -> String
+      spaceInsideBraces line = pack $ go (unpack line) False False Nothing
+        where
+          go : List Char -> (inStr : Bool) -> (inChar : Bool) -> (prev : Maybe Char) -> List Char
+          go [] _ _ _ = []
+          go ('"' :: xs) False ic _ = '"' :: go xs True  ic (Just '"')
+          go ('"' :: xs) True  ic _ = '"' :: go xs False ic (Just '"')
+          go ('\\' :: c :: xs) True ic _ = '\\' :: c :: go xs True ic (Just c)
+          go ('\'' :: xs) False False _ = '\'' :: go xs False True  (Just '\'')
+          go ('\\' :: c :: xs) False True _ = '\\' :: c :: go xs False True (Just c)
+          go ('\'' :: xs) False True  _ = '\'' :: go xs False False (Just '\'')
+          go ('-' :: '-' :: xs) False False _ = '-' :: '-' :: xs
+          go (c :: xs) True  ic _ = c :: go xs True  ic (Just c)
+          go (c :: xs) False True  _ = c :: go xs False True  (Just c)
+          -- '{-' block comment start: no space
+          go ('{' :: '-' :: rest) False False _ =
+            '{' :: '-' :: go rest False False (Just '-')
+          -- '{}' empty braces: no space
+          go ('{' :: '}' :: rest) False False _ =
+            '{' :: '}' :: go rest False False (Just '}')
+          -- '{' followed by space: already spaced, skip the space to avoid double
+          go ('{' :: ' ' :: rest) False False _ =
+            '{' :: ' ' :: go rest False False (Just ' ')
+          -- '{' followed by other: add space
+          go ('{' :: rest) False False _ =
+            '{' :: ' ' :: go rest False False (Just '{')
+          -- '}': add space before unless already spaced or end of block comment '-}'
+          go ('}' :: rest) False False prev =
+            let needSpace = case prev of
+                              Just ' ' => False
+                              Just '-' => False  -- '-}' block comment end
+                              Nothing  => False
+                              _        => True
+             in (if needSpace then [' '] else []) ++ ('}' :: go rest False False (Just '}'))
+          go (c :: xs) is ic _ = c :: go xs is ic (Just c)
+
+      -- Ensure spaces around $ (function application operator).
+      -- Skips inside strings, char literals, and line comments.
+      spaceAroundDollar : String -> String
+      spaceAroundDollar line = pack $ go (unpack line) False False Nothing
+        where
+          addSpaces : Maybe Char -> List Char -> List Char -> List Char
+          addSpaces prev rest continue =
+            let before = case prev of { Just ' ' => []; Nothing => []; _ => [' '] }
+                after  = case rest  of { (' ' :: _) => []; [] => []; _ => [' '] }
+             in before ++ ['$'] ++ after ++ continue
+
+          go : List Char -> (inStr : Bool) -> (inChar : Bool) -> (prev : Maybe Char) -> List Char
+          go [] _ _ _ = []
+          go ('"' :: xs) False ic _ = '"' :: go xs True  ic (Just '"')
+          go ('"' :: xs) True  ic _ = '"' :: go xs False ic (Just '"')
+          go ('\\' :: c :: xs) True ic _ = '\\' :: c :: go xs True ic (Just c)
+          go ('\'' :: xs) False False _ = '\'' :: go xs False True  (Just '\'')
+          go ('\\' :: c :: xs) False True _ = '\\' :: c :: go xs False True (Just c)
+          go ('\'' :: xs) False True  _ = '\'' :: go xs False False (Just '\'')
+          go ('-' :: '-' :: xs) False False _ = '-' :: '-' :: xs
+          go (c :: xs) True  ic _ = c :: go xs True  ic (Just c)
+          go (c :: xs) False True  _ = c :: go xs False True  (Just c)
+          go ('$' :: rest) False False prev =
+            addSpaces prev rest (go rest False False (Just '$'))
+          go (c :: xs) is ic _ = c :: go xs is ic (Just c)
+
+      -- Ensure spaces around arithmetic and comparison operators: +, *, /, <, >.
+      -- Multi-char sequences already handled upstream (++, ->, <-, =>, <=, >=) are
+      -- passed through unchanged. - is skipped (unary/binary ambiguity).
+      -- Skips inside strings, char literals, and line comments.
+      spaceAroundArithmetic : String -> String
+      spaceAroundArithmetic line = pack $ go (unpack line) False False Nothing
+        where
+          addSpaces : List Char -> Maybe Char -> List Char -> List Char -> List Char
+          addSpaces token prev rest continue =
+            let before = case prev of { Just ' ' => []; Nothing => []; _ => [' '] }
+                after  = case rest  of { (' ' :: _) => []; [] => []; _ => [' '] }
+             in before ++ token ++ after ++ continue
+
+          go : List Char -> (inStr : Bool) -> (inChar : Bool) -> (prev : Maybe Char) -> List Char
+          go [] _ _ _ = []
+          go ('"' :: xs) False ic _ = '"' :: go xs True  ic (Just '"')
+          go ('"' :: xs) True  ic _ = '"' :: go xs False ic (Just '"')
+          go ('\\' :: c :: xs) True ic _ = '\\' :: c :: go xs True ic (Just c)
+          go ('\'' :: xs) False False _ = '\'' :: go xs False True  (Just '\'')
+          go ('\\' :: c :: xs) False True _ = '\\' :: c :: go xs False True (Just c)
+          go ('\'' :: xs) False True  _ = '\'' :: go xs False False (Just '\'')
+          go ('-' :: '-' :: xs) False False _ = '-' :: '-' :: xs
+          go (c :: xs) True  ic _ = c :: go xs True  ic (Just c)
+          go (c :: xs) False True  _ = c :: go xs False True  (Just c)
+          -- ++ already handled upstream; pass through
+          go ('+' :: '+' :: rest) False False _ = '+' :: '+' :: go rest False False (Just '+')
+          -- + single
+          go ('+' :: rest) False False prev =
+            addSpaces ['+'] prev rest (go rest False False (Just '+'))
+          -- - is skipped: unary vs binary is ambiguous (e.g. -1 vs x-y)
+          -- * single
+          go ('*' :: rest) False False prev =
+            addSpaces ['*'] prev rest (go rest False False (Just '*'))
+          -- / single; pass through /= unchanged
+          go ('/' :: '=' :: rest) False False _ = '/' :: '=' :: go rest False False (Just '=')
+          go ('/' :: rest) False False prev =
+            addSpaces ['/'] prev rest (go rest False False (Just '/'))
+          -- <- already spaced upstream; pass through so < is not re-spaced
+          go ('<' :: '-' :: rest) False False _ = '<' :: '-' :: go rest False False (Just '-')
+          -- <= comparison: add spaces around the pair
+          go ('<' :: '=' :: rest) False False prev =
+            addSpaces ['<', '='] prev rest (go rest False False (Just '='))
+          -- << shift: pass through
+          go ('<' :: '<' :: rest) False False _ = '<' :: '<' :: go rest False False (Just '<')
+          -- < single comparison
+          go ('<' :: rest) False False prev =
+            addSpaces ['<'] prev rest (go rest False False (Just '<'))
+          -- -> and => already spaced upstream; pass through so > is not re-spaced
+          go ('-' :: '>' :: rest) False False _ = '-' :: '>' :: go rest False False (Just '>')
+          go ('=' :: '>' :: rest) False False _ = '=' :: '>' :: go rest False False (Just '>')
+          -- >= comparison: add spaces around the pair
+          go ('>' :: '=' :: rest) False False prev =
+            addSpaces ['>', '='] prev rest (go rest False False (Just '='))
+          -- >> shift: pass through
+          go ('>' :: '>' :: rest) False False _ = '>' :: '>' :: go rest False False (Just '>')
+          -- > single comparison
+          go ('>' :: rest) False False prev =
+            addSpaces ['>'] prev rest (go rest False False (Just '>'))
+          go (c :: xs) is ic _ = c :: go xs is ic (Just c)
+
       processLine : String -> String
       processLine line =
         let withTrim      = if options.trimTrailingWhitespace == Just True
@@ -505,16 +752,24 @@ formatIdrisSource options src isLiterate =
             withCollapsed = collapseInteriorSpaces withTrim
             withCommas    = spaceAfterCommas withCollapsed
             withColon     = spaceAroundColon withCommas
-            withComment   = spaceAfterLineComment withColon
+            withArrows    = spaceAroundArrows withColon
+            withEquals    = spaceAroundEquals withArrows
+            withPipe      = spaceAroundPipeAndBind withEquals
+            withBraces    = spaceInsideBraces withPipe
+            withDollar    = spaceAroundDollar withBraces
+            withArith     = spaceAroundArithmetic withDollar
+            withComment   = spaceAfterLineComment withArith
          in withComment
       
       -- For literate idris, we've already handled the lines
       pass1 : List String
       pass1 = if isLiterate then passedIndent else map processLine passedIndent
 
-      -- Step 4-8: Structural normalization (ONLY for non-literate files for now)
+      -- Step 4-8: Structural normalization (ONLY for non-literate files, and
+      -- only when doStructural is True — range formatting skips this to avoid
+      -- affecting lines outside the selected range).
       finalLines : List String
-      finalLines = if isLiterate
+      finalLines = if isLiterate || not doStructural
                       then pass1
                       else normalizeStructure pass1
         where
@@ -594,45 +849,18 @@ formatIdrisSource options src isLiterate =
       -- Step 10: unlines always adds a trailing newline
    in if hadContent then unlines finalLines else ""
 
-formatLine : FormattingOptions -> Bool -> String -> String
-formatLine options isLiterate line =
-  if isLiterate
-     then if isPrefixOf ">" line
-             then ">" ++ formatLine' (substr 1 (length line) line)
-             else line
-     else formatLine' line
-  where
-    formatLine' : String -> String
-    formatLine' l =
-      let goTab : Nat -> List Char -> List Char
-          goTab size [] = []
-          goTab size ('\t' :: xs) = replicate size ' ' ++ goTab size xs
-          goTab size (c :: xs) = c :: goTab size xs
-          
-          tabSize = integerToNat (cast options.tabSize)
-          withSpaces = if options.insertSpaces
-                          then pack $ goTab tabSize (unpack l)
-                          else l
-          trimTrailing : String -> String
-          trimTrailing = pack . reverse . dropWhile isSpace . reverse . unpack
-          withTrim = if options.trimTrailingWhitespace == Just True
-                        then trimTrailing withSpaces
-                        else withSpaces
-       in withTrim
+||| Format an entire Idris source file, including structural normalization
+||| (blank line collapsing, module/import spacing).
+export
+formatIdrisSource : FormattingOptions -> String -> Bool -> String
+formatIdrisSource = formatIdrisSourceImpl True
 
-generateTextEdits' : Int -> List String -> List String -> List TextEdit
-generateTextEdits' startLine oldLines newLines = go startLine oldLines newLines
-  where
-    go : Int -> List String -> List String -> List TextEdit
-    go line [] [] = []
-    go line [] (n :: ns) = []
-    go line (o :: os) [] = []
-    go line (o :: os) (n :: ns) =
-      if o == n
-         then go (line + 1) os ns
-         else 
-           let range = MkRange (MkPosition line 0) (MkPosition line (cast $ length o))
-            in MkTextEdit range n :: go (line + 1) os ns
+||| Format a fragment of Idris source (e.g. a selected range), applying only
+||| per-line transforms without structural normalization that could affect
+||| lines outside the fragment.
+export
+formatIdrisSourceRange : FormattingOptions -> String -> Bool -> String
+formatIdrisSourceRange = formatIdrisSourceImpl False
 
 export
 handleRequest :
@@ -833,34 +1061,53 @@ handleRequest TextDocumentFormatting params = whenActiveRequest $ \conf => do
 
 handleRequest TextDocumentRangeFormatting params = whenActiveRequest $ \conf => do
   logI Channel "Received range formatting request for \{show params.textDocument.uri}"
-  withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
-    src <- getSource
-    let srcLines = lines src
-    let startLine = params.range.start.line
-    let endLine = params.range.end.line
-    let relevantLines = take (integerToNat (cast $ endLine - startLine + 1)) (drop (integerToNat (cast startLine)) srcLines)
-    let isLiterate = isSuffixOf ".lidr" params.textDocument.uri.path
-    let formattedLines = map (formatLine params.options isLiterate) relevantLines
-    let edits = generateTextEdits' (cast startLine) relevantLines formattedLines
-    logD Formatting "Formatted range: generated \{show (length edits)} edits"
-    pure $ pure $ make edits
+  let uri = params.textDocument.uri
+  Just (_, src) <- gets LSPConf (lookup uri . virtualDocuments)
+    | Nothing => do logW Formatting "No virtual document for \{show uri}, skipping range format"
+                    pure $ pure $ make (the (List TextEdit) [])
+  let srcLines = lines src
+  let startLine = cast {to = Nat} params.range.start.line
+  let endLine   = cast {to = Nat} params.range.end.line
+  -- Extract the lines in the selected range (inclusive)
+  let rangeLines = take (endLine `minus` startLine + 1) (drop startLine srcLines)
+  let rangeSrc   = unlines rangeLines
+  let isLiterate = isSuffixOf ".lidr" uri.path
+  let formattedSrc = formatIdrisSourceRange params.options rangeSrc isLiterate
+  -- Build a replacement edit covering exactly the selected lines.
+  -- End position: start of the line after endLine (i.e. endLine+1, col 0),
+  -- which includes the trailing newline of the last selected line.
+  let startPos = MkPosition (cast startLine) 0
+  let endPos   = MkPosition (cast (endLine + 1)) 0
+  let edits : List TextEdit = if rangeSrc == formattedSrc
+                 then []
+                 else [MkTextEdit (MkRange startPos endPos) formattedSrc]
+  logD Formatting "Formatted range [\{show startLine}-\{show endLine}]: generated \{show (length edits)} edits"
+  pure $ pure $ make edits
 
 handleRequest TextDocumentOnTypeFormatting params = whenActiveRequest $ \conf => do
   logI Channel "Received on-type formatting request for \{show params.textDocument.uri}"
-  withURI conf params.textDocument.uri Nothing (pure $ pure $ make $ MkNull) $ do
-    src <- getSource
-    let srcLines = lines src
-    let lineNum = params.position.line - 1
-    let Just line = elemAt srcLines (integerToNat (cast lineNum))
-      | Nothing => pure $ pure $ make $ MkNull
-    let isLiterate = isSuffixOf ".lidr" params.textDocument.uri.path
-    let formatted = formatLine params.options isLiterate line
-    if formatted == line
-       then pure $ pure $ make $ MkNull
-       else do
-         let range = MkRange (MkPosition (cast lineNum) 0) (MkPosition (cast lineNum) (cast $ length line))
-         let edit : TextEdit = MkTextEdit range formatted
-         pure $ pure $ make (the (List TextEdit) [edit])
+  let uri = params.textDocument.uri
+  Just (_, src) <- gets LSPConf (lookup uri . virtualDocuments)
+    | Nothing => do logW Formatting "No virtual document for \{show uri}, skipping on-type format"
+                    pure $ pure $ make $ MkNull
+  let srcLines = lines src
+  -- params.position is the cursor position after the typed character (\n),
+  -- so the line to format is the one before: position.line - 1
+  let lineNum = params.position.line - 1
+  let Just line = elemAt srcLines (integerToNat (cast lineNum))
+    | Nothing => pure $ pure $ make $ MkNull
+  let isLiterate = isSuffixOf ".lidr" uri.path
+  let formatted = formatIdrisSourceRange params.options (line ++ "\n") isLiterate
+  -- formatIdrisSourceRange returns the line with a trailing newline; strip it for comparison
+  let formattedLine = if isSuffixOf "\n" formatted
+                         then substr 0 (length formatted `minus` 1) formatted
+                         else formatted
+  if formattedLine == line
+     then pure $ pure $ make $ MkNull
+     else do
+       let range = MkRange (MkPosition (cast lineNum) 0) (MkPosition (cast lineNum) (cast $ length line))
+       let edit : TextEdit = MkTextEdit range formattedLine
+       pure $ pure $ make (the (List TextEdit) [edit])
 
 handleRequest WorkspaceExecuteCommand
   (MkExecuteCommandParams partialResultToken "repl" (Just [json])) = whenActiveRequest $ \conf => do

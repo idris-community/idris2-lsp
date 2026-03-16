@@ -25,6 +25,9 @@ check name expected got =
 fmt : String -> String
 fmt src = formatIdrisSource defaultOpts src False
 
+fmtRange : String -> String
+fmtRange src = formatIdrisSourceRange defaultOpts src False
+
 section : String -> IO ()
 section name = putStrLn "\n-- \{name} --"
 
@@ -104,6 +107,210 @@ main = do
     "x = ':'\n"
     (fmt "x = ':'\n")
 
+  section "Equals spacing"
+  check "adds spaces around = in definition"
+    "foo x = x\n"
+    (fmt "foo x=x\n")
+  check "does not double-space already correct ="
+    "foo x = x\n"
+    (fmt "foo x = x\n")
+  check "adds spaces around =="
+    "x == y\n"
+    (fmt "x==y\n")
+  check "does not mangle <="
+    "x <= y\n"
+    (fmt "x <= y\n")
+  check "does not mangle >="
+    "x >= y\n"
+    (fmt "x >= y\n")
+  check "does not mangle /="
+    "x /= y\n"
+    (fmt "x /= y\n")
+  check "does not mangle :="
+    "{ field := 42 }\n"
+    (fmt "{ field := 42 }\n")
+  check "does not mangle => (arrow already handled)"
+    "Just x => x\n"
+    (fmt "Just x => x\n")
+  check "does not mangle = inside string"
+    "x = \"a=b\"\n"
+    (fmt "x = \"a=b\"\n")
+  check "does not mangle = inside char literal"
+    "x = '='\n"
+    (fmt "x = '='\n")
+  check "adds spaces around = in let binding"
+    "let x = 5\n"
+    (fmt "let x=5\n")
+
+  section "Brace spacing"
+  check "adds spaces inside braces in record literal"
+    "{ field = val }\n"
+    (fmt "{field = val}\n")
+  check "does not double-space already correct braces"
+    "{ field = val }\n"
+    (fmt "{ field = val }\n")
+  check "adds space after { only"
+    "{ field = val }\n"
+    (fmt "{ field = val}\n")
+  check "adds space before } only"
+    "{ field = val }\n"
+    (fmt "{field = val }\n")
+  check "does not mangle empty braces"
+    "{}\n"
+    (fmt "{}\n")
+  check "does not mangle block comment {- -}"
+    "{- comment -}\n"
+    (fmt "{- comment -}\n")
+  check "does not mangle braces inside string"
+    "x = \"{field}\"\n"
+    (fmt "x = \"{field}\"\n")
+
+  section "Pipe and bind spacing"
+  check "adds spaces around | in sum type"
+    "data Foo = A | B | C\n"
+    (fmt "data Foo = A|B|C\n")
+  check "does not double-space already correct |"
+    "data Foo = A | B\n"
+    (fmt "data Foo = A | B\n")
+  check "adds spaces around || logical or"
+    "x || y\n"
+    (fmt "x||y\n")
+  check "does not mangle ||| doc comment"
+    "||| This is a doc comment\n"
+    (fmt "||| This is a doc comment\n")
+  check "adds spaces around <- bind"
+    "x <- getLine\n"
+    (fmt "x<-getLine\n")
+  check "does not double-space already correct <-"
+    "x <- getLine\n"
+    (fmt "x <- getLine\n")
+  check "does not mangle | inside string"
+    "x = \"a|b\"\n"
+    (fmt "x = \"a|b\"\n")
+  check "does not mangle | inside char literal"
+    "x = '|'\n"
+    (fmt "x = '|'\n")
+  check "adds spaces around && logical and"
+    "x && y\n"
+    (fmt "x&&y\n")
+  check "does not double-space already correct &&"
+    "x && y\n"
+    (fmt "x && y\n")
+  check "adds spaces around ++ concatenation"
+    "xs ++ ys\n"
+    (fmt "xs++ys\n")
+  check "does not double-space already correct ++"
+    "xs ++ ys\n"
+    (fmt "xs ++ ys\n")
+  check "does not mangle && inside string"
+    "x = \"a&&b\"\n"
+    (fmt "x = \"a&&b\"\n")
+  check "does not mangle ++ inside string"
+    "x = \"a++b\"\n"
+    (fmt "x = \"a++b\"\n")
+
+  section "Arrow spacing"
+  check "adds spaces around ->"
+    "Nat -> Nat\n"
+    (fmt "Nat->Nat\n")
+  check "adds space before ->"
+    "Nat -> Nat\n"
+    (fmt "Nat ->Nat\n")
+  check "adds space after ->"
+    "Nat -> Nat\n"
+    (fmt "Nat-> Nat\n")
+  check "does not double-space already correct ->"
+    "Nat -> Nat\n"
+    (fmt "Nat -> Nat\n")
+  check "adds spaces around => in case"
+    "Just x => x\n"
+    (fmt "Just x=>x\n")
+  check "adds spaces around => in lambda"
+    "\\x => x\n"
+    (fmt "\\x=>x\n")
+  check "does not mangle -> inside string"
+    "x = \"a->b\"\n"
+    (fmt "x = \"a->b\"\n")
+  check "does not mangle -> inside char literal"
+    "x = '>'\n"
+    (fmt "x = '>'\n")
+  check "handles chain of arrows"
+    "Nat -> Nat -> Nat\n"
+    (fmt "Nat->Nat->Nat\n")
+
+  section "Dollar spacing"
+  check "adds spaces around $ operator"
+    "f $ g x\n"
+    (fmt "f$g x\n")
+  check "does not double-space already correct $"
+    "f $ g x\n"
+    (fmt "f $ g x\n")
+  check "does not mangle $ inside string"
+    "x = \"a$b\"\n"
+    (fmt "x = \"a$b\"\n")
+  check "does not mangle $ inside char literal"
+    "x = '$'\n"
+    (fmt "x = '$'\n")
+
+  section "Arithmetic spacing"
+  check "adds spaces around +"
+    "x + y\n"
+    (fmt "x+y\n")
+  check "does not double-space already correct +"
+    "x + y\n"
+    (fmt "x + y\n")
+  check "does not mangle ++"
+    "xs ++ ys\n"
+    (fmt "xs++ys\n")
+  check "does not mangle - (skipped: unary ambiguity)"
+    "x = -1\n"
+    (fmt "x = -1\n")
+  check "adds spaces around *"
+    "x * y\n"
+    (fmt "x*y\n")
+  check "does not double-space already correct *"
+    "x * y\n"
+    (fmt "x * y\n")
+  check "adds spaces around /"
+    "x / y\n"
+    (fmt "x/y\n")
+  check "does not double-space already correct /"
+    "x / y\n"
+    (fmt "x / y\n")
+  check "does not mangle /="
+    "x /= y\n"
+    (fmt "x /= y\n")
+  check "does not mangle + inside string"
+    "x = \"a+b\"\n"
+    (fmt "x = \"a+b\"\n")
+  check "adds spaces around <"
+    "x < y\n"
+    (fmt "x<y\n")
+  check "does not double-space already correct <"
+    "x < y\n"
+    (fmt "x < y\n")
+  check "does not mangle <-"
+    "x <- getLine\n"
+    (fmt "x<-getLine\n")
+  check "adds spaces around <="
+    "x <= y\n"
+    (fmt "x<=y\n")
+  check "adds spaces around >"
+    "x > y\n"
+    (fmt "x>y\n")
+  check "does not double-space already correct >"
+    "x > y\n"
+    (fmt "x > y\n")
+  check "adds spaces around >="
+    "x >= y\n"
+    (fmt "x>=y\n")
+  check "does not mangle < inside string"
+    "x = \"a<b\"\n"
+    (fmt "x = \"a<b\"\n")
+  check "does not mangle > inside string"
+    "x = \"a>b\"\n"
+    (fmt "x = \"a>b\"\n")
+
   section "Comment spacing"
   check "adds space after -- in comment"
     "foo -- a comment\n"
@@ -139,5 +346,28 @@ main = do
   check "blank line after import block"
     "module Main\n\nimport Data.List\n\nfoo : Nat\n"
     (fmt "module Main\n\nimport Data.List\nfoo : Nat\n")
+
+  section "Range formatting (no structural normalization)"
+  check "applies spacing rules to range"
+    "foo : Nat\n"
+    (fmtRange "foo:Nat\n")
+  check "does not collapse blank lines in range"
+    "foo : Nat\n\n\nbar : String\n"
+    (fmtRange "foo : Nat\n\n\nbar : String\n")
+  check "does not remove leading blank lines in range"
+    "\n\nfoo : Nat\n"
+    (fmtRange "\n\nfoo : Nat\n")
+  check "does not add blank after module declaration in range"
+    "module Main\nfoo : Nat\n"
+    (fmtRange "module Main\nfoo : Nat\n")
+  check "does not add blank after import block in range"
+    "import Data.List\nfoo : Nat\n"
+    (fmtRange "import Data.List\nfoo : Nat\n")
+  check "still trims trailing whitespace in range"
+    "foo : Nat\n"
+    (fmtRange "foo : Nat   \n")
+  check "still spaces operators in range"
+    "x + y\n"
+    (fmtRange "x+y\n")
 
   putStrLn "\nDone."
