@@ -808,18 +808,23 @@ formatIdrisSourceImpl doStructural options src isLiterate =
                      else x :: xs
 
                 normalizeImports : List String -> List String
-                normalizeImports linesIn = go False [] linesIn
+                normalizeImports linesIn = go False [] [] linesIn
                   where
                     needBlankBeforeImports : List String -> Bool
                     needBlankBeforeImports [] = False
                     needBlankBeforeImports (y :: _) =
                       not (isModuleLine y) && trim y /= ""
-                    
-                    go : Bool -> List String -> List String -> List String
-                    go inImports acc [] = 
-                      let acc' = if inImports then "" :: acc else acc
-                       in reverse acc'
-                    go inImports acc (x :: xs) =
+
+                    -- Flush sorted imports into acc (acc is in reverse output order)
+                    flushImports : List String -> List String -> List String
+                    flushImports importBuf acc = reverse (sort importBuf) ++ acc
+
+                    go : Bool -> List String -> List String -> List String -> List String
+                    go inImports importBuf acc [] =
+                      if inImports
+                         then reverse ("" :: flushImports importBuf acc)
+                         else reverse acc
+                    go inImports importBuf acc (x :: xs) =
                       let isImport = isPrefixOf "import" (trim x)
                           isBlank = trim x == ""
                        in if isImport
@@ -827,13 +832,15 @@ formatIdrisSourceImpl doStructural options src isLiterate =
                                let acc' = if not inImports && needBlankBeforeImports acc
                                              then "" :: acc
                                              else acc
-                                in go True (x :: acc') xs
+                                in go True (x :: importBuf) acc' xs
                              else if isBlank && inImports
-                                     then go True acc xs  -- skip blanks and STAY in import block
+                                     then go True importBuf acc xs  -- skip blanks, stay in block
                                      else
-                                       -- End of import block, add blank after
-                                       let acc' = if inImports then "" :: acc else acc
-                                        in go False (x :: acc') xs
+                                       -- End of import block: flush sorted imports, add blank after
+                                       let acc' = if inImports
+                                                     then "" :: flushImports importBuf acc
+                                                     else acc
+                                        in go False [] (x :: acc') xs
                                         
                 collapsed = collapseBlanks linesInput
                 trimmedLeading = dropWhile (\s => trim s == "") collapsed

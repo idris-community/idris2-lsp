@@ -346,6 +346,18 @@ main = do
   check "blank line after import block"
     "module Main\n\nimport Data.List\n\nfoo : Nat\n"
     (fmt "module Main\n\nimport Data.List\nfoo : Nat\n")
+  check "sorts imports alphabetically"
+    "module Main\n\nimport Data.List\nimport Data.String\nimport Data.Vect\n\nfoo : Nat\n"
+    (fmt "module Main\n\nimport Data.Vect\nimport Data.List\nimport Data.String\nfoo : Nat\n")
+  check "preserves already-sorted imports"
+    "module Main\n\nimport Data.List\nimport Data.String\n\nfoo : Nat\n"
+    (fmt "module Main\n\nimport Data.List\nimport Data.String\nfoo : Nat\n")
+  check "sorts imports with blank lines in block"
+    "module Main\n\nimport Data.List\nimport Data.String\nimport Data.Vect\n\nfoo : Nat\n"
+    (fmt "module Main\n\nimport Data.Vect\nimport Data.List\n\nimport Data.String\nfoo : Nat\n")
+  check "sorts imports without module declaration"
+    "import Data.List\nimport Data.Vect\n\nfoo : Nat\n"
+    (fmt "import Data.Vect\nimport Data.List\nfoo : Nat\n")
 
   section "Range formatting (no structural normalization)"
   check "applies spacing rules to range"

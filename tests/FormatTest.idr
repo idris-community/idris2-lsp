@@ -1,7 +1,8 @@
 ||| Standalone test for formatIdrisSource function
-||| Run with: idris2 --exec main FormatTest.idr
+||| Run with : idris2 -- exec main FormatTest.idr
 module Main
 
+import Data.Nat
 import Data.String
 
 ||| Simplified formatting options
