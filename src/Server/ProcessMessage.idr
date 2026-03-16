@@ -658,6 +658,31 @@ formatIdrisSourceImpl doStructural options src isLiterate =
              in (if needSpace then [' '] else []) ++ ('}' :: go rest False False (Just '}'))
           go (c :: xs) is ic _ = c :: go xs is ic (Just c)
 
+      -- Remove trailing commas before '}' in record literals/updates.
+      -- e.g. "{ field = val, }" -> "{ field = val }"
+      -- Skips inside strings, char literals, and line comments.
+      removeTrailingComma : String -> String
+      removeTrailingComma line = pack $ go (unpack line) False False
+        where
+          go : List Char -> (inStr : Bool) -> (inChar : Bool) -> List Char
+          go [] _ _ = []
+          go ('"' :: xs) False ic = '"' :: go xs True  ic
+          go ('"' :: xs) True  ic = '"' :: go xs False ic
+          go ('\\' :: c :: xs) True  ic = '\\' :: c :: go xs True  ic
+          go ('\'' :: xs) False False = '\'' :: go xs False True
+          go ('\\' :: c :: xs) False True = '\\' :: c :: go xs False True
+          go ('\'' :: xs) False True  = '\'' :: go xs False False
+          go ('-' :: '-' :: xs) False False = '-' :: '-' :: xs
+          go (c :: xs) True  ic = c :: go xs True  ic
+          go (c :: xs) False True  = c :: go xs False True
+          -- Trailing comma: ',' followed by optional spaces then '}'
+          go (',' :: rest) False False =
+            let afterSpaces = dropWhile (== ' ') rest
+             in case afterSpaces of
+                  ('}' :: _) => go rest False False  -- skip the comma
+                  _          => ',' :: go rest False False
+          go (c :: xs) is ic = c :: go xs is ic
+
       -- Ensure spaces around $ (function application operator).
       -- Skips inside strings, char literals, and line comments.
       spaceAroundDollar : String -> String
@@ -756,7 +781,8 @@ formatIdrisSourceImpl doStructural options src isLiterate =
             withEquals    = spaceAroundEquals withArrows
             withPipe      = spaceAroundPipeAndBind withEquals
             withBraces    = spaceInsideBraces withPipe
-            withDollar    = spaceAroundDollar withBraces
+            withNoTrail   = removeTrailingComma withBraces
+            withDollar    = spaceAroundDollar withNoTrail
             withArith     = spaceAroundArithmetic withDollar
             withComment   = spaceAfterLineComment withArith
          in withComment

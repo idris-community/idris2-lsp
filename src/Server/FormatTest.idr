@@ -238,6 +238,26 @@ main = do
     "Nat -> Nat -> Nat\n"
     (fmt "Nat->Nat->Nat\n")
 
+  section "Trailing comma removal"
+  check "removes trailing comma in record literal"
+    "{ field = val }\n"
+    (fmt "{ field = val, }\n")
+  check "removes trailing comma without space before }"
+    "{ field = val }\n"
+    (fmt "{ field = val,}\n")
+  check "removes trailing comma in record update"
+    "{ x := 1, y := 2 }\n"
+    (fmt "{ x := 1, y := 2, }\n")
+  check "does not remove non-trailing comma"
+    "{ x = 1, y = 2 }\n"
+    (fmt "{ x = 1, y = 2 }\n")
+  check "does not mangle comma inside string"
+    "x = \"a,}\"\n"
+    (fmt "x = \"a,}\"\n")
+  check "does not mangle empty braces"
+    "{}\n"
+    (fmt "{}\n")
+
   section "Dollar spacing"
   check "adds spaces around $ operator"
     "f $ g x\n"
