@@ -7,6 +7,8 @@ import Core.Metadata
 
 import Language.JSON
 import Language.LSP.Message
+import Libraries.Data.Version
+import Server.Version
 
 %default total
 
@@ -94,6 +96,10 @@ documentLinkOptions = MkDocumentLinkOptions
   , resolveProvider  = Nothing
   }
 
+documentFormattingOptions = MkDocumentFormattingOptions
+  { workDoneProgress = Just False
+  }
+
 executeCommandOptions = MkExecuteCommandOptions
   { workDoneProgress = Nothing
   , commands         = ["repl", "exprSearchWithHints", "refineHoleWithHints", "metavars"]
@@ -130,16 +136,16 @@ serverCapabilities = MkServerCapabilities
   , declarationProvider              = Just $ make False
   , typeDefinitionProvider           = Just $ make False
   , implementationProvider           = Just $ make False
-  , referencesProvider               = Just $ make False
+  , referencesProvider               = Just $ make True
   , documentHighlightProvider        = Just $ make True
   , documentSymbolProvider           = Just $ make documentSymbolOptions
   , codeActionProvider               = Just $ make codeActionOptions
   , codeLensProvider                 = Just codeLensOptions
   , documentLinkProvider             = Just documentLinkOptions
   , colorProvider                    = Just $ make False
-  , documentFormattingProvider       = Just $ make False
-  , documentRangeFormattingProvider  = Just $ make False
-  , documentOnTypeFormattingProvider = Nothing
+  , documentFormattingProvider       = Just $ make documentFormattingOptions
+  , documentRangeFormattingProvider  = Just $ make True
+  , documentOnTypeFormattingProvider = Just $ MkDocumentOnTypeFormattingOptions '\n' Nothing
   , renameProvider                   = Just $ make False
   , foldingRangeProvider             = Just $ make False
   , executeCommandProvider           = Just executeCommandOptions
@@ -156,4 +162,4 @@ serverCapabilities = MkServerCapabilities
 ||| Server information to be sent to clients during the initialization protocol.
 export
 serverInfo : ServerInfo
-serverInfo = MkServerInfo { name = "idris2-lsp", version = Just "0.1" }
+serverInfo = MkServerInfo { name = "idris2-lsp", version = Just (showVersion True version) }
