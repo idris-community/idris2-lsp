@@ -3,20 +3,21 @@
 ||| (C) The Idris Community, 2021
 module Server.Main
 
+import Compiler.Common
 import Core.Context
 import Core.Core
 import Core.Directory
 import Core.InitPrimitives
 import Core.Metadata
 import Core.UnifyState
-import Compiler.Common
 import Data.List1
+import Data.SortedSet
 import Data.String
 import Idris.CommandLine
 import Idris.Env
-import Idris.REPL.Opts
-import Idris.REPL.Common
 import Idris.Package.Types
+import Idris.REPL.Common
+import Idris.REPL.Opts
 import Idris.SetOptions
 import Idris.Syntax
 import Idris.Version
@@ -39,18 +40,18 @@ data Header = ContentLength Int | ContentType String | StartContent
 
 Show Header where
   show (ContentLength l) = "Content-Length: " ++ show l
-  show (ContentType s) = "Content-Type: " ++ s
-  show StartContent = "stop"
+  show (ContentType s)   = "Content-Type: " ++ s
+  show StartContent      = "stop"
 
 headerPart : List Header -> String
-headerPart [] = ""
+headerPart []                      = ""
 headerPart (ContentLength l :: xs) = "Content-Length: " ++ show l ++ headerLineEnd ++ headerPart xs
-headerPart (ContentType s :: xs) = "Content-Type: " ++ s ++ headerLineEnd ++ headerPart xs
-headerPart (StartContent :: _) = headerLineEnd
+headerPart (ContentType s :: xs)   = "Content-Type: " ++ s ++ headerLineEnd ++ headerPart xs
+headerPart (StartContent :: _)     = headerLineEnd
 
 parseHeader : String -> Maybe Header
 parseHeader "\r\n" = Just StartContent
-parseHeader str =
+parseHeader str    =
   if "Content-Length:" `isPrefixOf` str
      then let (_ ::: xs) = split (== ':') str in
               ContentLength <$> parseInteger (fastConcat xs)
@@ -64,10 +65,10 @@ parseHeaderPart h = do
   Right line <- coreLift $ fGetHeader h
     | Left err => pure $ Left err
   case parseHeader line of
-    Just (ContentLength l) => parseHeaderPart h *> pure (Right (Just l))
-    Just (ContentType s) => parseHeaderPart h
-    Just StartContent => pure $ Right Nothing
-    Nothing => pure $ Right Nothing
+    Just (ContentLength l) => parseHeaderPart h *>pure (Right (Just l))
+    Just (ContentType s)   => parseHeaderPart h
+    Just StartContent      => pure $ Right Nothing
+    Nothing                => pure $ Right Nothing
 
 handleMessage : Ref LSPConf LSPConfiguration
             => Ref Ctxt Defs
@@ -103,36 +104,55 @@ handleMessage = do
     Just methodJSON => do -- request or notification
       case lookup "id" fields of
         Just idJSON => do -- request
-          let Just id = fromJSON {a=OneOf [Int, String]} idJSON
+          let Just id = fromJSON { a = OneOf [Int, String] } idJSON
             | _ => do logE Channel "Message id is not of the correct type"
                       sendUnknownResponseMessage (invalidRequest "id is not int or string")
-          let Just method = fromJSON {a=Method Client Request} methodJSON
+          let Just method = fromJSON { a = Method Client Request } methodJSON
             | _ => do logE Channel "Method not found"
                       sendResponseMessage Initialize $ Failure (extend id) methodNotFound
-          logI Channel "Received request for method \{show (toJSON method)}"
-          let Just params = fromMaybeJSONParameters method (lookup "params" fields)
-            | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
-                      sendResponseMessage method $ Failure (extend id) (invalidParams "Invalid params for send \{show methodJSON}")
-          -- handleRequest can be modified to use a callback if needed
-          result <- catch (handleRequest method params) $ \err => do
-            logE Server "Error while handling request: \{show err}"
-            resetContext (Virtual Interactive)
-            pure $ Left (MkResponseError (Custom 4) (show err) JNull)
-          sendResponseMessage method $ case result of
-            Left error => Failure (extend id) error
-            Right result => Success (extend id) result
+          -- Check if this request was already cancelled
+          let idStr = stringify idJSON
+          cancelled <- gets LSPConf cancelledRequests
+          if Data.SortedSet.contains idStr cancelled
+             then do logI Channel "Skipping cancelled request \{idStr} for method \{show (toJSON method)}"
+                     update LSPConf ({ cancelledRequests $=delete idStr })
+                     sendResponseMessage method $ Failure (extend id) (MkResponseError RequestCancelled "Request cancelled" JNull)
+             else do
+               logI Channel "Received request for method \{show (toJSON method)}"
+               let Just params = fromMaybeJSONParameters method (lookup "params" fields)
+                 | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
+                           sendResponseMessage method $ Failure (extend id) (invalidParams "Invalid params for send \{show methodJSON}")
+               result <- catch (handleRequest method params) $ \err => do
+                 logE Server "Error while handling request: \{show err}"
+                 resetContext (Virtual Interactive)
+                 pure $ Left (MkResponseError (Custom 4) (show err) JNull)
+               sendResponseMessage method $ case result of
+                 Left error   => Failure (extend id) error
+                 Right result => Success (extend id) result
 
         Nothing => do -- notification
-          let Just method = fromJSON {a=Method Client Notification} methodJSON
-            | _ => do logE Channel "Method not found"
-                      sendUnknownResponseMessage methodNotFound
-          logI Channel "Received notification for method \{show (toJSON method)}"
-          let Just params = fromMaybeJSONParameters method (lookup "params" fields)
-            | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
-                      sendUnknownResponseMessage $ invalidParams "Invalid params for send \{show methodJSON}"
-          catch (handleNotification method params) $ \err => do
-            logE Server "Error while handling notification: \{show err}"
-            resetContext (Virtual Interactive)
+          -- Handle $/cancelRequest specially
+          let methodStr = stringify methodJSON
+          if methodStr == "\"$/cancelRequest\""
+             then case lookup "params" fields of
+                    Just (JObject ps) => case lookup "id" ps of
+                      Just cancelId => do
+                        let idStr = stringify cancelId
+                        logI Channel "Received cancel request for id \{idStr}"
+                        update LSPConf ({ cancelledRequests $=insert idStr })
+                      Nothing => logW Channel "Cancel request missing id parameter"
+                    _ => logW Channel "Cancel request has invalid params"
+             else do
+               let Just method = fromJSON { a = Method Client Notification } methodJSON
+                 | _ => do logE Channel "Method not found"
+                           sendUnknownResponseMessage methodNotFound
+               logI Channel "Received notification for method \{show (toJSON method)}"
+               let Just params = fromMaybeJSONParameters method (lookup "params" fields)
+                 | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
+                           sendUnknownResponseMessage $ invalidParams "Invalid params for send \{show methodJSON}"
+               catch (handleNotification method params) $ \err => do
+                 logE Server "Error while handling notification: \{show err}"
+                 resetContext (Virtual Interactive)
 
     Nothing => do -- response
       let Just idJSON = lookup "id" fields
@@ -158,24 +178,24 @@ startServer =
               addPrimitives
               bprefix <- coreLift $ idrisGetEnv "IDRIS2_PREFIX"
               the (Core ()) $ case bprefix of
-                   Just p => setPrefix p
+                   Just p  => setPrefix p
                    Nothing => setPrefix yprefix
               bpath <- coreLift $ idrisGetEnv "IDRIS2_PATH"
               the (Core ()) $ case bpath of
-                   Just path => do traverseList1_ addExtraDir (map trim (split (==pathSeparator) path))
-                   Nothing => pure ()
+                   Just path => do traverseList1_ addExtraDir (map trim (split ( == pathSeparator) path))
+                   Nothing   => pure ()
               bdata <- coreLift $ idrisGetEnv "IDRIS2_DATA"
               the (Core ()) $ case bdata of
-                   Just path => do traverseList1_ addDataDir (map trim (split (==pathSeparator) path))
-                   Nothing => pure ()
+                   Just path => do traverseList1_ addDataDir (map trim (split ( == pathSeparator) path))
+                   Nothing   => pure ()
               blibs <- coreLift $ idrisGetEnv "IDRIS2_LIBS"
               the (Core ()) $ case blibs of
-                   Just path => do traverseList1_ addLibDir (map trim (split (==pathSeparator) path))
-                   Nothing => pure ()
+                   Just path => do traverseList1_ addLibDir (map trim (split ( == pathSeparator) path))
+                   Nothing   => pure ()
               pdirs <- coreLift $ idrisGetEnv "IDRIS2_PACKAGE_PATH"
               the (Core ()) $ case pdirs of
-                   Just path => do traverseList1_ addPackageSearchPath (map trim (split (==pathSeparator) path))
-                   Nothing => pure ()
+                   Just path => do traverseList1_ addPackageSearchPath (map trim (split ( == pathSeparator) path))
+                   Nothing   => pure ()
               cg <- coreLift $ idrisGetEnv "IDRIS2_CG"
               the (Core ()) $ case cg of
                    Just e => case getCG (options defs) e of
@@ -185,8 +205,8 @@ startServer =
               addPackageSearchPath !pkgGlobalDirectory
               addPkgDir "prelude" anyBounds
               addPkgDir "base" anyBounds
-              addDataDir (prefix_dir (dirs (options defs)) </> ("idris2-" ++ showVersion False Idris.Version.version) </> "support")
-              addLibDir (prefix_dir (dirs (options defs)) </> ("idris2-" ++ showVersion False Idris.Version.version) </> "lib")
+              addDataDir (prefix_dir (dirs (options defs)) </>("idris2-" ++ showVersion False Idris.Version.version) </>"support")
+              addLibDir (prefix_dir (dirs (options defs)) </>("idris2-" ++ showVersion False Idris.Version.version) </>"lib")
               Just cwd <- coreLift $ currentDir
                 | Nothing => throw (InternalError "Can't get current directory")
               addLibDir cwd
@@ -196,7 +216,7 @@ startServer =
               u <- newRef UST initUState
               m <- newRef MD (initMetadata (Virtual Interactive))
               runServer)
-    (\err => fPutStrLn stderr ("CRITICAL UNCAUGHT ERROR " ++ show err) *> exitWith (ExitFailure 1))
+    (\err => fPutStrLn stderr ("CRITICAL UNCAUGHT ERROR " ++ show err) *>exitWith (ExitFailure 1))
     (\res => pure ())
 
 printVersion : IO ()
@@ -210,5 +230,5 @@ main = do
     | _ => putStrLn "Invalid command line"
   case args of
     ["--version"] => printVersion
-    [] => startServer
-    _ => putStrLn "Invalid Arguments"
+    []            => startServer
+    _             => putStrLn "Invalid Arguments"

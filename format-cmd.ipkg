@@ -1,0 +1,11 @@
+package format-cmd
+
+depends = idris2, contrib, lsp-lib
+
+sourcedir = "src"
+
+main = Server.FormatCmd
+
+executable = idris2-fmt
+
+prebuild = "make src/Server/Generated.idr"

@@ -51,7 +51,7 @@ Run `make install` to install the server, by default it will be placed in the sa
 The server provides support for some go to commands, e.g. go to definition, however to reach modules declared in other packages you must install packages with `idris2 --install-with-src` instead of `idris2 --install`. To access the standard library run `make install-with-src-libs` after building the compiler and `make install-with-src-api` if you also want to access to the `idris2api` package.
 
 ## Configuration options
-Server options that can be set via the `initializationOptions` object in the initialization message:
+Server options that can be set via the `initializationOptions` object in the initialization message or via `workspace/didChangeConfiguration`:
 
 |Option key|Type|Description|
 |----------|----|-----------|
@@ -62,6 +62,75 @@ Server options that can be set via the `initializationOptions` object in the ini
 |`showImplicits`|`boolean`|Show implicits in hovers|
 |`showMachineNames`|`boolean`|Show machine names in hovers|
 |`fullNamespace`|`boolean`|Show full namespace in hovers|
+|`briefCompletions`|`boolean`|Insert only the function name on completion (default: false)|
+|`perLineFormatting`|`boolean`|Enable per-line formatting: spacing, trailing whitespace, etc. (default: true)|
+|`structuralFormatting`|`boolean`|Enable structural formatting: blank lines, import sorting, sig+def cohesion (default: true)|
+|`alignmentFormatting`|`boolean`|Enable alignment formatting: case arms, def `=`, record fields, data `\|` (default: true)|
+|`operatorSpacingOps`|`string[]` or `null`|Operators to space around (default: `["$"]`). Set to `null` or `[]` to disable. See below.|
+
+### Operator spacing
+
+The formatter adds spaces around a configurable list of operators. The default is `["$"]` (the function application operator), which is safe for all Idris2 code.
+
+The `operatorSpacingOps` option accepts a JSON array of operator strings. Operators are matched with word-boundary checks — a match is skipped when the character immediately before or after the operator is itself an operator character. This prevents `<$>`, `$=`, `$>`, `*>`, `</>` from being broken when `$` or `/` are in the list.
+
+**Disable operator spacing entirely:**
+```json
+{ "operatorSpacingOps": null }
+```
+or
+```json
+{ "operatorSpacingOps": [] }
+```
+
+**Use only the default `$` spacing (explicit):**
+```json
+{ "operatorSpacingOps": ["$"] }
+```
+
+**Add arithmetic and comparison operators:**
+```json
+{ "operatorSpacingOps": ["$", "+", "*", "/", "<=", ">="] }
+```
+> **Note:** Arithmetic operators like `+` can produce false positives (e.g. `(+1)` → `( + 1)`). Enable them only if your codebase benefits.
+
+**Neovim (`idris2-nvim`) example:**
+```lua
+require('idris2').setup({
+  server = {
+    init_options = {
+      operatorSpacingOps = { "$" }  -- default; use {} to disable
+    }
+  }
+})
+```
+
+**VSCode (`idris2-lsp-vscode`) example** — add to your `settings.json`:
+```json
+"idris2.initializationOptions": {
+  "operatorSpacingOps": ["$"]
+}
+```
+
+### `idris2-fmt` command-line formatter
+
+The standalone formatter binary (`~/.idris2/bin/idris2-fmt`) accepts the same operator list via flags:
+
+```bash
+# Default (only $)
+idris2-fmt < MyFile.idr
+
+# Custom operator list
+idris2-fmt --ops "$,+,*,/" < MyFile.idr
+
+# Disable all operator spacing
+idris2-fmt --no-ops < MyFile.idr
+
+# Other flags
+idris2-fmt --no-structural --no-alignment --no-per-line < MyFile.idr
+idris2-fmt --range < fragment.idr    # range/on-type mode (no structural)
+idris2-fmt --literate < MyFile.lidr
+```
 
 ## Code Actions Filters
 As per specification, client can filter requested code actions with the `context.only` field in the request parameters.

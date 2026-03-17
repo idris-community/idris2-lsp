@@ -5,12 +5,12 @@ import Server.ProcessMessage
 
 defaultOpts : FormattingOptions
 defaultOpts = MkFormattingOptions
-  { tabSize                = 4
-  , insertSpaces           = True
+  { tabSize = 4
+  , insertSpaces = True
   , trimTrailingWhitespace = Just True
-  , insertFinalNewline     = Just True
-  , trimFinalNewlines      = Nothing
-  , other                  = []
+  , insertFinalNewline = Just True
+  , trimFinalNewlines = Nothing
+  , other = []
   }
 
 check : String -> String -> String -> IO ()
@@ -22,11 +22,21 @@ check name expected got =
        putStrLn "  expected: \{show expected}"
        putStrLn "  got:      \{show got}"
 
+defaultOps : List (List Char)
+defaultOps = [unpack "$"]
+
+-- Arithmetic ops for testing configurable operator spacing
+arithmeticOps : List (List Char)
+arithmeticOps = map unpack ["<=", ">=", "++", "+", "*", "/"]
+
 fmt : String -> String
-fmt src = formatIdrisSource defaultOpts src False
+fmt src = formatIdrisSource True True True defaultOps defaultOpts src False
+
+fmtOps : List (List Char) -> String -> String
+fmtOps ops src = formatIdrisSource True True True ops defaultOpts src False
 
 fmtRange : String -> String
-fmtRange src = formatIdrisSourceRange defaultOpts src False
+fmtRange src = formatIdrisSourceRange True defaultOps defaultOpts src False
 
 section : String -> IO ()
 section name = putStrLn "\n-- \{name} --"
@@ -166,10 +176,10 @@ main = do
     (fmt "x = \"{field}\"\n")
 
   section "Pipe and bind spacing"
-  check "adds spaces around | in sum type"
-    "data Foo = A | B | C\n"
+  check "single | left as-is (custom operators)"
+    "data Foo = A|B|C\n"
     (fmt "data Foo = A|B|C\n")
-  check "does not double-space already correct |"
+  check "preserves already spaced |"
     "data Foo = A | B\n"
     (fmt "data Foo = A | B\n")
   check "adds spaces around || logical or"
@@ -272,57 +282,73 @@ main = do
     "x = '$'\n"
     (fmt "x = '$'\n")
 
-  section "Arithmetic spacing"
-  check "adds spaces around +"
+  section "Arithmetic spacing (configurable, off by default)"
+  -- These operators are NOT spaced by default; they require explicit configuration.
+  check "adds spaces around + (with arithmetic ops)"
     "x + y\n"
+    (fmtOps arithmeticOps "x+y\n")
+  check "does not space + by default (not in default ops)"
+    "x+y\n"
     (fmt "x+y\n")
   check "does not double-space already correct +"
     "x + y\n"
-    (fmt "x + y\n")
+    (fmtOps arithmeticOps "x + y\n")
   check "does not mangle ++"
     "xs ++ ys\n"
     (fmt "xs++ys\n")
   check "does not mangle - (skipped: unary ambiguity)"
     "x = -1\n"
     (fmt "x = -1\n")
-  check "adds spaces around *"
+  check "adds spaces around * (with arithmetic ops)"
     "x * y\n"
+    (fmtOps arithmeticOps "x*y\n")
+  check "does not space * by default"
+    "x*y\n"
     (fmt "x*y\n")
   check "does not double-space already correct *"
     "x * y\n"
-    (fmt "x * y\n")
-  check "adds spaces around /"
+    (fmtOps arithmeticOps "x * y\n")
+  check "adds spaces around / (with arithmetic ops)"
     "x / y\n"
+    (fmtOps arithmeticOps "x/y\n")
+  check "does not space / by default"
+    "x/y\n"
     (fmt "x/y\n")
   check "does not double-space already correct /"
     "x / y\n"
-    (fmt "x / y\n")
+    (fmtOps arithmeticOps "x / y\n")
   check "does not mangle /="
     "x /= y\n"
     (fmt "x /= y\n")
   check "does not mangle + inside string"
     "x = \"a+b\"\n"
     (fmt "x = \"a+b\"\n")
-  check "adds spaces around <"
-    "x < y\n"
+  check "single < left as-is (custom operators)"
+    "x<y\n"
     (fmt "x<y\n")
-  check "does not double-space already correct <"
+  check "preserves already spaced <"
     "x < y\n"
     (fmt "x < y\n")
   check "does not mangle <-"
     "x <- getLine\n"
     (fmt "x<-getLine\n")
-  check "adds spaces around <="
+  check "adds spaces around <= (with arithmetic ops)"
     "x <= y\n"
+    (fmtOps arithmeticOps "x<=y\n")
+  check "does not space <= by default"
+    "x<=y\n"
     (fmt "x<=y\n")
-  check "adds spaces around >"
-    "x > y\n"
+  check "single > left as-is (custom operators)"
+    "x>y\n"
     (fmt "x>y\n")
-  check "does not double-space already correct >"
+  check "preserves already spaced >"
     "x > y\n"
     (fmt "x > y\n")
-  check "adds spaces around >="
+  check "adds spaces around >= (with arithmetic ops)"
     "x >= y\n"
+    (fmtOps arithmeticOps "x>=y\n")
+  check "does not space >= by default"
+    "x>=y\n"
     (fmt "x>=y\n")
   check "does not mangle < inside string"
     "x = \"a<b\"\n"
@@ -330,6 +356,16 @@ main = do
   check "does not mangle > inside string"
     "x = \"a>b\"\n"
     (fmt "x = \"a>b\"\n")
+  -- Verify compound operators not broken by arithmetic ops config
+  check "does not mangle <$> with arithmetic ops"
+    "val = f <$> xs\n"
+    (fmtOps arithmeticOps "val = f <$> xs\n")
+  check "does not mangle *> with arithmetic ops"
+    "seq = a *> b\n"
+    (fmtOps arithmeticOps "seq = a *> b\n")
+  check "does not mangle </> with arithmetic ops"
+    "path = a </> b\n"
+    (fmtOps arithmeticOps "path = a </> b\n")
 
   section "Comment spacing"
   check "adds space after -- in comment"
@@ -411,6 +447,152 @@ main = do
     "main : IO ()\nmain = pure ()\n  where\n    helper : Nat\n    helper = 0\n"
     (fmt "main : IO ()\nmain = pure ()\n  where\n    helper : Nat\n\n    helper = 0\n")
 
+  section "Doc comment attachment"
+  check "removes blank between doc comment and sig"
+    "||| A number\nfoo : Nat\nfoo = 42\n"
+    (fmt "||| A number\n\nfoo : Nat\nfoo = 42\n")
+  check "removes blank between doc comment and def"
+    "||| A number\nfoo : Nat\nfoo = 42\n"
+    (fmt "||| A number\n\nfoo : Nat\n\nfoo = 42\n")
+  check "removes blank between consecutive doc comments"
+    "||| Line one\n||| Line two\nfoo : Nat\n"
+    (fmt "||| Line one\n\n||| Line two\n\nfoo : Nat\n")
+  check "adds blank before doc comment when needed"
+    "bar = 0\n\n||| A number\nfoo : Nat\n"
+    (fmt "bar = 0\n||| A number\nfoo : Nat\n")
+  check "preserves already-attached doc comment"
+    "||| A number\nfoo : Nat\nfoo = 42\n"
+    (fmt "||| A number\nfoo : Nat\nfoo = 42\n")
+
+  section "Blank line between top-level definitions"
+  check "adds blank between consecutive defs"
+    "foo : Nat\nfoo = 42\n\nbar : Nat\nbar = 0\n"
+    (fmt "foo : Nat\nfoo = 42\nbar : Nat\nbar = 0\n")
+  check "does not double blank already-separated defs"
+    "foo : Nat\nfoo = 42\n\nbar : Nat\nbar = 0\n"
+    (fmt "foo : Nat\nfoo = 42\n\nbar : Nat\nbar = 0\n")
+  check "adds blank after multi-line def"
+    "foo x =\n  x + 1\n\nbar : Nat\n"
+    (fmt "foo x =\n  x + 1\nbar : Nat\n")
+  check "does not add blank between sig and def"
+    "foo : Nat\nfoo = 42\n"
+    (fmt "foo : Nat\nfoo = 42\n")
+  check "adds blank between def and next sig"
+    "foo = 42\n\nbar : Nat\nbar = 0\n"
+    (fmt "foo = 42\nbar : Nat\nbar = 0\n")
+  check "adds blank after data declaration"
+    "data Foo = A | B\n\nfoo : Foo\nfoo = A\n"
+    (fmt "data Foo = A | B\nfoo : Foo\nfoo = A\n")
+
+  section "Case arm alignment"
+  check "aligns => in case arms"
+    "case x of\n  Just y  => y\n  Nothing => 0\n"
+    (fmt "case x of\n  Just y => y\n  Nothing => 0\n")
+  check "does not change already-aligned arms"
+    "case x of\n  Just y  => y\n  Nothing => 0\n"
+    (fmt "case x of\n  Just y  => y\n  Nothing => 0\n")
+  check "aligns three arms"
+    "case x of\n  Just (Just y) => y\n  Just Nothing  => 0\n  Nothing       => 1\n"
+    (fmt "case x of\n  Just (Just y) => y\n  Just Nothing => 0\n  Nothing => 1\n")
+  check "does not align top-level => (must be indented)"
+    "Just x => x\n"
+    (fmt "Just x => x\n")
+  check "does not align arms separated by blank line"
+    "case x of\n  Just y => y\n\n  Nothing => 0\n"
+    (fmt "case x of\n  Just y => y\n\n  Nothing => 0\n")
+  check "does not mangle => inside string"
+    "x = \"a=>b\"\n"
+    (fmt "x = \"a=>b\"\n")
+
+  section "Definition = alignment"
+  check "aligns simple function clauses"
+    "foo x   = x + 1\nfoo bar = bar\n"
+    (fmt "foo x = x + 1\nfoo bar = bar\n")
+  check "aligns where-block bindings"
+    "  x   = 1\n  foo = 2\n"
+    (fmt "  x = 1\n  foo = 2\n")
+  check "single definition not padded"
+    "foo x = x\n"
+    (fmt "foo x = x\n")
+  check "does not align across blank line"
+    "foo x = x\n\nbar = 1\n"
+    (fmt "foo x = x\n\nbar = 1\n")
+  check "does not align data constructor lines"
+    "data Foo = Bar | Baz\n"
+    (fmt "data Foo = Bar | Baz\n")
+  check "does not mangle == operator"
+    "x = (a == b)\n"
+    (fmt "x = (a == b)\n")
+  check "does not mangle = inside string"
+    "x = \"a=b\"\n"
+    (fmt "x = \"a=b\"\n")
+  check "aligns mixed-length clauses"
+    "f 1         = \"one\"\nf 2         = \"two\"\nf something = \"other\"\n"
+    (fmt "f 1 = \"one\"\nf 2 = \"two\"\nf something = \"other\"\n")
+
+  section "Record field = alignment"
+  check "aligns two fields"
+    "  { field1    = val1\n  , longField = val2\n"
+    (fmt "  { field1 = val1\n  , longField = val2\n")
+  check "aligns three fields"
+    "  { a   = 1\n  , bb  = 2\n  , ccc = 3\n"
+    (fmt "  { a = 1\n  , bb = 2\n  , ccc = 3\n")
+  check "already aligned is unchanged"
+    "  { field1    = val1\n  , longField = val2\n"
+    (fmt "  { field1    = val1\n  , longField = val2\n")
+  check "single field not padded"
+    "  { field = val\n"
+    (fmt "  { field = val\n")
+  check "does not mangle == in record field"
+    "  { field = (a == b)\n"
+    (fmt "  { field = (a == b)\n")
+  check "does not mangle => in record field"
+    "  { field = (\\x => x)\n"
+    (fmt "  { field = (\\x => x)\n")
+  check "does not align across blank line"
+    "  { field = val\n\n  , other = 2\n"
+    (fmt "  { field = val\n\n  , other = 2\n")
+  check "does not align single-line record"
+    "{ field = val }\n"
+    (fmt "{ field = val }\n")
+
+  section "Record definition : alignment"
+  check "aligns record fields"
+    "record Foo where\n  constructor MkFoo\n  name     : String\n  longName : Nat\n"
+    (fmt "record Foo where\n  constructor MkFoo\n  name : String\n  longName : Nat\n")
+  check "aligns three fields"
+    "record Foo where\n  constructor MkFoo\n  a   : Nat\n  bb  : String\n  ccc : Bool\n"
+    (fmt "record Foo where\n  constructor MkFoo\n  a : Nat\n  bb : String\n  ccc : Bool\n")
+  check "does not align constructor line"
+    "record Foo where\n  constructor MkFoo\n  name : String\n"
+    (fmt "record Foo where\n  constructor MkFoo\n  name : String\n")
+  check "does not align top-level sigs"
+    "foo : Nat\n\nbar : String\n"
+    (fmt "foo : Nat\nbar : String\n")
+
+  section "Data constructor | alignment"
+  check "aligns | with = (two constructors)"
+    "data Foo = Bar\n         | Baz\n"
+    (fmt "data Foo = Bar\n  | Baz\n")
+  check "aligns | with = (three constructors)"
+    "data Foo = Bar\n         | Baz\n         | Qux\n"
+    (fmt "data Foo = Bar\n  | Baz\n  | Qux\n")
+  check "already aligned is unchanged"
+    "data Foo = Bar\n         | Baz\n"
+    (fmt "data Foo = Bar\n         | Baz\n")
+  check "single-line data unchanged"
+    "data Foo = Bar | Baz\n"
+    (fmt "data Foo = Bar | Baz\n")
+  check "data without = (GADT style) unchanged"
+    "data Foo : Type where\n"
+    (fmt "data Foo : Type where\n")
+  check "blank line breaks alignment group"
+    "data Foo = Bar\n\n  | Baz\n"
+    (fmt "data Foo = Bar\n\n  | Baz\n")
+  check "does not touch | in case expression"
+    "data Foo = Bar\n         | Baz\n\nf x =\n  case x of\n    Bar => 1\n    Baz => 2\n"
+    (fmt "data Foo = Bar\n  | Baz\n\nf x =\n  case x of\n    Bar => 1\n    Baz => 2\n")
+
   section "Range formatting (no structural normalization)"
   check "applies spacing rules to range"
     "foo : Nat\n"
@@ -430,8 +612,11 @@ main = do
   check "still trims trailing whitespace in range"
     "foo : Nat\n"
     (fmtRange "foo : Nat   \n")
-  check "still spaces operators in range"
-    "x + y\n"
+  check "still spaces $ operator in range"
+    "f $ g\n"
+    (fmtRange "f$g\n")
+  check "does not space + in range (not in default ops)"
+    "x+y\n"
     (fmtRange "x+y\n")
 
   putStrLn "\nDone."
