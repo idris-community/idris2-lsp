@@ -28,6 +28,7 @@ data Topic
   | DocumentHighlight
   | DocumentSymbol
   | ExprSearch
+  | FindReferences
   | Formatting
   | GenerateDef
   | GenerateDefNext
@@ -57,6 +58,7 @@ Show Topic where
   show DocumentHighlight = "Request.DocumentHighlight"
   show DocumentSymbol = "Request.DocumentSymbol"
   show ExprSearch = "Request.CodeAction.ExprSearch"
+  show FindReferences = "Request.FindReferences"
   show Formatting = "Request.Formatting"
   show GenerateDef = "Request.CodeAction.GenerateDef"
   show GenerateDefNext = "Request.CodeAction.GenerateDefNext"
