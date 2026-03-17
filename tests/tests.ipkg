@@ -1,6 +1,8 @@
 package runtests
 
-depends = contrib, test
+depends = contrib, test, lsp-lib
 main = Main
 
 executable = runtests
+
+sourcedir = "."

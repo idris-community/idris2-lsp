@@ -1,0 +1,11 @@
+# Use the local LSP-lib submodule instead of the version from the package collection.
+# This is needed when making local changes to LSP-lib that aren't yet committed/published.
+[custom.all.lsp-lib]
+type = "local"
+path = "LSP-lib"
+ipkg = "lsp-lib.ipkg"
+
+[custom.all.idris2-lsp]
+type = "local"
+path = "."
+ipkg = "idris2-lsp.ipkg"
