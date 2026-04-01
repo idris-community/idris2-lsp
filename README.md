@@ -62,6 +62,7 @@ Server options that can be set via the `initializationOptions` object in the ini
 |`showImplicits`|`boolean`|Show implicits in hovers|
 |`showMachineNames`|`boolean`|Show machine names in hovers|
 |`fullNamespace`|`boolean`|Show full namespace in hovers|
+|`briefCompletions`|`boolean`|Insert only function name for completions|
 
 ## Code Actions Filters
 As per specification, client can filter requested code actions with the `context.only` field in the request parameters.
