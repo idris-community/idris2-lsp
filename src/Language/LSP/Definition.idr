@@ -65,13 +65,6 @@ gotoDefinition : Ref Ctxt Defs
               => DefinitionParams -> Core (Maybe Location)
 gotoDefinition params = do
   logI GotoDefinition "Checking for \{show params.textDocument.uri} at \{show params.position}"
-  -- Check actual doc
-  Just (actualUri, _) <- gets LSPConf openFile
-    | Nothing => logE GotoDefinition "No open file" >> pure Nothing
-  let True = actualUri == params.textDocument.uri
-      | False => do
-          logD GotoDefinition "Expected request for the currently opened file \{show actualUri}, instead received \{show params.textDocument.uri}"
-          pure Nothing
 
   let line = params.position.line
   let col  = params.position.character

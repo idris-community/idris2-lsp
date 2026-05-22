@@ -25,13 +25,8 @@ documentHighlights : Ref Ctxt Defs
                   => Ref LSPConf LSPConfiguration
                   => DocumentHighlightParams -> Core (List DocumentHighlight)
 documentHighlights params = do
-  logI DocumentHighlight "Searching for \{show params.textDocument.uri}"
-  Just (uri, _) <- gets LSPConf openFile
-    | Nothing => logE DocumentHighlight "No open file" >> pure []
-  let True = uri == params.textDocument.uri
-    | False => do
-        logD DocumentHighlight "Expected request for the currently opened file \{show uri}, instead received \{show params.textDocument.uri}"
-        pure []
+  let uri = show params.textDocument.uri
+  logI DocumentHighlight "Searching for \{uri}"
 
   let line = params.position.line
   let col  = params.position.character
