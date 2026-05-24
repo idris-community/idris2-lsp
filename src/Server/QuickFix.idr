@@ -70,7 +70,6 @@ findQuickfix : Ref LSPConf LSPConfiguration
             => Ref Ctxt Defs
             => Ref Syn SyntaxInfo
             => Ref ROpts REPLOpts
-            => Ref MD Metadata
             => (caps : Maybe PublishDiagnosticsClientCapabilities)
             -> (uri : URI)
             -> Error
@@ -82,7 +81,7 @@ findQuickfix caps uri (InLHS _ _ err) = findQuickfix caps uri err
 findQuickfix caps uri (InRHS _ _ err) = findQuickfix caps uri err
 findQuickfix caps uri err@(PatternVariableUnifies fc fct env n tm) =
   whenJust (isNonEmptyFC fct) $ \fc => do
-    diagnostic <- errorToDiagnostic caps uri err
+    diagnostic <- errorToDiagnostic caps err
     let textEdit = MkTextEdit (cast fc) (nameRoot n)
     let codeAction = buildQuickfix uri "Unify pattern names" diagnostic textEdit
     update LSPConf ({ quickfixes $= (codeAction ::) })
@@ -91,7 +90,7 @@ findQuickfix caps uri err@(ValidCase fc _ (Left tm)) =
     Just (f, args) <- (Utils.uncons' <=< init' <=< map words) <$> (getSourceLine (startLine fc + 1))
       | Nothing => logE QuickFix "Error while fetching source line" >> pure ()
     let line = unwords $ f :: args ++ ["=", "?\{f}_rhs_not_impossible"]
-    diagnostic <- errorToDiagnostic caps uri err
+    diagnostic <- errorToDiagnostic caps err
     let textEdit = MkTextEdit (cast fc) line
     let codeAction = buildQuickfix uri "Remove impossible keyword" diagnostic textEdit
     update LSPConf ({ quickfixes $= (codeAction ::) })
@@ -102,7 +101,7 @@ findQuickfix caps uri err@(NotCovering fc n (MissingCases cs)) =
     let endline = endLine fc
     src <- String.lines <$> getSource
     let blank = findBlankLine (drop (integerToNat (cast endline)) src) endline
-    diagnostic <- errorToDiagnostic caps uri err
+    diagnostic <- errorToDiagnostic caps err
     let range = MkRange (MkPosition blank 0) (MkPosition blank 0)
     let textEdit = MkTextEdit range cases
     let missingCodeAction = buildQuickfix uri "Add missing cases" diagnostic textEdit
@@ -112,7 +111,7 @@ findQuickfix caps uri err@(NotCovering fc n (MissingCases cs)) =
     update LSPConf ({ quickfixes $= ([missingCodeAction, partialCodeAction] ++) })
 findQuickfix caps uri err@(NotCovering fc n _) =
   whenJust (isNonEmptyFC fc) $ \fc => do
-    diagnostic <- errorToDiagnostic caps uri err
+    diagnostic <- errorToDiagnostic caps err
     let startline = startLine fc
     let range = MkRange (MkPosition startline 0) (MkPosition startline 0)
     let textEdit = MkTextEdit range "partial\n"
@@ -120,7 +119,7 @@ findQuickfix caps uri err@(NotCovering fc n _) =
     update LSPConf ({ quickfixes $= (codeAction ::) })
 findQuickfix caps uri err@(NotTotal fc n _) =
   whenJust (isNonEmptyFC fc) $ \fc => do
-    diagnostic <- errorToDiagnostic caps uri err
+    diagnostic <- errorToDiagnostic caps err
     let startline = startLine fc
     let range = MkRange (MkPosition startline 0) (MkPosition startline 0)
     let textEdit = MkTextEdit range "covering\n"
@@ -128,7 +127,7 @@ findQuickfix caps uri err@(NotTotal fc n _) =
     update LSPConf ({ quickfixes $= (codeAction ::) })
 findQuickfix caps uri (MaybeMisspelling err ns) =
   whenJust (isNonEmptyFC =<< getErrorLoc err) $ \fc => do
-    diagnostic <- errorToDiagnostic caps uri err
+    diagnostic <- errorToDiagnostic caps err
     let range = cast fc
     let codeActions = map (\n => buildQuickfix uri "Replace with \{show n}" diagnostic (MkTextEdit range n)) . forget $ ns
     update LSPConf ({ quickfixes $= (codeActions ++) })

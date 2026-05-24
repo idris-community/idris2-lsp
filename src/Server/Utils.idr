@@ -18,8 +18,9 @@ import Language.LSP.CodeAction
 import Language.LSP.Message
 import Libraries.Data.PosMap
 import Server.Configuration
-import System.File
 import System
+import System.Clock
+import System.File
 import System.Info
 
 ||| Gets a specific component of a reference, using the supplied projection.
@@ -114,3 +115,18 @@ toStart : FC -> FC
 toStart (MkFC f _ _) = MkFC f (0, 0) (0, 0)
 toStart (MkVirtualFC f _ _) = MkVirtualFC f (0, 0) (0, 0)
 toStart EmptyFC = EmptyFC
+
+export
+clock : Core a -> Core (Clock Duration, a)
+clock f = do
+  clock0 <- coreLift (clockTime Monotonic)
+  x <- f
+  clock1 <- coreLift (clockTime Monotonic)
+  let dif = timeDifference clock1 clock0
+  pure (dif, x)
+
+export
+(.milliseconds) : Clock Duration -> Integer
+(.milliseconds) = nanoToMilli . toNano where
+  nanoToMilli : Integer -> Integer
+  nanoToMilli = cast {to = Integer} . (/ 1000000.0) . cast {to = Double}
