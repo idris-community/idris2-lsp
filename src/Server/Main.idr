@@ -76,6 +76,7 @@ handleMessage : Ref LSPConf LSPConfiguration
             => Ref Syn SyntaxInfo
             => Ref MD Metadata
             => Ref ROpts REPLOpts
+            => Ref PostS PostSession
             => Core ()
 handleMessage = do
   inputHandle <- gets LSPConf inputHandle
@@ -147,6 +148,7 @@ runServer : Ref LSPConf LSPConfiguration
          => Ref Syn SyntaxInfo
          => Ref MD Metadata
          => Ref ROpts REPLOpts
+         => Ref PostS PostSession
          => Core ()
 runServer = handleMessage >> runServer
 
@@ -196,6 +198,7 @@ startServer =
               o <- newRef ROpts (Opts.defaultOpts Nothing (REPL NoneLvl) [])
               u <- newRef UST initUState
               m <- newRef MD (initMetadata (Virtual Interactive))
+              p <- newRef PostS defaultPost
               runServer)
     (\err => fPutStrLn stderr ("CRITICAL UNCAUGHT ERROR " ++ show err) *> exitWith (ExitFailure 1))
     (\res => pure ())
