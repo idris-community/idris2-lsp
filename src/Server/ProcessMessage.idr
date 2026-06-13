@@ -200,6 +200,7 @@ loadURI : Ref LSPConf LSPConfiguration
        => Ref Syn SyntaxInfo
        => Ref MD Metadata
        => Ref ROpts REPLOpts
+       => Ref PostS PostSession
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
   logI Server "Loading file \{show uri}"
@@ -269,6 +270,7 @@ loadIfNeeded : Ref LSPConf LSPConfiguration
             => Ref Syn SyntaxInfo
             => Ref MD Metadata
             => Ref ROpts REPLOpts
+            => Ref PostS PostSession
             => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadIfNeeded conf uri version = do
   Just (oldUri, oldVersion) <- gets LSPConf openFile
@@ -283,6 +285,7 @@ withURI : Ref LSPConf LSPConfiguration
        => Ref Syn SyntaxInfo
        => Ref MD Metadata
        => Ref ROpts REPLOpts
+       => Ref PostS PostSession
        => InitializeParams
        -> URI -> Maybe Int -> Core (Either ResponseError a) -> Core (Either ResponseError a) -> Core (Either ResponseError a)
 withURI conf uri version d k = do
@@ -341,6 +344,7 @@ handleRequest :
     => Ref Syn SyntaxInfo
     => Ref MD Metadata
     => Ref ROpts REPLOpts
+    => Ref PostS PostSession
     => (method : Method Client Request)
     -> (params : MessageParams method)
     -> Core (Either ResponseError (ResponseResult method))
@@ -551,6 +555,7 @@ handleNotification : Ref LSPConf LSPConfiguration
                   => Ref Syn SyntaxInfo
                   => Ref MD Metadata
                   => Ref ROpts REPLOpts
+                  => Ref PostS PostSession
                   => (method : Method Client Notification)
                   -> (params : MessageParams method)
                   -> Core ()
