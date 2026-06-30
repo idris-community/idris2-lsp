@@ -108,9 +108,9 @@ replResultToDoc (Edited (DisplayEdit Empty)) = pure (pretty0 "")
 replResultToDoc (Edited (DisplayEdit xs)) = pure xs
 replResultToDoc (Edited (EditError x)) = pure x
 replResultToDoc (Edited (MadeLemma lit name pty pappstr)) = pure $ pretty0 (relit lit (show name ++ " : " ++ show pty ++ "\n") ++ pappstr)
-replResultToDoc (Edited (MadeWith lit wapp)) = pure $ pretty0 $ showSep "\n" (map (relit lit) wapp)
-replResultToDoc (Edited (MadeCase lit cstr)) = pure $ pretty0 $ showSep "\n" (map (relit lit) cstr)
-replResultToDoc (Edited (MadeIntro is)) = pure $ pretty0 $ showSep "\n" (toList is)
+replResultToDoc (Edited (MadeWith lit wapp)) = pure $ pretty0 $ joinBy "\n" (map (relit lit) wapp)
+replResultToDoc (Edited (MadeCase lit cstr)) = pure $ pretty0 $ joinBy "\n" (map (relit lit) cstr)
+replResultToDoc (Edited (MadeIntro is)) = pure $ pretty0 $ joinBy "\n" (toList is)
 replResultToDoc (OptionsSet opts) = pure (vsep (pretty0 <$> opts))
 replResultToDoc Done = pure ""
 replResultToDoc (Executed _) = pure ""
@@ -124,15 +124,15 @@ displayType : Ref Ctxt Defs
            => Ref Syn SyntaxInfo
            => Defs -> (Name, Int, GlobalDef) -> Core (Doc IdrisAnn)
 displayType defs (n, i, gdef) =
-  maybe (do tm <- resugar [] =<< normaliseHoles defs [] (type gdef)
+  maybe (do tm <- resugar Env.empty =<< normaliseHoles defs Env.empty (type gdef)
             pure (pretty0 !(aliasName (fullname gdef)) <++> colon <++> prettyTerm tm))
-        (\num => reAnnotate Syntax <$> prettyHole defs [] n num (type gdef))
+        (\num => reAnnotate Syntax <$> prettyHole defs Env.empty n num (type gdef))
         (isHole gdef)
 
 displayTerm : Ref Ctxt Defs
            => Ref Syn SyntaxInfo
            => Defs -> ClosedTerm -> Core (Doc IdrisAnn)
-displayTerm defs = map prettyTerm . (resugar [] <=< normaliseHoles defs [])
+displayTerm defs = map prettyTerm . (resugar Env.empty <=< normaliseHoles defs Env.empty)
 
 processSettings : Ref Ctxt Defs => Ref LSPConf LSPConfiguration => JSON -> Core ()
 processSettings (JObject xs) = do
