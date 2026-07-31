@@ -3,7 +3,7 @@ version = 0.7.0
 
 opts = "-Wno-shadowing"
 
-depends = idris2, contrib, lsp-lib
+depends = idris2, lsp-lib
 
 langversion >= 0.7.0
 
