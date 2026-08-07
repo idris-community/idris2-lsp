@@ -21,8 +21,8 @@ import Language.LSP.Message.Derive
 import Language.LSP.Utils
 import Language.Reflection
 import Libraries.Data.NameMap
-import Parser.Source
-import Parser.Rule.Source
+import Idris.Parser.Core.Source
+import Idris.Parser.Core.Rule.Source
 import Server.Configuration
 import Server.Log
 import Server.Utils

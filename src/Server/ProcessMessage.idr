@@ -57,7 +57,7 @@ import Libraries.Data.PosMap
 import Libraries.Data.String.Extra
 import Libraries.Data.Version
 import Libraries.Utils.Path
-import Parser.Unlit
+import Idris.Parser.Core.Unlit
 import Server.Capabilities
 import Server.Configuration
 import Server.Diagnostics

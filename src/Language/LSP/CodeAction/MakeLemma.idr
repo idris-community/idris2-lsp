@@ -16,7 +16,7 @@ import Language.LSP.Message
 import Language.LSP.Utils
 import Libraries.Data.List.Extra
 import Libraries.Data.PosMap
-import Parser.Unlit
+import Idris.Parser.Core.Unlit
 import Server.Configuration
 import Server.Log
 import Server.Utils

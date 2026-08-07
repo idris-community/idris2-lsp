@@ -18,7 +18,7 @@ import Language.JSON
 import Language.LSP.Message
 import Language.LSP.Utils
 import Libraries.Data.String.Extra
-import Parser.Support
+import Idris.Parser.Core.Support
 import Server.Configuration
 import Server.Log
 import Server.Utils

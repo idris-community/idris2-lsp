@@ -8,7 +8,7 @@ import Idris.Syntax
 import Language.LSP.CodeAction
 import Language.LSP.Message.CodeAction
 import Language.LSP.Message.Location
-import Parser.Unlit
+import Idris.Parser.Core.Unlit
 import Server.Configuration
 import Server.Log
 import Server.Utils
