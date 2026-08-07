@@ -21,7 +21,7 @@ import Server.Log
 import Server.Utils
 
 visible : Defs -> Name -> Core Bool
-visible defs n = do 
+visible defs n = do
   Just def <- lookupCtxtExact n (gamma defs)
     | Nothing => pure False
   pure $ collapseDefault (visibility def) /= Private
@@ -61,7 +61,7 @@ buildDocumentSymbol n = do
                   (TCon {}) => Constructor
                   (Hole {}) => Variable
                   _ => Null
-  ty <- resugar [] =<< normaliseHoles defs [] def.type
+  ty <- resugar Env.empty =<< normaliseHoles defs Env.empty def.type
   pure $ Just $ MkSymbolInformation
     { name = "\{show $ dropNS n} : \{show ty}"
     , kind = kind

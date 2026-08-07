@@ -3,6 +3,7 @@ module Language.LSP.CodeAction.Utils
 import Core.Context
 import Core.Context.Context
 import Core.Core
+import Data.String
 import Idris.Resugar
 import Idris.Syntax
 import Language.LSP.CodeAction
@@ -97,7 +98,7 @@ printClause l i (WithClause _ lhsraw rig wvraw prf flags csraw) = do
             -- TODO: remove `the` after fix idris-lang/Idris2#3418
          ++ maybe "" (the (_ -> _) $ \(rg, nm) => " proof " ++ showCount rg ++ show nm) prf
          ++ "\n"))
-         ++ showSep "\n" cs)
+         ++ joinBy "\n" cs)
 printClause l i (ImpossibleClause _ lhsraw) = do
   do lhs <- pterm $ map defaultKindedName lhsraw
      pure $ relit l "\{pack (replicate i ' ')}\{show lhs} impossible"
