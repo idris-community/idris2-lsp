@@ -10,6 +10,7 @@ import Language.Reflection
 
 %language ElabReflection
 %default total
+%hide Text.Bounds.Position
 
 namespace SignatureHelpClientCapabilities
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
@@ -63,16 +64,16 @@ namespace SignatureHelpTriggerKind
 
 export
 ToJSON SignatureHelpTriggerKind where
-  toJSON Invoked          = JNumber 1
-  toJSON TriggerCharacter = JNumber 2
-  toJSON ContentChange    = JNumber 3
+  toJSON Invoked          = JInteger 1
+  toJSON TriggerCharacter = JInteger 2
+  toJSON ContentChange    = JInteger 3
 
 export
 FromJSON SignatureHelpTriggerKind where
-  fromJSON (JNumber 1) = pure Invoked
-  fromJSON (JNumber 2) = pure TriggerCharacter
-  fromJSON (JNumber 3) = pure ContentChange
-  fromJSON _ = neutral
+  fromJSON (JInteger 1) = pure Invoked
+  fromJSON (JInteger 2) = pure TriggerCharacter
+  fromJSON (JInteger 3) = pure ContentChange
+  fromJSON _ = fail "invalid signature help trigger, 1|2|3"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 public export
@@ -90,7 +91,7 @@ record SignatureInformation where
   documentation   : Maybe (OneOf [String, MarkupContent])
   parameters_     : Maybe (List ParameterInformation)
   activeParameter : Maybe Int
-%runElab deriveJSON ({renames := [("parameters_", "parameters")]} defaultOpts) `{SignatureInformation}
+%runElab derive "SignatureInformation" [FromJSONLSP, ToJSONLSP]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_signatureHelp
 public export

@@ -50,9 +50,7 @@ record CodeLens where
   range   : Range
   command : Maybe Command
   data_   : Maybe JSON
-%runElab derive "CodeLens"
-  [customFromJSON Export renameDataOpts,
-   customToJSON Export renameDataOpts]
+%runElab derive "CodeLens" [FromJSONLSP, ToJSONLSP]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#codeLens_refresh
 public export

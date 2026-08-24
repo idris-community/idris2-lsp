@@ -25,19 +25,10 @@ namespace SemanticTokenClientCapabilities
     full  : Maybe (OneOf [Bool, SemanticTokenRequestsFull])
   %runElab derive "SemanticTokenRequests" [FromJSON, ToJSON]
 
-namespace TokenFormat
-  ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
-  public export
-  data TokenFormat = Relative
-
-export
-ToJSON TokenFormat where
-  toJSON Relative = JString "relative"
-
-export
-FromJSON TokenFormat where
-  fromJSON (JString "relative") = pure Relative
-  fromJSON _ = neutral
+||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
+public export
+TokenFormat : Type
+TokenFormat = Only (JString "relative")
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
 public export
@@ -95,14 +86,14 @@ record SemanticTokens where
   constructor MkSemanticTokens
   resultId : Maybe String
   data_    : List Int
-%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{SemanticTokens}
+%runElab derive "SemanticTokens" [FromJSONLSP, ToJSONLSP]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
 public export
 record SemanticTokensPartialResult where
   constructor MkSemanticTokensPartialResult
   data_ : List Int
-%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{SemanticTokensPartialResult}
+%runElab derive "SemanticTokensPartialResult" [FromJSONLSP, ToJSONLSP]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
 public export
@@ -121,7 +112,13 @@ record SemanticTokensEdit where
   start       : Int
   deleteCount : Int
   data_       : Maybe (List Int)
-%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{SemanticTokensEdit}
+%runElab derive "SemanticTokensEdit" [FromJSONLSP, ToJSONLSP]
+
+record Test where
+  constructor MkT
+  str : String
+  data_ : Maybe Int
+%runElab derive "Test" [FromJSONLSP, ToJSONLSP]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
 public export

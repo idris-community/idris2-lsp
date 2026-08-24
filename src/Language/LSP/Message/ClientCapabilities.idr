@@ -70,7 +70,7 @@ record TextDocumentClientCapabilities where
   callHierarchy      : Maybe CallHierarchyClientCapabilities
   semanticTokens     : Maybe SemanticTokensClientCapabilities
   moniker            : Maybe MonikerClientCapabilities
-%runElab deriveJSON ({renames := [("implementation_", "implementation")]} defaultOpts) `{TextDocumentClientCapabilities}
+%runElab derive "TextDocumentClientCapabilities" [FromJSONLSP, ToJSONLSP]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export

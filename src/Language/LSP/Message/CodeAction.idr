@@ -158,6 +158,4 @@ record CodeAction where
   edit        : Maybe WorkspaceEdit
   command     : Maybe Command
   data_       : Maybe JSON
-%runElab derive "CodeAction"
-  [customFromJSON Export renameDataOpts,
-   customToJSON Export renameDataOpts]
+%runElab derive "CodeAction" [FromJSONLSP, ToJSONLSP]

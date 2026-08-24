@@ -72,9 +72,7 @@ record Diagnostic where
   tags               : Maybe (List DiagnosticTag)
   relatedInformation : Maybe (List DiagnosticRelatedInformation)
   data_              : Maybe JSON
-%runElab derive "Diagnostic"
-  [customFromJSON Export renameDataOpts,
-   customToJSON Export renameDataOpts]
+%runElab derive "Diagnostic" [FromJSONLSP, ToJSONLSP]
 
 namespace PublishDiagnosticsClientCapabilities
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_publishDiagnostics

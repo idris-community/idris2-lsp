@@ -55,9 +55,7 @@ record CallHierarchyItem where
   selectionRange : Range
   data_          : Maybe JSON
 
-%runElab derive "CallHierarchyItem"
-  [customFromJSON Export renameDataOpts,
-   customToJSON Export renameDataOpts]
+%runElab derive "CallHierarchyItem" [FromJSONLSP, ToJSONLSP]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#callHierarchy_incomingCalls
 public export

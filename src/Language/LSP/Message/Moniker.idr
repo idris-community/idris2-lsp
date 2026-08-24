@@ -8,6 +8,7 @@ import Language.Reflection
 
 %language ElabReflection
 %default total
+%hide Text.Bounds.Position
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_moniker
 public export
@@ -61,7 +62,7 @@ FromJSON UniquenessLevel where
   fromJSON (JString "group") = pure Group
   fromJSON (JString "scheme") = pure Scheme
   fromJSON (JString "global") = pure Global
-  fromJSON _ = neutral
+  fromJSON _ = fail "invalid uniqueness level, document|project|group|scheme|global"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_moniker
 namespace MonikerKind
@@ -79,7 +80,7 @@ FromJSON MonikerKind where
   fromJSON (JString "import") = pure Import
   fromJSON (JString "export") = pure Export
   fromJSON (JString "local")  = pure Local
-  fromJSON _ = neutral
+  fromJSON _ = fail "invalid moniker, import|export|local"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_moniker
 public export

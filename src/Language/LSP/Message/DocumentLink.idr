@@ -52,6 +52,4 @@ record DocumentLink where
   target  : Maybe DocumentURI
   tooltip : Maybe String
   data_   : Maybe JSON
-%runElab derive "DocumentLink"
-  [customFromJSON Export renameDataOpts,
-   customToJSON Export renameDataOpts]
+%runElab derive "DocumentLink" [FromJSONLSP, ToJSONLSP]

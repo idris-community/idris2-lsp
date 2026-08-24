@@ -66,22 +66,26 @@ ConstraintList ToJSON as => ToJSON (OneOf as) where
   toJSON (Here x) = toJSON x
   toJSON (There x) = toJSON x
 
-private
+export
 Alternative (Either JSONErr) where
   empty = Left ([], "")
   (<|>) (Left e) (Left _) = Left e
   (<|>) (Left _) (Right v) = Right v
   (<|>) (Right v) _ = Right v
 
+export
+[ParserF] Functor (Parser v) where
+  map f p = \x => map f (p x)
+
 parseConstraints :
   {as : List Type} ->
   ConstraintList FromJSON as =>
-  (v : JSON) ->
-  Either (List JSONPathElement, String) (OneOf as)
-parseConstraints {as = []} v = Left ([], "expected at least one element")
-parseConstraints {as = (x :: xs)} @{(c, cs)} v
-  = let t = (There <$> parseConstraints @{cs} v) <|> (OneOf.Here <$> fromJSON @{c} v)
-    in t
+  Parser JSON (OneOf as)
+parseConstraints {as = []} = const $ fail "expected at least one element"
+parseConstraints {as = (x :: xs)} @{(c, cs)}
+  = let xx = map @{ParserF} (OneOf.There {x} ) (parseConstraints @{cs})
+        yy = map @{ParserF} (OneOf.Here {xs}) (fromJSON @{c})
+    in xx <|> yy
 
 export
 {as : _} -> ConstraintList FromJSON as => FromJSON (OneOf as) where
@@ -107,10 +111,19 @@ export
 nullMissingFields : Options
 nullMissingFields = {replaceMissingKeysWithNull := const True} defaultOptions
 
-renameData : String -> String
-renameData "data_" = "data"
-renameData x = x
+renameKeyword : String -> String
+renameKeyword "data_" = "data"
+renameKeyword "implementation_" = "implementation"
+renameKeyword x = x
 
 export
-renameDataOpts : Options
-renameDataOpts = {fieldNameModifier := renameData} defaultOptions
+renameKeywordOpts : Options
+renameKeywordOpts = {fieldNameModifier := renameKeyword} defaultOptions
+
+export
+ToJSONLSP : List Name -> ParamTypeInfo -> Res (List TopLevel)
+ToJSONLSP = customToJSON Export ({replaceMissingKeysWithNull := True, fieldNameModifier := renameKeyword} defaultOptions)
+
+export
+FromJSONLSP : List Name -> ParamTypeInfo -> Res (List TopLevel)
+FromJSONLSP = customFromJSON Export ({replaceMissingKeysWithNull := True, fieldNameModifier := renameKeyword} defaultOptions)

@@ -244,7 +244,7 @@ FromJSON (Method Client Notification) where
   fromJSON (JString "textDocument/didClose")               = pure TextDocumentDidClose
   fromJSON (JString "$/cancelRequest")                     = pure CancelRequest
   fromJSON (JString "$/progress")                          = pure Progress
-  fromJSON _ = neutral
+  fromJSON x = fail "invalid client notification: \{encode x}"
 
 export
 FromJSON (Method Client Request) where
@@ -287,7 +287,7 @@ FromJSON (Method Client Request) where
   fromJSON (JString "textDocument/semanticTokens/range")      = pure TextDocumentSemanticTokensRange
   fromJSON (JString "textDocument/linkedEditingRange")        = pure TextDocumentLinkedEditingRange
   fromJSON (JString "textDocument/moniker")                   = pure TextDocumentMoniker
-  fromJSON _ = neutral
+  fromJSON x = fail "invalid client request: \{encode x}"
 
 export
 FromJSON (Method Server Notification) where
@@ -298,7 +298,7 @@ FromJSON (Method Server Notification) where
   fromJSON (JString "textDocument/publishDiagnostics") = pure TextDocumentPublishDiagnostics
   fromJSON (JString "$/cancelRequest")                 = pure CancelRequest
   fromJSON (JString "$/progress")                      = pure Progress
-  fromJSON _ = neutral
+  fromJSON x = fail "invalid server notification: \{encode x}"
 
 export
 FromJSON (Method Server Request) where
@@ -312,24 +312,24 @@ FromJSON (Method Server Request) where
   fromJSON (JString "workspace/applyEdit")              = pure WorkspaceApplyEdit
   fromJSON (JString "workspace/codeLens/refresh")       = pure WorkspaceCodeLensRefresh
   fromJSON (JString "workspace/semanticTokens/refresh") = pure WorkspaceSemanticTokensRefresh
-  fromJSON _ = neutral
+  fromJSON x = fail "invalid server request \{encode x}"
 
 export
 FromJSON (from ** Method from Notification) where
-  fromJSON arg =
-    (fromJSON arg >>= \meth : Method Client Notification => pure (_ ** meth))
-      <|> (fromJSON arg >>= \meth : Method Server Notification => pure (_ ** meth))
+  fromJSON =
+    (map @{ParserF} (\method => (_ ** method)) (fromJSON {a = Method Client Notification}))
+    <|> (map @{ParserF} (\method => (_ ** method)) (fromJSON {a = Method Server Notification}))
 
 export
 FromJSON (from ** Method from Request) where
-  fromJSON arg =
-    (fromJSON arg >>= \meth : Method Client Request => pure (_ ** meth))
-      <|> (fromJSON arg >>= \meth : Method Server Request => pure (_ ** meth))
+  fromJSON =
+    (map @{ParserF} (\method => (_ ** method)) (fromJSON {a = Method Client Request}))
+    <|> (map @{ParserF} (\method => (_ ** method)) (fromJSON {a=  Method Server Request}))
 
 export
 FromJSON (from ** type ** Method from type) where
-  fromJSON arg =
-    (fromJSON arg >>= \meth : Method Client Notification => pure (_ ** _ ** meth))
-      <|> (fromJSON arg >>= \meth : Method Client Request => pure (_ ** _ ** meth))
-      <|> (fromJSON arg >>= \meth : Method Server Notification => pure (_ ** _ ** meth))
-      <|> (fromJSON arg >>= \meth : Method Server Request => pure (_ ** _ ** meth))
+  fromJSON =
+    (map @{ParserF} (\meth => (_ ** _ ** meth)) (fromJSON {a = Method Client Notification}))
+    <|> (map @{ParserF} (\meth => (_ ** _ ** meth)) (fromJSON {a = Method Client Request}))
+    <|> (map @{ParserF} (\meth => (_ ** _ ** meth)) (fromJSON {a = Method Server Notification}))
+    <|> (map @{ParserF} (\meth => (_ ** _ ** meth)) (fromJSON {a = Method Server Request}))

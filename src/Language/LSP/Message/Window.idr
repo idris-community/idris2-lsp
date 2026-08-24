@@ -16,18 +16,18 @@ namespace MessageType
 
 export
 ToJSON MessageType where
-  toJSON Error   = JNumber 1
-  toJSON Warning = JNumber 2
-  toJSON Info    = JNumber 3
-  toJSON Log     = JNumber 4
+  toJSON Error   = JInteger 1
+  toJSON Warning = JInteger 2
+  toJSON Info    = JInteger 3
+  toJSON Log     = JInteger 4
 
 export
 FromJSON MessageType where
-  fromJSON (JNumber 1) = pure Error
-  fromJSON (JNumber 2) = pure Warning
-  fromJSON (JNumber 3) = pure Info
-  fromJSON (JNumber 4) = pure Log
-  fromJSON _ = Nothing
+  fromJSON (JInteger 1) = pure Error
+  fromJSON (JInteger 2) = pure Warning
+  fromJSON (JInteger 3) = pure Info
+  fromJSON (JInteger 4) = pure Log
+  fromJSON _ = fail "invalid message type, [1-4]"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showMessage
 public export
@@ -83,7 +83,7 @@ record ShowDocumentParams where
   external_ : Maybe Bool
   takeFocus : Maybe Bool
   selection : Maybe Range
-%runElab deriveJSON ({renames := [("external_", "external")]} defaultOpts) `{ShowDocumentParams}
+%runElab derive "ShowDocumentParams" [FromJSONLSP, ToJSONLSP]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showDocument
 public export

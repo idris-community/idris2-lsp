@@ -8,6 +8,7 @@ import Language.Reflection
 
 %language ElabReflection
 %default total
+%hide Text.Bounds.Position
 
 namespace PrepareSupportDefaultBehaviour
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_rename
@@ -16,12 +17,12 @@ namespace PrepareSupportDefaultBehaviour
 
 export
 ToJSON PrepareSupportDefaultBehaviour where
-  toJSON Identifier = JNumber 1
+  toJSON Identifier = JInteger 1
 
 export
 FromJSON PrepareSupportDefaultBehaviour where
-  fromJSON (JNumber 1) = pure Identifier
-  fromJSON _ = neutral
+  fromJSON (JInteger 1) = pure Identifier
+  fromJSON x = fail "invalid value for PrepareSupportDefaultBehavior, expected 1, got \{encode x}"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_rename
 public export

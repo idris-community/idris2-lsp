@@ -279,9 +279,7 @@ record CompletionItem where
   commitCharacters    : Maybe (List Char)
   command             : Maybe Command
   data_               : Maybe JSON
-%runElab derive "CompletionItem"
-  [customFromJSON Export renameDataOpts,
-   customToJSON Export renameDataOpts]
+%runElab derive "CompletionItem" [FromJSONLSP, ToJSONLSP]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
 public export

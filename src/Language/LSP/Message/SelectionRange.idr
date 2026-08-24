@@ -8,6 +8,7 @@ import Language.Reflection
 
 %language ElabReflection
 %default total
+%hide Text.Bounds.Position
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_selectionRange
 public export
@@ -47,18 +48,6 @@ public export
 record SelectionRange where
   constructor MkSelectionRange
   range  : Range
-  parent : Maybe (Inf SelectionRange)
+  parent : Maybe SelectionRange
 
-export -- FIXME: Can I avoid asser_total? Maybe indexing by the depth of the structure?
-ToJSON SelectionRange where
-  toJSON (MkSelectionRange range parent) = assert_total $
-    JObject (catMaybes [ Just ("range", toJSON range)
-                       , (MkPair "parent" . toJSON) <$> parent
-                       ])
-
-export covering
-FromJSON SelectionRange where
-  fromJSON (JObject arg) =
-    pure MkSelectionRange <*> (lookup "range" arg >>= fromJSON)
-                          <*> (pure $ lookup "parent" arg >>= fromJSON)
-  fromJSON _ = neutral
+%runElab derive "SelectionRange" [FromJSON, ToJSON]

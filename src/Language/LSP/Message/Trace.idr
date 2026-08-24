@@ -22,7 +22,7 @@ FromJSON Trace where
   fromJSON (JString "off")      = pure TraceOff
   fromJSON (JString "messages") = pure TraceMessages
   fromJSON (JString "verbose")  = pure TraceVerbose
-  fromJSON _ = neutral
+  fromJSON _ = fail "invalid trace, off|messages|verbose"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#setTrace
 public export
