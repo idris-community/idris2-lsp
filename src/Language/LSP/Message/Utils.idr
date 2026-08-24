@@ -4,9 +4,8 @@
 module Language.LSP.Message.Utils
 
 import public Data.OneOf
-import Language.JSON
-import Language.JSON.Interfaces
-import Language.LSP.Message.Derive
+import public JSON.Simple
+import public JSON.Simple.Derive
 
 %default total
 
@@ -33,7 +32,7 @@ ToJSON Null where
 export
 FromJSON Null where
   fromJSON JNull = pure MkNull
-  fromJSON _ = neutral
+  fromJSON _ = Left neutral
 
 ||| Converts an `UntaggedEither` value to the isomorphic value in `Either`.
 public export
@@ -67,9 +66,25 @@ ConstraintList ToJSON as => ToJSON (OneOf as) where
   toJSON (Here x) = toJSON x
   toJSON (There x) = toJSON x
 
+private
+Alternative (Either JSONErr) where
+  empty = Left ([], "")
+  (<|>) (Left e) (Left _) = Left e
+  (<|>) (Left _) (Right v) = Right v
+  (<|>) (Right v) _ = Right v
+
+parseConstraints :
+  {as : List Type} ->
+  ConstraintList FromJSON as =>
+  (v : JSON) ->
+  Either (List JSONPathElement, String) (OneOf as)
+parseConstraints {as = []} v = Left ([], "expected at least one element")
+parseConstraints {as = (x :: xs)} @{(c, cs)} v
+  = let t = (There <$> parseConstraints @{cs} v) <|> (OneOf.Here <$> fromJSON @{c} v)
+    in t
+
 export
 {as : _} -> ConstraintList FromJSON as => FromJSON (OneOf as) where
   -- NOTE: The rightmost type is parsed first, since in the LSP specification
   --       the most specific type appears also rightmost.
-  fromJSON {as = []} @{()} v = Nothing
-  fromJSON {as = (x :: xs)} @{(c, cs)} v = (There <$> fromJSON v) <|> (Here <$> fromJSON v)
+  fromJSON {as} v = parseConstraints v

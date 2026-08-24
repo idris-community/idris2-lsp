@@ -1,8 +1,6 @@
 module Language.LSP.Message.Completion
 
-import Language.JSON
 import Language.LSP.Message.Command
-import Language.LSP.Message.Derive
 import Language.LSP.Message.Location
 import Language.LSP.Message.Markup
 import Language.LSP.Message.Progress

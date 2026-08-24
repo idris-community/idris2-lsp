@@ -1,8 +1,6 @@
 module Language.LSP.Message.Workspace
 
 import Data.SortedMap
-import Language.JSON
-import Language.LSP.Message.Derive
 import Language.LSP.Message.DocumentSymbols
 import Language.LSP.Message.Location
 import Language.LSP.Message.Progress

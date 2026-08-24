@@ -1,7 +1,5 @@
 module Language.LSP.Message.RegularExpressions
 
-import Language.JSON
-import Language.LSP.Message.Derive
 import Language.LSP.Message.Utils
 import Language.Reflection
 

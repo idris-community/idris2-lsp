@@ -5,14 +5,13 @@ opts = "-Wno-shadowing"
 
 langversion >= 0.7.0
 
-depends = contrib >= 0.7.0
+depends = contrib >= 0.7.0, json-simple
 
 sourcedir = "src"
 
 modules = Data.Hex
         , Data.OneOf
         , Data.URI
-        , Language.JSON.Interfaces
         , Language.LSP.Message
         , Language.LSP.Message.CallHierarchy
         , Language.LSP.Message.Cancel
@@ -23,7 +22,6 @@ modules = Data.Hex
         , Language.LSP.Message.Completion
         , Language.LSP.Message.Declaration
         , Language.LSP.Message.Definition
-        , Language.LSP.Message.Derive
         , Language.LSP.Message.Diagnostics
         , Language.LSP.Message.DocumentColor
         , Language.LSP.Message.DocumentFormatting

@@ -3,9 +3,8 @@ module Language.LSP.Message.URI
 import Data.Either
 import Data.String.Parser
 import public Data.URI
-import Language.JSON
-import Language.LSP.Message.Derive
 import Language.LSP.Message.Utils
+import Data.SortedMap
 
 %default total
 
@@ -19,15 +18,15 @@ ToJSON URI where
   toJSON = JString . show
 
 export covering
-FromJSON URI where
-  fromJSON (JString str) = eitherToMaybe (fst <$> parse (uriParser <* eos) str)
-  fromJSON _ = neutral
-
-export
-ToJSON v => ToJSON (SortedMap URI v) where
-  toJSON m = JObject (map (mapFst show) $ toList $ toJSON <$> m)
+parseJSONURI : Parser String URI
+parseJSONURI str = mapFst ([],) (fst <$> parse (uriParser <* eos) str)
 
 export covering
-FromJSON v => FromJSON (SortedMap URI v) where
-  fromJSON (JObject xs) = fromList <$> traverse (\(k, v) => (,) <$> fromJSON (JString k) <*> fromJSON v) xs
-  fromJSON _ = neutral
+FromJSON URI where
+  fromJSON (JString str) = parseJSONURI str
+  fromJSON _ = Left neutral
+
+-- URI is a valid key for parsing dictionaries/SortedMap
+export covering
+FromJSONKey URI where
+  fromKey = parseJSONURI

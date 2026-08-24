@@ -1,8 +1,6 @@
 module Language.LSP.Message.Method
 
 import public Data.DPair
-import Language.JSON
-import Language.LSP.Message.Derive
 import Language.LSP.Message.Utils
 import Language.Reflection
 

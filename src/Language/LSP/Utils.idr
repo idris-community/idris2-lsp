@@ -6,7 +6,6 @@ module Language.LSP.Utils
 import Data.Bits
 import Data.List
 import Data.String
-import Language.JSON
 import Language.LSP.Message
 import System.File
 import System
@@ -31,7 +30,6 @@ fGetHeader handle = do
      then pure $ Right l
      else (map (l ++)) <$> fGetHeader handle
 
--- From Language.JSON.Data
 private
 b16ToHexString : Bits16 -> String
 b16ToHexString n =

@@ -1,7 +1,5 @@
 module Language.LSP.Message.TextDocument
 
-import Language.JSON
-import Language.LSP.Message.Derive
 import Language.LSP.Message.Location
 import Language.LSP.Message.URI
 import Language.LSP.Message.Utils

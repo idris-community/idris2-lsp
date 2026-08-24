@@ -1,7 +1,5 @@
 module Language.LSP.Message.Command
 
-import Language.JSON
-import Language.LSP.Message.Derive
 import Language.LSP.Message.Progress
 import Language.LSP.Message.Utils
 import Language.Reflection

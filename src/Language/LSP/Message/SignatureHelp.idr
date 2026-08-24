@@ -1,8 +1,6 @@
 module Language.LSP.Message.SignatureHelp
 
-import Language.JSON
 import Language.LSP.Message.Location
-import Language.LSP.Message.Derive
 import Language.LSP.Message.URI
 import Language.LSP.Message.Utils
 import Language.LSP.Message.Markup

@@ -15,7 +15,6 @@ import public Language.LSP.Message.Command
 import public Language.LSP.Message.Completion
 import public Language.LSP.Message.Declaration
 import public Language.LSP.Message.Definition
-import public Language.LSP.Message.Derive
 import public Language.LSP.Message.Diagnostics
 import public Language.LSP.Message.DocumentColor
 import public Language.LSP.Message.DocumentFormatting

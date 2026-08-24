@@ -1,7 +1,5 @@
 module Language.LSP.Message.DocumentSymbols
 
-import Language.JSON
-import Language.LSP.Message.Derive
 import Language.LSP.Message.Location
 import Language.LSP.Message.Progress
 import Language.LSP.Message.TextDocument

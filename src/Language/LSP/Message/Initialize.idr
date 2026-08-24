@@ -1,8 +1,6 @@
 module Language.LSP.Message.Initialize
 
-import Language.JSON
 import Language.LSP.Message.ClientCapabilities
-import Language.LSP.Message.Derive
 import Language.LSP.Message.Progress
 import Language.LSP.Message.ServerCapabilities
 import Language.LSP.Message.Trace

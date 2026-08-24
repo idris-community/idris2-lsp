@@ -4,7 +4,6 @@
 module Language.LSP.Message.Message
 
 import Data.OneOf
-import Language.JSON
 import Language.LSP.Message.CallHierarchy
 import Language.LSP.Message.Cancel
 import Language.LSP.Message.CodeAction
@@ -13,7 +12,6 @@ import Language.LSP.Message.Command
 import Language.LSP.Message.Completion
 import Language.LSP.Message.Declaration
 import Language.LSP.Message.Definition
-import Language.LSP.Message.Derive
 import Language.LSP.Message.Diagnostics
 import Language.LSP.Message.DocumentColor
 import Language.LSP.Message.DocumentFormatting
