@@ -35,7 +35,7 @@ record ShowMessageParams where
   constructor MkShowMessageParams
   type    : MessageType
   message : String
-%runElab deriveJSON defaultOpts `{ShowMessageParams}
+%runElab derive "ShowMessageParams" [FromJSON, ToJSON]
 
 namespace ShowMessageRequestClientCapabilities
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showMessage
@@ -43,21 +43,21 @@ namespace ShowMessageRequestClientCapabilities
   record ShowMessageActionItem where
     constructor MkShowMessageActionItem
     additionalPropertiesSupport : Maybe Bool
-  %runElab deriveJSON defaultOpts `{ShowMessageActionItem}
+  %runElab derive "ShowMessageActionItem" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showMessage
 public export
 record ShowMessageRequestClientCapabilities where
   constructor MkShowMessageRequestClientCapabilities
   messageActionItem : Maybe ShowMessageActionItem
-%runElab deriveJSON defaultOpts `{ShowMessageRequestClientCapabilities}
+%runElab derive "ShowMessageRequestClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showMessage
 public export
 record MessageActionItem where
   constructor MkMessageActionItem
   title : String
-%runElab deriveJSON defaultOpts `{MessageActionItem}
+%runElab derive "MessageActionItem" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showMessage
 public export
@@ -66,14 +66,14 @@ record ShowMessageRequestParams where
   type    : MessageType
   message : String
   actions : Maybe (List MessageActionItem)
-%runElab deriveJSON defaultOpts `{ShowMessageRequestParams}
+%runElab derive "ShowMessageRequestParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showDocument
 public export
 record ShowDocumentClientCapabilities where
   constructor MkShowDocumentClientCapabilities
   support : Bool
-%runElab deriveJSON defaultOpts `{ShowDocumentClientCapabilities}
+%runElab derive "ShowDocumentClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_showDocument
 public export
@@ -90,7 +90,7 @@ public export
 record ShowDocumentResult where
   constructor MkShowDocumentResult
   success : Bool
-%runElab deriveJSON defaultOpts `{ShowDocumentResult}
+%runElab derive "ShowDocumentResult" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_logMessage
 public export
@@ -98,18 +98,18 @@ record LogMessageParams where
   constructor MkLogMessageParams
   type    : MessageType
   message : String
-%runElab deriveJSON defaultOpts `{LogMessageParams}
+%runElab derive "LogMessageParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_workDoneProgress_create
 public export
 record WorkDoneProgressCreateParams where
   constructor MkWorkDoneProgressCreateParams
   token : ProgressToken
-%runElab deriveJSON defaultOpts `{WorkDoneProgressCreateParams}
+%runElab derive "WorkDoneProgressCreateParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#window_workDoneProgress_cancel
 public export
 record WorkDoneProgressCancelParams where
   constructor MkWorkDoneProgressCancelParams
   token : ProgressToken
-%runElab deriveJSON defaultOpts `{WorkDoneProgressCancelParams}
+%runElab derive "WorkDoneProgressCancelParams" [FromJSON, ToJSON]

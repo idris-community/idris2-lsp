@@ -14,14 +14,14 @@ public export
 record SelectionRangeClientCapabilities where
   constructor MkSelectionRangeClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{SelectionRangeClientCapabilities}
+%runElab derive "SelectionRangeClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_selectionRange
 public export
 record SelectionRangeOptions where
   constructor MkSelectionRangeOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{SelectionRangeOptions}
+%runElab derive "SelectionRangeOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_selectionRange
 public export
@@ -30,7 +30,7 @@ record SelectionRangeRegistrationOptions where
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe String
-%runElab deriveJSON defaultOpts `{SelectionRangeRegistrationOptions}
+%runElab derive "SelectionRangeRegistrationOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_selectionRange
 public export
@@ -40,7 +40,7 @@ record SelectionRangeParams where
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
   positions          : List Position
-%runElab deriveJSON defaultOpts `{SelectionRangeParams}
+%runElab derive "SelectionRangeParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_selectionRange
 public export

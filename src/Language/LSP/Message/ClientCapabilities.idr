@@ -83,7 +83,7 @@ record FileOperationsWorkspaceClientCapabilities where
   willRename          : Maybe Bool
   didDelete           : Maybe Bool
   willDelete          : Maybe Bool
-%runElab deriveJSON defaultOpts `{FileOperationsWorkspaceClientCapabilities}
+%runElab derive "FileOperationsWorkspaceClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -100,7 +100,7 @@ record WorkspaceClientCapabilities where
   semanticTokens         : Maybe SemanticTokensWorkspaceClientCapabilities
   codeLens               : Maybe CodeLensWorkspaceClientCapabilities
   fileOperations         : Maybe FileOperationsWorkspaceClientCapabilities
-%runElab deriveJSON defaultOpts `{WorkspaceClientCapabilities}
+%runElab derive "WorkspaceClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -109,7 +109,7 @@ record WindowClientCapabilities where
   workDoneProgress : Maybe Bool
   showMessage      : Maybe ShowMessageRequestClientCapabilities
   showDocument     : Maybe ShowDocumentClientCapabilities
-%runElab deriveJSON defaultOpts `{WindowClientCapabilities}
+%runElab derive "WindowClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -117,7 +117,7 @@ record GeneralClientCapabilities where
   constructor MkGeneralClientCapabilities
   regularExpressions : Maybe RegularExpressionsClientCapabilities
   markdown           : Maybe MarkdownClientCapabilities
-%runElab deriveJSON defaultOpts `{GeneralClientCapabilities}
+%runElab derive "GeneralClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -128,4 +128,4 @@ record ClientCapabilities where
   window       : Maybe WindowClientCapabilities
   general      : Maybe GeneralClientCapabilities
   experimental : Maybe JSON
-%runElab deriveJSON defaultOpts `{ClientCapabilities}
+%runElab derive "ClientCapabilities" [FromJSON, ToJSON]

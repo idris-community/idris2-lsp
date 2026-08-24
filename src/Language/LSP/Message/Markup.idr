@@ -27,7 +27,7 @@ export
 FromJSON MarkupKind where
   fromJSON (JString "plaintext") = pure PlainText
   fromJSON (JString "markdown")  = pure Markdown
-  fromJSON _ = neutral
+  fromJSON _ = fail "not a markup kind, plaintext|markdown"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#markupContent
 public export
@@ -35,7 +35,7 @@ record MarkupContent where
   constructor MkMarkupContent
   kind : MarkupKind
   value : String
-%runElab deriveJSON defaultOpts `{MarkupContent}
+%runElab derive "MarkupContent" [FromJSON, ToJSON]
 
 namespace MarkedString
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
@@ -44,7 +44,7 @@ namespace MarkedString
     constructor MkMarkedStringWithLanguage
     language : String
     value : String
-  %runElab deriveJSON defaultOpts `{MarkedStringWithLanguage}
+  %runElab derive "MarkedStringWithLanguage" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
@@ -57,4 +57,4 @@ record MarkdownClientCapabilities where
   constructor MkMarkdownClientCapabilities
   parser  : String
   version : Maybe String
-%runElab deriveJSON defaultOpts `{MarkdownClientCapabilities}
+%runElab derive "MarkdownClientCapabilities" [FromJSON, ToJSON]

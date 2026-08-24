@@ -9,6 +9,7 @@ import Language.Reflection
 
 %language ElabReflection
 %default total
+%hide Text.Bounds.Position
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
@@ -16,14 +17,14 @@ record HoverClientCapabilities where
   constructor MkHoverClientCapabilities
   dynamicRegistration : Maybe Bool
   contentFormat : Maybe (List MarkupKind)
-%runElab deriveJSON defaultOpts `{HoverClientCapabilities}
+%runElab derive "HoverClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
 record HoverOptions where
   constructor MkHoverOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{HoverOptions}
+%runElab derive "HoverOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
@@ -31,7 +32,7 @@ record HoverRegistrationOptions where
   constructor MkHoverRegistrationOptions
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{HoverRegistrationOptions}
+%runElab derive "HoverRegistrationOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
@@ -40,7 +41,7 @@ record HoverParams where
   workDoneToken : Maybe ProgressToken
   textDocument : TextDocumentIdentifier
   position : Position
-%runElab deriveJSON defaultOpts `{HoverParams}
+%runElab derive "HoverParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_hover
 public export
@@ -48,4 +49,4 @@ record Hover where
   constructor MkHover
   contents : OneOf [MarkedString, List MarkedString, MarkupContent]
   range : Maybe Range
-%runElab deriveJSON defaultOpts `{Hover}
+%runElab derive "Hover" [FromJSON, ToJSON]

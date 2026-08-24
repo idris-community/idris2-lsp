@@ -13,14 +13,14 @@ record Registration where
   id              : String
   method          : String
   registerOptions : Maybe JSON
-%runElab deriveJSON defaultOpts `{Registration}
+%runElab derive "Registration" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#client_registerCapability
 public export
 record RegistrationParams where
   constructor MkRegistrationParams
   registrations : List Registration
-%runElab deriveJSON defaultOpts `{RegistrationParams}
+%runElab derive "RegistrationParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#client_unregisterCapability
 public export
@@ -28,7 +28,7 @@ record Unregistration where
   constructor MkUnregistration
   id     : String
   method : String
-%runElab deriveJSON defaultOpts `{Unregistration}
+%runElab derive "Unregistration" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#client_unregisterCapability
 public export
@@ -36,4 +36,4 @@ record UnregistrationParams where
   constructor MkUnregistrationParams
   -- NOTE: not my typo, but see the specification link in the record documentation
   unregisterations : List Unregistration
-%runElab deriveJSON defaultOpts `{UnregistrationParams}
+%runElab derive "UnregistrationParams" [FromJSON, ToJSON]

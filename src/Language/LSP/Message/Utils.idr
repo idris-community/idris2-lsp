@@ -88,3 +88,29 @@ export
   -- NOTE: The rightmost type is parsed first, since in the LSP specification
   --       the most specific type appears also rightmost.
   fromJSON {as} v = parseConstraints v
+
+public export
+data Only : JSON -> Type where
+  OnlyValue : (v : JSON) -> Only v
+
+export
+{v : _} -> FromJSON (Only v) where
+  fromJSON x = case x == v of
+                    True => Right (OnlyValue v)
+                    False => Left ([], "expected \{encode v}, but got \{encode x} instead")
+
+export
+ToJSON (Only v) where
+  toJSON (OnlyValue x) = x
+
+export
+nullMissingFields : Options
+nullMissingFields = {replaceMissingKeysWithNull := const True} defaultOptions
+
+renameData : String -> String
+renameData "data_" = "data"
+renameData x = x
+
+export
+renameDataOpts : Options
+renameDataOpts = {fieldNameModifier := renameData} defaultOptions

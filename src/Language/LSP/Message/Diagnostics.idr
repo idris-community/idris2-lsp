@@ -15,14 +15,14 @@ namespace DiagnosticTag
 
 export
 ToJSON DiagnosticTag where
-  toJSON Unnecessary = JNumber 1
-  toJSON Deprecated  = JNumber 2
+  toJSON Unnecessary = JInteger 1
+  toJSON Deprecated  = JInteger 2
 
 export
 FromJSON DiagnosticTag where
-  fromJSON (JNumber 1) = pure Unnecessary
-  fromJSON (JNumber 2) = pure Deprecated
-  fromJSON _ = neutral
+  fromJSON (JInteger 1) = pure Unnecessary
+  fromJSON (JInteger 2) = pure Deprecated
+  fromJSON _ = fail "not a diagnostic tag, 1|2"
 
 namespace DiagnosticSeverity
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#diagnostic
@@ -31,18 +31,18 @@ namespace DiagnosticSeverity
 
 export
 ToJSON DiagnosticSeverity where
-  toJSON Error       = JNumber 1
-  toJSON Warning     = JNumber 2
-  toJSON Information = JNumber 3
-  toJSON Hint        = JNumber 4
+  toJSON Error       = JInteger 1
+  toJSON Warning     = JInteger 2
+  toJSON Information = JInteger 3
+  toJSON Hint        = JInteger 4
 
 export
 FromJSON DiagnosticSeverity where
-  fromJSON (JNumber 1) = pure Error
-  fromJSON (JNumber 2) = pure Warning
-  fromJSON (JNumber 3) = pure Information
-  fromJSON (JNumber 4) = pure Hint
-  fromJSON _ = neutral
+  fromJSON (JInteger 1) = pure Error
+  fromJSON (JInteger 2) = pure Warning
+  fromJSON (JInteger 3) = pure Information
+  fromJSON (JInteger 4) = pure Hint
+  fromJSON _ = fail "not a diagnostic severity [1-4]"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#diagnostic
 public export
@@ -50,14 +50,14 @@ record DiagnosticRelatedInformation where
   constructor MkDiagnosticRelatedInformation
   location : Location
   message  : String
-%runElab deriveJSON defaultOpts `{DiagnosticRelatedInformation}
+%runElab derive "DiagnosticRelatedInformation" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#diagnostic
 public export
 record CodeDescription where
   constructor MkCodeDescription
   href : URI
-%runElab deriveJSON defaultOpts `{CodeDescription}
+%runElab derive "CodeDescription" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#diagnostic
 public export
@@ -72,7 +72,9 @@ record Diagnostic where
   tags               : Maybe (List DiagnosticTag)
   relatedInformation : Maybe (List DiagnosticRelatedInformation)
   data_              : Maybe JSON
-%runElab deriveJSON ({renames := [("data_", "data")]} defaultOpts) `{Diagnostic}
+%runElab derive "Diagnostic"
+  [customFromJSON Export renameDataOpts,
+   customToJSON Export renameDataOpts]
 
 namespace PublishDiagnosticsClientCapabilities
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_publishDiagnostics
@@ -80,7 +82,7 @@ namespace PublishDiagnosticsClientCapabilities
   record TagSupport where
     constructor MkTagSupport
     valueSet : List DiagnosticTag
-  %runElab deriveJSON defaultOpts `{TagSupport}
+  %runElab derive "TagSupport" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_publishDiagnostics
 public export
@@ -91,7 +93,7 @@ record PublishDiagnosticsClientCapabilities where
   versionSupport         : Maybe Bool
   codeDescriptionSupport : Maybe Bool
   dataSupport            : Maybe Bool
-%runElab deriveJSON defaultOpts `{PublishDiagnosticsClientCapabilities}
+%runElab derive "PublishDiagnosticsClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_publishDiagnostics
 public export
@@ -100,4 +102,4 @@ record PublishDiagnosticsParams where
   uri         : DocumentURI
   version     : Maybe Int
   diagnostics : List Diagnostic
-%runElab deriveJSON defaultOpts `{PublishDiagnosticsParams}
+%runElab derive "PublishDiagnosticsParams" [FromJSON, ToJSON]

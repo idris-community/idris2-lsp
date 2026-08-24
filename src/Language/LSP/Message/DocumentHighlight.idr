@@ -8,20 +8,21 @@ import Language.Reflection
 
 %language ElabReflection
 %default total
+%hide Text.Bounds.Position
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 public export
 record DocumentHighlightClientCapabilities where
   constructor MkDocumentHighlightClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{DocumentHighlightClientCapabilities}
+%runElab derive "DocumentHighlightClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 public export
 record DocumentHighlightOptions where
   constructor MkDocumentHighlightOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{DocumentHighlightOptions}
+%runElab derive "DocumentHighlightOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 public export
@@ -29,7 +30,7 @@ record DocumentHighlightRegistrationOptions where
   constructor MkDocumentHighlightRegistrationOptions
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{DocumentHighlightRegistrationOptions}
+%runElab derive "DocumentHighlightRegistrationOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 public export
@@ -39,7 +40,7 @@ record DocumentHighlightParams where
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
   position           : Position
-%runElab deriveJSON defaultOpts `{DocumentHighlightParams}
+%runElab derive "DocumentHighlightParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 namespace DocumentHighlightKind
@@ -49,17 +50,17 @@ namespace DocumentHighlightKind
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 export
 ToJSON DocumentHighlightKind where
-  toJSON Text  = JNumber 1
-  toJSON Read  = JNumber 2
-  toJSON Write = JNumber 3
+  toJSON Text  = JInteger 1
+  toJSON Read  = JInteger 2
+  toJSON Write = JInteger 3
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 export
 FromJSON DocumentHighlightKind where
-  fromJSON (JNumber 1) = pure Text
-  fromJSON (JNumber 2) = pure Read
-  fromJSON (JNumber 3) = pure Write
-  fromJSON _ = neutral
+  fromJSON (JInteger 1) = pure Text
+  fromJSON (JInteger 2) = pure Read
+  fromJSON (JInteger 3) = pure Write
+  fromJSON _ = fail "not a document highlight, 1|2|3"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentHighlight
 public export
@@ -67,4 +68,4 @@ record DocumentHighlight where
   constructor MkDocumentHighlight
   range : Range
   kind  : Maybe DocumentHighlightKind
-%runElab deriveJSON defaultOpts `{DocumentHighlight}
+%runElab derive "DocumentHighlight" [FromJSON, ToJSON]

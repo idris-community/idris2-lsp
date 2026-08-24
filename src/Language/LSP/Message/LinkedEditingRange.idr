@@ -8,20 +8,21 @@ import Language.Reflection
 
 %language ElabReflection
 %default total
+%hide Text.Bounds.Position
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_linkedEditingRange
 public export
 record LinkedEditingRangeClientCapabilities where
   constructor MkLinkedEditingRangeClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{LinkedEditingRangeClientCapabilities}
+%runElab derive "LinkedEditingRangeClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_linkedEditingRange
 public export
 record LinkedEditingRangeOptions where
   constructor MkLinkedEditingRangesOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{LinkedEditingRangeOptions}
+%runElab derive "LinkedEditingRangeOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_linkedEditingRange
 public export
@@ -30,7 +31,7 @@ record LinkedEditingRangeRegistrationOptions where
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe Bool
-%runElab deriveJSON defaultOpts `{LinkedEditingRangeRegistrationOptions}
+%runElab derive "LinkedEditingRangeRegistrationOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_linkedEditingRange
 public export
@@ -39,7 +40,7 @@ record LinkedEditingRangeParams where
   workDoneToken : Maybe ProgressToken
   textDocument  : TextDocumentIdentifier
   position      : Position
-%runElab deriveJSON defaultOpts `{LinkedEditingRangeParams}
+%runElab derive "LinkedEditingRangeParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_linkedEditingRange
 public export
@@ -47,4 +48,4 @@ record LinkedEditingRanges where
   constructor MkLinkedEditingRanges
   ranges      : List Range
   wordPattern : Maybe String
-%runElab deriveJSON defaultOpts `{LinkedEditingRanges}
+%runElab derive "LinkedEditingRanges" [FromJSON, ToJSON]

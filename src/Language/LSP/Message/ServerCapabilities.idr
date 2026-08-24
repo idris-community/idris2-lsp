@@ -51,7 +51,7 @@ record FileOperationsServerCapabilities where
   willRename : Maybe FileOperationRegistrationOptions
   didDelete  : Maybe FileOperationRegistrationOptions
   willDelete : Maybe FileOperationRegistrationOptions
-%runElab deriveJSON defaultOpts `{FileOperationsServerCapabilities}
+%runElab derive "FileOperationsServerCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -59,7 +59,7 @@ record WorkspaceServerCapabilities where
   constructor MkWorkspaceServerCapabilities
   workspaceFolders : Maybe WorkspaceFoldersServerCapabilities
   fileOperations   : Maybe FileOperationsServerCapabilities
-%runElab deriveJSON defaultOpts `{WorkspaceServerCapabilities}
+%runElab derive "WorkspaceServerCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -94,7 +94,7 @@ record ServerCapabilities where
   workspaceSymbolProvider          : Maybe (OneOf [Bool, WorkspaceSymbolOptions])
   workspace                        : Maybe WorkspaceServerCapabilities
   experimental                     : Maybe JSON
-%runElab deriveJSON defaultOpts `{ServerCapabilities}
+%runElab derive "ServerCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#initialize
 public export
@@ -102,4 +102,4 @@ record ServerInfo where
   constructor MkServerInfo
   name    : String
   version : Maybe String
-%runElab deriveJSON defaultOpts `{ServerInfo}
+%runElab derive "ServerInfo" [FromJSON, ToJSON]

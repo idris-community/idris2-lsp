@@ -5,6 +5,7 @@ import Language.LSP.Message.Progress
 import Language.LSP.Message.TextDocument
 import Language.LSP.Message.Utils
 import Language.Reflection
+import Data.Either
 
 %language ElabReflection
 %default total
@@ -42,62 +43,62 @@ namespace SymbolKind
 
 export
 ToJSON SymbolKind where
-  toJSON File          = JNumber 1
-  toJSON Module        = JNumber 2
-  toJSON Namespace     = JNumber 3
-  toJSON Package       = JNumber 4
-  toJSON Class         = JNumber 5
-  toJSON Method        = JNumber 6
-  toJSON Property      = JNumber 7
-  toJSON Field         = JNumber 8
-  toJSON Constructor   = JNumber 9
-  toJSON Enum          = JNumber 10
-  toJSON Interface     = JNumber 11
-  toJSON Function      = JNumber 12
-  toJSON Variable      = JNumber 13
-  toJSON Constant      = JNumber 14
-  toJSON String_       = JNumber 15
-  toJSON Number        = JNumber 16
-  toJSON Boolean       = JNumber 17
-  toJSON Array         = JNumber 18
-  toJSON Object        = JNumber 19
-  toJSON Key           = JNumber 20
-  toJSON Null          = JNumber 21
-  toJSON EnumMember    = JNumber 22
-  toJSON Struct        = JNumber 23
-  toJSON Event         = JNumber 24
-  toJSON Operator      = JNumber 25
-  toJSON TypeParameter = JNumber 26
+  toJSON File          = JInteger 1
+  toJSON Module        = JInteger 2
+  toJSON Namespace     = JInteger 3
+  toJSON Package       = JInteger 4
+  toJSON Class         = JInteger 5
+  toJSON Method        = JInteger 6
+  toJSON Property      = JInteger 7
+  toJSON Field         = JInteger 8
+  toJSON Constructor   = JInteger 9
+  toJSON Enum          = JInteger 10
+  toJSON Interface     = JInteger 11
+  toJSON Function      = JInteger 12
+  toJSON Variable      = JInteger 13
+  toJSON Constant      = JInteger 14
+  toJSON String_       = JInteger 15
+  toJSON Number        = JInteger 16
+  toJSON Boolean       = JInteger 17
+  toJSON Array         = JInteger 18
+  toJSON Object        = JInteger 19
+  toJSON Key           = JInteger 20
+  toJSON Null          = JInteger 21
+  toJSON EnumMember    = JInteger 22
+  toJSON Struct        = JInteger 23
+  toJSON Event         = JInteger 24
+  toJSON Operator      = JInteger 25
+  toJSON TypeParameter = JInteger 26
 
 export
 FromJSON SymbolKind where
-  fromJSON (JNumber 1)  = pure File
-  fromJSON (JNumber 2)  = pure Module
-  fromJSON (JNumber 3)  = pure Namespace
-  fromJSON (JNumber 4)  = pure Package
-  fromJSON (JNumber 5)  = pure Class
-  fromJSON (JNumber 6)  = pure Method
-  fromJSON (JNumber 7)  = pure Property
-  fromJSON (JNumber 8)  = pure Field
-  fromJSON (JNumber 9)  = pure Constructor
-  fromJSON (JNumber 10) = pure Enum
-  fromJSON (JNumber 11) = pure Interface
-  fromJSON (JNumber 12) = pure Function
-  fromJSON (JNumber 13) = pure Variable
-  fromJSON (JNumber 14) = pure Constant
-  fromJSON (JNumber 15) = pure String_
-  fromJSON (JNumber 16) = pure Number
-  fromJSON (JNumber 17) = pure Boolean
-  fromJSON (JNumber 18) = pure Array
-  fromJSON (JNumber 19) = pure Object
-  fromJSON (JNumber 20) = pure Key
-  fromJSON (JNumber 21) = pure Null
-  fromJSON (JNumber 22) = pure EnumMember
-  fromJSON (JNumber 23) = pure Struct
-  fromJSON (JNumber 24) = pure Event
-  fromJSON (JNumber 25) = pure Operator
-  fromJSON (JNumber 26) = pure TypeParameter
-  fromJSON _ = Nothing
+  fromJSON (JInteger 1)  = pure File
+  fromJSON (JInteger 2)  = pure Module
+  fromJSON (JInteger 3)  = pure Namespace
+  fromJSON (JInteger 4)  = pure Package
+  fromJSON (JInteger 5)  = pure Class
+  fromJSON (JInteger 6)  = pure Method
+  fromJSON (JInteger 7)  = pure Property
+  fromJSON (JInteger 8)  = pure Field
+  fromJSON (JInteger 9)  = pure Constructor
+  fromJSON (JInteger 10) = pure Enum
+  fromJSON (JInteger 11) = pure Interface
+  fromJSON (JInteger 12) = pure Function
+  fromJSON (JInteger 13) = pure Variable
+  fromJSON (JInteger 14) = pure Constant
+  fromJSON (JInteger 15) = pure String_
+  fromJSON (JInteger 16) = pure Number
+  fromJSON (JInteger 17) = pure Boolean
+  fromJSON (JInteger 18) = pure Array
+  fromJSON (JInteger 19) = pure Object
+  fromJSON (JInteger 20) = pure Key
+  fromJSON (JInteger 21) = pure Null
+  fromJSON (JInteger 22) = pure EnumMember
+  fromJSON (JInteger 23) = pure Struct
+  fromJSON (JInteger 24) = pure Event
+  fromJSON (JInteger 25) = pure Operator
+  fromJSON (JInteger 26) = pure TypeParameter
+  fromJSON _ = Left neutral
 
 namespace SymbolTag
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
@@ -106,12 +107,12 @@ namespace SymbolTag
 
 export
 ToJSON SymbolTag where
-  toJSON Deprecated = JNumber 1
+  toJSON Deprecated = JInteger 1
 
 export
 FromJSON SymbolTag where
-  fromJSON (JNumber 1) = pure Deprecated
-  fromJSON _ = Nothing
+  fromJSON (JInteger 1) = pure Deprecated
+  fromJSON _ = fail "expected 1 for symbol tag"
 
 namespace DocumentSymbolClientCapabilities
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
@@ -119,14 +120,14 @@ namespace DocumentSymbolClientCapabilities
   record DocumentSymbolKind where
     constructor MkDocumentSymbolKind
     valueSet : Maybe (List SymbolKind)
-  %runElab deriveJSON defaultOpts `{DocumentSymbolKind}
+  %runElab derive "DocumentSymbolKind" [FromJSON, ToJSON]
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
   public export
   record DocumentSymbolTag where
     constructor MkDocumentSymbolTag
     valueSet : Maybe (List SymbolTag)
-  %runElab deriveJSON defaultOpts `{DocumentSymbolTag}
+  %runElab derive "DocumentSymbolTag" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -137,7 +138,7 @@ record DocumentSymbolClientCapabilities where
   hierarchicalDocumentSymbolSupport : Maybe Bool
   tagSupport                        : Maybe DocumentSymbolTag
   labelSupport                      : Maybe Bool
-%runElab deriveJSON defaultOpts `{DocumentSymbolClientCapabilities}
+%runElab derive "DocumentSymbolClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -145,7 +146,7 @@ record DocumentSymbolOptions where
   constructor MkDocumentSymbolOptions
   workDoneProgress : Maybe Bool
   label            : Maybe String
-%runElab deriveJSON defaultOpts `{DocumentSymbolOptions}
+%runElab derive "DocumentSymbolOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -154,7 +155,7 @@ record DocumentSymbolRegistrationOptions where
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
   label            : Maybe String
-%runElab deriveJSON defaultOpts `{DocumentSymbolRegistrationOptions}
+%runElab derive "DocumentSymbolRegistrationOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -163,7 +164,7 @@ record DocumentSymbolParams where
   workDoneToken      : Maybe ProgressToken
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
-%runElab deriveJSON defaultOpts `{DocumentSymbolParams}
+%runElab derive "DocumentSymbolParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -176,33 +177,9 @@ record DocumentSymbol where
   deprecated     : Maybe Bool
   range          : Range
   selectionRange : Range
-  children       : Maybe (List (Inf DocumentSymbol))
+  children       : Maybe (List DocumentSymbol)
 
-export -- FIXME?: Can I Avoid assert_total? Try indexing it with the depth
-ToJSON DocumentSymbol where
-  toJSON (MkDocumentSymbol name detail kind tags deprecated range selectionRange children) = assert_total $
-    JObject (catMaybes [ Just ("name", toJSON name)
-                       , (MkPair "detail" . toJSON) <$> detail
-                       , Just ("kind", toJSON kind)
-                       , (MkPair "tags" . toJSON) <$> tags
-                       , (MkPair "deprecated" . toJSON) <$> deprecated
-                       , Just ("range", toJSON range)
-                       , Just ("selectionRange", toJSON selectionRange)
-                       , (MkPair "children" . toJSON) <$> children
-                       ])
-
-export covering
-FromJSON DocumentSymbol where
-  fromJSON (JObject arg) =
-    pure MkDocumentSymbol <*> (lookup "name" arg >>= fromJSON)
-                          <*> (pure $ lookup "detail" arg >>= fromJSON)
-                          <*> (lookup "kind" arg >>= fromJSON)
-                          <*> (pure $ lookup "tags" arg >>= fromJSON)
-                          <*> (pure $ lookup "deprecated" arg >>= fromJSON)
-                          <*> (lookup "range" arg >>= fromJSON)
-                          <*> (lookup "selectionRange" arg >>= fromJSON)
-                          <*> (pure $ lookup "children" arg >>= fromJSON)
-  fromJSON _ = neutral
+%runElab derive "DocumentSymbol" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_documentSymbol
 public export
@@ -214,4 +191,4 @@ record SymbolInformation where
   deprecated    : Maybe Bool
   location      : Location
   containerName : Maybe String
-%runElab deriveJSON defaultOpts `{SymbolInformation}
+%runElab derive "SymbolInformation" [FromJSON, ToJSON]

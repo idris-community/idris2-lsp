@@ -31,7 +31,7 @@ record RenameClientCapabilities where
   prepareSupport                 : Maybe Bool
   prepareSupportDefaultBehaviour : Maybe PrepareSupportDefaultBehaviour
   honorsChangeAnnotation         : Maybe Bool
-%runElab deriveJSON defaultOpts `{RenameClientCapabilities}
+%runElab derive "RenameClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_rename
 public export
@@ -39,7 +39,7 @@ record RenameOptions where
   constructor MkRenameOptions
   workDoneProgress : Maybe Bool
   prepareProvider  : Maybe Bool
-%runElab deriveJSON defaultOpts `{RenameOptions}
+%runElab derive "RenameOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_rename
 public export
@@ -48,7 +48,7 @@ record RenameRegistrationOptions where
   workDoneProgress : Maybe Bool
   prepareProvider  : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
-%runElab deriveJSON defaultOpts `{RenameRegistrationOptions}
+%runElab derive "RenameRegistrationOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_rename
 public export
@@ -57,7 +57,7 @@ record RenameParams where
   workDoneToken : Maybe ProgressToken
   textDocument  : TextDocumentIdentifier
   newName       : String
-%runElab deriveJSON defaultOpts `{RenameParams}
+%runElab derive "RenameParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_prepareRename
 public export
@@ -65,7 +65,7 @@ record PrepareRenameParams where
   constructor MkPrepareRenameParams
   textDocument : TextDocumentIdentifier
   position     : Position
-%runElab deriveJSON defaultOpts `{PrepareRenameParams}
+%runElab derive "PrepareRenameParams" [FromJSON, ToJSON]
 
 namespace PrepareRenameResponse
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_prepareRename
@@ -73,7 +73,7 @@ namespace PrepareRenameResponse
   record PrepareRenameDefaultResponse where
     constructor MkPrepareRenameDefaultResponse
     defaultBehaviour : Bool
-  %runElab deriveJSON defaultOpts `{PrepareRenameDefaultResponse}
+  %runElab derive "PrepareRenameDefaultResponse" [FromJSON, ToJSON]
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_prepareRename
   public export
@@ -81,4 +81,4 @@ namespace PrepareRenameResponse
     constructor MkPrepareRenamePlaceholderResponse
     range       : Range
     placeholder : String
-  %runElab deriveJSON defaultOpts `{PrepareRenamePlaceholderResponse}
+  %runElab derive "PrepareRenamePlaceholderResponse" [FromJSON, ToJSON]

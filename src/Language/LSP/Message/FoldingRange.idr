@@ -15,14 +15,14 @@ record FoldingRangeClientCapabilities where
   dynamicRegistration : Maybe Bool
   rangeLimit          : Maybe Int
   lineFoldingOnly     : Maybe Bool
-%runElab deriveJSON defaultOpts `{FoldingRangeClientCapabilities}
+%runElab derive "FoldingRangeClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_foldingRange
 public export
 record FoldingRangeOptions where
   constructor MkFoldingRangeOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{FoldingRangeOptions}
+%runElab derive "FoldingRangeOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_foldingRange
 public export
@@ -31,7 +31,7 @@ record FoldingRangeRegistrationOptions where
   workDoneProgress : Maybe Bool
   documentSelector : OneOf [DocumentSelector, Null]
   id               : Maybe String
-%runElab deriveJSON defaultOpts `{FoldingRangeRegistrationOptions}
+%runElab derive "FoldingRangeRegistrationOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_foldingRange
 public export
@@ -40,7 +40,7 @@ record FoldingRangeParams where
   workDoneToken      : Maybe ProgressToken
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
-%runElab deriveJSON defaultOpts `{FoldingRangeParams}
+%runElab derive "FoldingRangeParams" [FromJSON, ToJSON]
 
 namespace FoldingRangeKind
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_foldingRange
@@ -58,7 +58,7 @@ FromJSON FoldingRangeKind where
   fromJSON (JString "comment") = pure Comment
   fromJSON (JString "imports") = pure Imports
   fromJSON (JString "region")  = pure Region
-  fromJSON _ = neutral
+  fromJSON _ = fail "not a folding range, comment|imports|region"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_foldingRange
 public export
@@ -69,4 +69,4 @@ record FoldingRange where
   endLine        : Int
   endCharacter   : Maybe Int
   kind           : Maybe String
-%runElab deriveJSON defaultOpts `{FoldingRange}
+%runElab derive "FoldingRange" [FromJSON, ToJSON]

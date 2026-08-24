@@ -11,4 +11,4 @@ public export
 record CancelParams where
   constructor MkCancelParams
   id : OneOf [Int, String]
-%runElab deriveJSON defaultOpts `{CancelParams}
+%runElab derive "CancelParams" [FromJSON, ToJSON]

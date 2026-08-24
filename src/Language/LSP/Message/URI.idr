@@ -24,9 +24,13 @@ parseJSONURI str = mapFst ([],) (fst <$> parse (uriParser <* eos) str)
 export covering
 FromJSON URI where
   fromJSON (JString str) = parseJSONURI str
-  fromJSON _ = Left neutral
+  fromJSON x = fail "expected URI, got: \{encode x}"
 
 -- URI is a valid key for parsing dictionaries/SortedMap
 export covering
 FromJSONKey URI where
   fromKey = parseJSONURI
+
+export
+ToJSONKey URI where
+  toKey = show

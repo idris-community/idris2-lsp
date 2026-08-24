@@ -18,11 +18,7 @@ record TextEdit where
   constructor MkTextEdit
   range   : Range
   newText : String
-%runElab deriveJSON defaultOpts `{TextEdit}
-
-export
-Eq TextEdit where
-  (MkTextEdit range1 newText1) == (MkTextEdit range2 newText2) = range1 == range2 && newText1 == newText2
+%runElab derive "TextEdit" [FromJSON, ToJSON, Eq]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textEdit
 public export
@@ -31,7 +27,7 @@ record ChangeAnnotation where
   label             : String
   needsConfirmation : Maybe Bool
   description       : Maybe String
-%runElab deriveJSON defaultOpts `{ChangeAnnotation}
+%runElab derive "ChangeAnnotation" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textEdit
 public export
@@ -45,7 +41,7 @@ record AnnotatedTextEdit where
   range        : Range
   newText      : String
   annotationId : ChangeAnnotationIdentifier
-%runElab deriveJSON defaultOpts `{AnnotatedTextEdit}
+%runElab derive "AnnotatedTextEdit" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocumentEdit
 public export
@@ -53,7 +49,7 @@ record TextDocumentEdit where
   constructor MkTextDocumentEdit
   textDocument : OptionalVersionedTextDocumentIdentifier
   edits        : List (OneOf [TextEdit, AnnotatedTextEdit])
-%runElab deriveJSON defaultOpts `{TextDocumentEdit}
+%runElab derive "TextDocumentEdit" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_completion
 public export
@@ -62,7 +58,7 @@ record InsertReplaceEdit where
   newText : String
   insert  : Range
   replace : Range
-%runElab deriveJSON defaultOpts `{InsertReplaceEdit}
+%runElab derive "InsertReplaceEdit" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#resourceChanges
 public export
@@ -70,7 +66,7 @@ record CreateFileOptions where
   constructor MkCreateFileOptions
   overwrite      : Maybe Bool
   ignoreIfExists : Maybe Bool
-%runElab deriveJSON defaultOpts `{CreateFileOptions}
+%runElab derive "CreateFileOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#resourceChanges
 public export
@@ -78,7 +74,7 @@ record RenameFileOptions where
   constructor MkRenameFileOptions
   overwrite      : Maybe Bool
   ignoreIfExists : Maybe Bool
-%runElab deriveJSON defaultOpts `{RenameFileOptions}
+%runElab derive "RenameFileOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#resourceChanges
 public export
@@ -86,35 +82,38 @@ record DeleteFileOptions where
   constructor MkDeleteFileOptions
   recursive         : Maybe Bool
   ignoreIfNotExists : Maybe Bool
-%runElab deriveJSON defaultOpts `{DeleteFileOptions}
+%runElab derive "DeleteFileOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#resourceChanges
 public export
 record CreateFile where
   constructor MkCreateFile
+  kind         : Only (JString "create")
   uri          : DocumentURI
   options      : Maybe CreateFileOptions
   annotationId : ChangeAnnotationIdentifier
-%runElab deriveJSON ({staticFields := [("kind", JString "create")]} defaultOpts) `{CreateFile}
+%runElab derive "CreateFile" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#resourceChanges
 public export
 record RenameFile where
   constructor MkRenameFile
+  kind         : Only (JString "rename")
   oldUri       : DocumentURI
   newUri       : DocumentURI
   options      : Maybe RenameFileOptions
   annotationId : ChangeAnnotationIdentifier
-%runElab deriveJSON ({staticFields := [("kind", JString "rename")]} defaultOpts) `{RenameFile}
+%runElab derive "RenameFile" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#resourceChanges
 public export
 record DeleteFile where
   constructor MkDeleteFile
+  kind         : Only (JString "delete")
   uri          : DocumentURI
   options      : Maybe DeleteFileOptions
   annotationId : ChangeAnnotationIdentifier
-%runElab deriveJSON ({staticFields := [("kind", JString "delete")]} defaultOpts) `{DeleteFile}
+%runElab derive "DeleteFile" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspaceEdit
 public export
@@ -123,7 +122,7 @@ record WorkspaceEdit where
   changes           : Maybe (SortedMap DocumentURI (List TextEdit))
   documentChanges   : Maybe (List (OneOf [TextDocumentEdit, CreateFile, RenameFile, DeleteFile]))
   changeAnnotations : Maybe (SortedMap String ChangeAnnotation)
-%runElab deriveJSON defaultOpts `{WorkspaceEdit}
+%runElab derive "WorkspaceEdit" [FromJSON, ToJSON]
 
 namespace ResourceOperationKind
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspaceEditClientCapabilities
@@ -141,7 +140,7 @@ FromJSON ResourceOperationKind where
   fromJSON (JString "create") = pure Create
   fromJSON (JString "rename") = pure Rename
   fromJSON (JString "delete") = pure Delete
-  fromJSON _ = neutral
+  fromJSON _ = fail "not create|rename|delete"
 
 namespace FailureHandlingKind
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspaceEditClientCapabilities
@@ -161,7 +160,7 @@ FromJSON FailureHandlingKind where
   fromJSON (JString "transactional")         = pure Transactional
   fromJSON (JString "undo")                  = pure Undo
   fromJSON (JString "textOnlyTransactional") = pure TextOnlyTransactional
-  fromJSON _ = neutral
+  fromJSON _ = fail "not a failure handing, abort|transactional|undo|textOnlyTransactional"
 
 namespace WorkspaceEditClientCapabilities
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspaceEditClientCapabilities
@@ -169,7 +168,7 @@ namespace WorkspaceEditClientCapabilities
   record ChangeAnnotationSupport where
     constructor MkChangeAnnotationSupport
     groupsOnLabel : Maybe Bool
-  %runElab deriveJSON defaultOpts `{ChangeAnnotationSupport}
+  %runElab derive "ChangeAnnotationSupport" [FromJSON, ToJSON]
 
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspaceEditClientCapabilities
@@ -181,7 +180,7 @@ record WorkspaceEditClientCapabilities where
   failureHandling         : Maybe FailureHandlingKind
   normalizesLineEndings   : Maybe Bool
   changeAnnotationSupport : Maybe ChangeAnnotationSupport
-%runElab deriveJSON defaultOpts `{WorkspaceEditClientCapabilities}
+%runElab derive "WorkspaceEditClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_workspaceFolders
 public export
@@ -189,7 +188,7 @@ record WorkspaceFoldersServerCapabilities where
   constructor MkWorkspaceFoldersServerCapabilities
   supported           : Maybe Bool
   changeNotifications : Maybe (OneOf [String, Bool])
-%runElab deriveJSON defaultOpts `{WorkspaceFoldersServerCapabilities}
+%runElab derive "WorkspaceFoldersServerCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_workspaceFolders
 public export
@@ -197,35 +196,35 @@ record WorkspaceFolder where
   constructor MkWorkspaceFolder
   uri  : DocumentURI
   name : String
-%runElab deriveJSON defaultOpts `{WorkspaceFolder}
+%runElab derive "WorkspaceFolder" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeWorkspaceFolders
 public export
 interface WorkspaceFoldersChangeEvent where
   added   : List WorkspaceFolder;
   removed : List WorkspaceFolder;
-%runElab deriveJSON defaultOpts `{WorkspaceFoldersChangeEvent}
+%runElab derive "WorkspaceFoldersChangeEvent" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeWorkspaceFolders
 public export
 record DidChangeWorkspaceFoldersParams where
   constructor MkDidChangeWorkspaceFoldersParams
   event : WorkspaceFoldersChangeEvent
-%runElab deriveJSON defaultOpts `{DidChangeWorkspaceFoldersParams}
+%runElab derive "DidChangeWorkspaceFoldersParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeConfiguration
 public export
 record DidChangeConfigurationClientCapabilities where
   constructor MkDidChangeConfigurationClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{DidChangeConfigurationClientCapabilities}
+%runElab derive "DidChangeConfigurationClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeConfiguration
 public export
 record DidChangeConfigurationParams where
   constructor MkDidChangeConfigurationParams
   settings : JSON
-%runElab deriveJSON defaultOpts `{DidChangeConfigurationParams}
+%runElab derive "DidChangeConfigurationParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_configuration
 public export
@@ -233,21 +232,21 @@ record ConfigurationItem where
   constructor MkConfigurationItem
   scopeUri : Maybe DocumentURI;
   section  : Maybe String
-%runElab deriveJSON defaultOpts `{ConfigurationItem}
+%runElab derive "ConfigurationItem" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_configuration
 public export
 record ConfigurationParams where
   constructor MkConfigurationParams
   items : List ConfigurationItem
-%runElab deriveJSON defaultOpts `{ConfigurationParams}
+%runElab derive "ConfigurationParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeWatchedFiles
 public export
 record DidChangeWatchedFilesClientCapabilities where
   constructor MkDidChangeWatchedFilesClientCapabilities
   dynamicRegistration : Maybe Bool
-%runElab deriveJSON defaultOpts `{DidChangeWatchedFilesClientCapabilities}
+%runElab derive "DidChangeWatchedFilesClientCapabilities" [FromJSON, ToJSON]
 
 namespace WatchKind
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeWatchedFiles
@@ -265,8 +264,8 @@ ToJSON (List WatchKind) where
 
 export
 FromJSON (List WatchKind) where
-  fromJSON (JNumber x) = pure $ filter ((/=) 0 . prim__and_Bits8 (cast $ cast {to = Integer} x) . watchKindToBits8) [Create, Change, Delete]
-  fromJSON _ = neutral
+  fromJSON (JInteger x) = pure $ filter ((/=) 0 . prim__and_Bits8 (cast $ cast {to = Integer} x) . watchKindToBits8) [Create, Change, Delete]
+  fromJSON _ = fail "not a watch kind"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeWatchedFiles
 public export
@@ -274,14 +273,14 @@ record FileSystemWatcher where
   constructor MkFileSystemWatcher
   globPattern : String
   kind        : Maybe (List WatchKind)
-%runElab deriveJSON defaultOpts `{FileSystemWatcher}
+%runElab derive "FileSystemWatcher" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeWatchedFiles
 public export
 record DidChangeWatchedFilesRegistrationOptions where
   constructor MkDidChangeWatchedFilesRegistrationOptions
   watchers : List FileSystemWatcher
-%runElab deriveJSON defaultOpts `{DidChangeWatchedFilesRegistrationOptions}
+%runElab derive "DidChangeWatchedFilesRegistrationOptions" [FromJSON, ToJSON]
 
 namespace FileChangeType
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeWatchedFiles
@@ -290,16 +289,16 @@ namespace FileChangeType
 
 export
 ToJSON FileChangeType where
-  toJSON Created = JNumber 1
-  toJSON Changed = JNumber 2
-  toJSON Deleted = JNumber 3
+  toJSON Created = JInteger 1
+  toJSON Changed = JInteger 2
+  toJSON Deleted = JInteger 3
 
 export
 FromJSON FileChangeType where
-  fromJSON (JNumber 1) = pure Created
-  fromJSON (JNumber 2) = pure Changed
-  fromJSON (JNumber 3) = pure Deleted
-  fromJSON _ = neutral
+  fromJSON (JInteger 1) = pure Created
+  fromJSON (JInteger 2) = pure Changed
+  fromJSON (JInteger 3) = pure Deleted
+  fromJSON _ = fail "not a file change type, 1|2|3"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeWatchedFiles
 public export
@@ -307,14 +306,14 @@ record FileEvent where
   constructor MkFileEvent
   uri : DocumentURI
   type : FileChangeType
-%runElab deriveJSON defaultOpts `{FileEvent}
+%runElab derive "FileEvent" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didChangeWatchedFiles
 public export
 record DidChangeWatchedFilesParams where
   constructor MkDidChangeWatchedFilesParams
   changes : List FileEvent
-%runElab deriveJSON defaultOpts `{DidChangeWatchedFilesParams}
+%runElab derive "DidChangeWatchedFilesParams" [FromJSON, ToJSON]
 
 namespace WorkspaceSymbolClientCapabilities
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_symbol
@@ -322,14 +321,14 @@ namespace WorkspaceSymbolClientCapabilities
   record SymbolKindClientCapabilities where
     constructor MkSymbolKindClientCapabilities
     valueSet : Maybe (List SymbolKind)
-  %runElab deriveJSON defaultOpts `{SymbolKindClientCapabilities}
+  %runElab derive "SymbolKindClientCapabilities" [FromJSON, ToJSON]
 
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_symbol
   public export
   record TagSupportClientCapabilities where
     constructor MkTagSupportClientCapabilities
     valueSet : List SymbolTag
-  %runElab deriveJSON defaultOpts `{TagSupportClientCapabilities}
+  %runElab derive "TagSupportClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_symbol
 public export
@@ -338,21 +337,21 @@ record WorkspaceSymbolClientCapabilities where
   dynamicRegistration : Maybe Bool
   symbolKind          : Maybe SymbolKindClientCapabilities
   tagSupport          : TagSupportClientCapabilities
-%runElab deriveJSON defaultOpts `{WorkspaceSymbolClientCapabilities}
+%runElab derive "WorkspaceSymbolClientCapabilities" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_symbol
 public export
 record WorkspaceSymbolOptions where
   constructor MkWorkspaceSymbolOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{WorkspaceSymbolOptions}
+%runElab derive "WorkspaceSymbolOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_symbol
 public export
 record WorkspaceSymbolRegistrationOptions where
   constructor MkWorkspaceSymbolRegistrationOptions
   workDoneProgress : Maybe Bool
-%runElab deriveJSON defaultOpts `{WorkspaceSymbolRegistrationOptions}
+%runElab derive "WorkspaceSymbolRegistrationOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_symbol
 public export
@@ -360,7 +359,7 @@ record WorkspaceSymbolParams where
   constructor MkWorkspaceSymbolParams
   partialResultToken : Maybe ProgressToken
   query              : String
-%runElab deriveJSON defaultOpts `{WorkspaceSymbolParams}
+%runElab derive "WorkspaceSymbolParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_applyEdit
 public export
@@ -368,7 +367,7 @@ record ApplyWorkspaceEditParams where
   constructor MkApplyWorkspaceEditParams
   label : Maybe String
   edit  : WorkspaceEdit
-%runElab deriveJSON defaultOpts `{ApplyWorkspaceEditParams}
+%runElab derive "ApplyWorkspaceEditParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_applyEdit
 public export
@@ -377,7 +376,7 @@ record ApplyWorkspaceEditResponse where
   applied       : Bool
   failureReason : Maybe String
   failedChange  : Maybe Integer
-%runElab deriveJSON defaultOpts `{ApplyWorkspaceEditResponse}
+%runElab derive "ApplyWorkspaceEditResponse" [FromJSON, ToJSON]
 
 namespace FileOperationPatternKind
   ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_willCreateFiles
@@ -393,14 +392,14 @@ export
 FromJSON FileOperationPatternKind where
   fromJSON (JString "file")   = pure FileKind
   fromJSON (JString "folder") = pure FolderKind
-  fromJSON _ = neutral
+  fromJSON _ = fail "not file|folder"
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_willCreateFiles
 public export
 record FileOperationPatternOptions where
   constructor MkFileOperationPatternOptions
   ignoreCase : Maybe Bool
-%runElab deriveJSON defaultOpts `{FileOperationPatternOptions}
+%runElab derive "FileOperationPatternOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_willCreateFiles
 public export
@@ -409,7 +408,7 @@ record FileOperationPattern where
   glob    : String
   matches : Maybe FileOperationPatternKind
   options : FileOperationPatternOptions
-%runElab deriveJSON defaultOpts `{FileOperationPattern}
+%runElab derive "FileOperationPattern" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_willCreateFiles
 public export
@@ -417,28 +416,28 @@ record FileOperationFilter where
   constructor MkFileOperationFilter
   scheme  : Maybe String
   pattern : FileOperationPattern
-%runElab deriveJSON defaultOpts `{FileOperationFilter}
+%runElab derive "FileOperationFilter" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_willCreateFiles
 public export
 record FileOperationRegistrationOptions where
   constructor MkFileOperationRegistrationOptions
   filters : List FileOperationFilter
-%runElab deriveJSON defaultOpts `{FileOperationRegistrationOptions}
+%runElab derive "FileOperationRegistrationOptions" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_willCreateFiles
 public export
 record FileCreate where
   constructor MkFileCreate
   uri : URI
-%runElab deriveJSON defaultOpts `{FileCreate}
+%runElab derive "FileCreate" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_willCreateFiles
 public export
 record CreateFilesParams where
   constructor MkCreateFilesParams
   files : List FileCreate
-%runElab deriveJSON defaultOpts `{CreateFilesParams}
+%runElab derive "CreateFilesParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_willRenameFiles
 public export
@@ -446,25 +445,25 @@ record FileRename where
   constructor MkFileRename
   oldUri : URI
   newUri : URI
-%runElab deriveJSON defaultOpts `{FileRename}
+%runElab derive "FileRename" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_willRenameFiles
 public export
 record RenameFilesParams where
   constructor MkRenameFilesParams
   files : List FileRename
-%runElab deriveJSON defaultOpts `{RenameFilesParams}
+%runElab derive "RenameFilesParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didRenameFiles
 public export
 record FileDelete where
   constructor MkFileDelete
   uri : URI
-%runElab deriveJSON defaultOpts `{FileDelete}
+%runElab derive "FileDelete" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#workspace_didRenameFiles
 public export
 record DeleteFilesParams where
   constructor MkDeleteFilesParams
   files : List FileDelete
-%runElab deriveJSON defaultOpts `{DeleteFilesParams}
+%runElab derive "DeleteFilesParams" [FromJSON, ToJSON]
