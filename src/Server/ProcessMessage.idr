@@ -244,12 +244,15 @@ loadURI conf uri version = do
     -- ModTree 397--308 loads data into context from ttf/ttm if no errors
     -- In case of error, we reprocess fname to populate metadata and syntax
     logI Channel "Rebuild \{fname} due to errors"
-    modIdent <- ctxtPathToNS fname
-    let msgPrefix : Doc IdrisAnn = pretty0 ""
-    let buildMsg : Doc IdrisAnn = pretty0 modIdent
-    clearCtxt; addPrimitives
-    put MD (initMetadata (PhysicalIdrSrc modIdent))
-    ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
+    catch (do
+      modIdent <- ctxtPathToNS fname
+      let msgPrefix : Doc IdrisAnn = pretty0 ""
+      let buildMsg : Doc IdrisAnn = pretty0 modIdent
+      clearCtxt; addPrimitives
+      put MD (initMetadata (PhysicalIdrSrc modIdent))
+      ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent)
+      -- but we don't want to throw this, or the user will never know of the issue
+      (\err => pure ())
 
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   update LSPConf ({ quickfixes := [], cachedActions := empty, cachedHovers := empty })
