@@ -362,23 +362,6 @@ findResultImpl WorkspaceApplyEdit = %search
 findResultImpl TextDocumentCompletion = %search
 findResultImpl WorkspaceCodeLensRefresh = %search
 
--- ||| Parse parameters
--- ||| Since the params are sometimes optional we must parse Maybe JSON
--- ||| TODO hacky replace with something better
--- export
--- fromMaybeJSONParameters : (method : Method from type) -> Maybe JSON -> Maybe (MessageParams method)
--- fromMaybeJSONParameters Exit arg =
---   pure $ join $ arg >>= (fromJSON @{findParamsImpl Exit})
--- fromMaybeJSONParameters Shutdown arg =
---   pure $ join $ arg >>= (fromJSON @{findParamsImpl Shutdown})
--- fromMaybeJSONParameters WorkspaceSemanticTokensRefresh arg =
---   pure $ join $ arg >>= (fromJSON @{findParamsImpl WorkspaceSemanticTokensRefresh})
--- fromMaybeJSONParameters WorkspaceWorkspaceFolders arg =
---   pure $ join $ arg >>= (fromJSON @{findParamsImpl WorkspaceWorkspaceFolders})
--- fromMaybeJSONParameters WorkspaceCodeLensRefresh arg =
---   pure $ join $ arg >>= (fromJSON @{findParamsImpl WorkspaceCodeLensRefresh})
--- fromMaybeJSONParameters method arg = arg >>= (fromJSON @{findParamsImpl method})
-
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#notificationMessage
 public export
 record NotificationMessage (from : MethodFrom) where
@@ -387,17 +370,6 @@ record NotificationMessage (from : MethodFrom) where
   method : Method from Notification
   params : MessageParams method
 
-%runElab derive  "NotificationMessage" [FromJSON, ToJSON]
-
-
-namespace NotificationMessage
-  export
-  method : {0 m : Method from Notification} -> NotificationMessage m -> Method from Notification
-  method (MkNotificationMessage m _) = m
-
-  export
-  params : {0 method : Method from Notification} -> NotificationMessage method -> MessageParams method
-  params (MkNotificationMessage _ p) = p
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#requestMessage
 public export
@@ -406,33 +378,6 @@ data RequestMessage : Method from Request -> Type where
                   -> (method : Method from Request)
                   -> (params : MessageParams method)
                   -> RequestMessage method
-
-export
-{method : Method from Request} -> ToJSON (RequestMessage method) where
-  toJSON (MkRequestMessage id method params) =
-    JObject ([("jsonrpc", JString "2.0"), ("id", toJSON id), ("method", toJSON method), ("params", toJSON @{findRequestImpl method} params)])
-
-export
-FromJSON (from ** method : Method from Request ** RequestMessage method) where
-  fromJSON (JObject arg) = do
-    lookup "jsonrpc" arg >>= (guard . (== JString "2.0"))
-    id <- lookup "id" arg >>= fromJSON
-    (from ** method) <- lookup "method" arg >>= fromJSON {a = (from ** Method from Request)}
-    case method of
-      Shutdown => do let params = lookup "params" arg >>= (fromJSON @{findParamsImpl method})
-                     pure (from ** method ** MkRequestMessage id method (join params))
-      WorkspaceSemanticTokensRefresh =>
-        do let params = lookup "params" arg >>= (fromJSON @{findParamsImpl method})
-           pure (from ** method ** MkRequestMessage id method (join params))
-      WorkspaceWorkspaceFolders =>
-        do let params = lookup "params" arg >>= (fromJSON @{findParamsImpl method})
-           pure (from ** method ** MkRequestMessage id method (join params))
-      WorkspaceCodeLensRefresh =>
-        do let params = lookup "params" arg >>= (fromJSON @{findParamsImpl method})
-           pure (from ** method ** MkRequestMessage id method (join params))
-      _ => do params <- lookup "params" arg >>= (fromJSON @{findParamsImpl method})
-              pure (from ** method ** MkRequestMessage id method params)
-  fromJSON _ = neutral
 
 namespace RequestMessage
   export
@@ -446,18 +391,6 @@ namespace RequestMessage
   export
   params : {0 method : Method from Request} -> RequestMessage method -> MessageParams method
   params (MkRequestMessage _ _ p) = p
-
-||| Maps the message payload to each type of method.
-public export
-Message : (type : MethodType) -> (Method from type -> Type)
-Message Notification = NotificationMessage
-Message Request = RequestMessage
-
-export
-FromJSON (from ** type ** method : Method from type ** Message type method) where
-  fromJSON =
-    (map @{ParserF} (\(_ ** _ ** _) => (_ ** _ ** _ **_)) (fromJSON {a = (from ** method : Method from Request ** RequestMessage method)}))
-    <|> (map @{ParserF} (\(_ ** _ ** _) => (_ ** _ ** _ **_)) (fromJSON {a = (from ** method : Method from Notification ** NotificationMessage method)}))
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#responseMessage
 namespace ErrorCodes
@@ -476,39 +409,6 @@ namespace ErrorCodes
     | LSPReserved Int
     | Custom Int
 
-export
-ToJSON ErrorCodes where
-  toJSON ParseError             = JInteger (-32700)
-  toJSON InvalidRequest         = JInteger (-32600)
-  toJSON MethodNotFound         = JInteger (-32601)
-  toJSON InvalidParams          = JInteger (-32602)
-  toJSON InternalError          = JInteger (-32603)
-  toJSON ServerNotInitialized   = JInteger (-32002)
-  toJSON UnknownErrorCode       = JInteger (-32001)
-  toJSON ContentModified        = JInteger (-32801)
-  toJSON RequestCancelled       = JInteger (-32800)
-  toJSON (JSONRPCReserved code) = JInteger (cast code)
-  toJSON (LSPReserved code)     = JInteger (cast code)
-  toJSON (Custom code)          = JInteger (cast code)
-
-export
-FromJSON ErrorCodes where
-  -- TODO: Can't match on negative numbers :(, temporary fix until compiler PR.
-  fromJSON (JInteger code) =
-    if code == (-32700) then pure ParseError
-    else if code == (-32600) then pure InvalidRequest
-    else if code == (-32601) then pure MethodNotFound
-    else if code == (-32602) then pure InvalidParams
-    else if code == (-32603) then pure InternalError
-    else if code == (-32002) then pure ServerNotInitialized
-    else if code == (-32001) then pure UnknownErrorCode
-    else if code == (-32801) then pure ContentModified
-    else if code == (-32800) then pure RequestCancelled
-    else if (-32099) <= code && code <= (-32000) then pure (JSONRPCReserved $ cast code)
-    else if (-32899) <= code && code <= (-32800) then pure (LSPReserved $ cast code)
-    else pure (Custom $ cast code)
-  fromJSON x = fail "invalid error code: \{encode x}"
-
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#responseMessage
 public export
 record ResponseError where
@@ -516,53 +416,4 @@ record ResponseError where
   code : ErrorCodes
   message : String
   data_ : JSON
-%runElab derive "ResponseError" [FromJSONLSP, ToJSONLSP]
 
--- ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#responseMessage
--- public export
--- data ResponseMessage : Method from type -> Type where
---   Success : (id : OneOf [Int, String, Null]) -> (result : ResponseResult method) -> ResponseMessage method
---   Failure : (id : OneOf [Int, String, Null]) -> (error : ResponseError) -> ResponseMessage method
-
-record ResponseSuccess (m : Method from type) where
-  constructor MkResponseSuccess
-  jsonrpc : Only (JString "2.0")
-  id : OneOf [Int, String, Null]
-  result : ResponseResult {from} m
-
-record ResponseFailure where
-  constructor MkResponseFailure
-  jsonrpc : Only (JString "2.0")
-  id : OneOf [Int, String, Null]
-  error : ResponseError
-
-public export
-ResponseMessage : Method from type -> Type
-ResponseMessage m = OneOf [ResponseSuccess m, ResponseFailure]
-
-export
-{method : Method from Request} -> ToJSON (ResponseMessage method) where
-  toJSON (Success id result) =
-    JObject ([("jsonrpc", JString "2.0"), ("id", toJSON id), ("result", toJSON @{findResultImpl method} result)])
-  toJSON (Failure id error) =
-    JObject ([("jsonrpc", JString "2.0"), ("id", toJSON id), ("error", toJSON error)])
-
-export
-FromJSON (ResponseResult method) => FromJSON (ResponseMessage method) where
-  fromJSON (JObject arg) = do
-    lookup "jsonrpc" arg >>= (guard . (== JString "2.0"))
-    id <- lookup "id" arg >>= fromJSON
-    case lookup "result" arg of
-         Just v => Success id <$> fromJSON v
-         Nothing => Failure id <$> (lookup "error" arg >>= fromJSON)
-  fromJSON x = fail "invalid response message: \{encode x}"
-
-namespace ResponseMessage
-  export
-  id : ResponseMessage method -> OneOf [Int, String, Null]
-  id (Success i _) = i
-  id (Failure i _) = i
-
-  export
-  getResponseId : RequestMessage method -> OneOf [Int, String, Null]
-  getResponseId = extend . RequestMessage.id

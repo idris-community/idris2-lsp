@@ -46,6 +46,6 @@ record ReferenceParams where
   workDoneToken      : Maybe ProgressToken
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
-  position           : Position
+  position           : Location.Position
   context            : ReferenceContext
 %runElab derive "ReferenceParams" [FromJSON, ToJSON]

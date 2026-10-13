@@ -114,12 +114,6 @@ record SemanticTokensEdit where
   data_       : Maybe (List Int)
 %runElab derive "SemanticTokensEdit" [FromJSONLSP, ToJSONLSP]
 
-record Test where
-  constructor MkT
-  str : String
-  data_ : Maybe Int
-%runElab derive "Test" [FromJSONLSP, ToJSONLSP]
-
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_semanticTokens
 public export
 record SemanticTokensDelta where

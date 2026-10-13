@@ -65,7 +65,7 @@ public export
 record PrepareRenameParams where
   constructor MkPrepareRenameParams
   textDocument : TextDocumentIdentifier
-  position     : Position
+  position     : Location.Position
 %runElab derive "PrepareRenameParams" [FromJSON, ToJSON]
 
 namespace PrepareRenameResponse

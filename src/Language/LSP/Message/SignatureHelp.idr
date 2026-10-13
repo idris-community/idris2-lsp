@@ -118,6 +118,6 @@ record SignatureHelpParams where
   constructor MkSignatureHelpParams
   workDoneToken : Maybe ProgressToken
   textDocument  : TextDocumentIdentifier
-  position      : Position
+  position      : Location.Position
   context       : Maybe SignatureHelpContext
 %runElab derive "SignatureHelpParams" [FromJSON, ToJSON]

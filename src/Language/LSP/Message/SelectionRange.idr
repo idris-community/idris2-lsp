@@ -6,6 +6,8 @@ import Language.LSP.Message.TextDocument
 import Language.LSP.Message.Utils
 import Language.Reflection
 
+import Data.Either
+
 %language ElabReflection
 %default total
 %hide Text.Bounds.Position
@@ -40,7 +42,7 @@ record SelectionRangeParams where
   workDoneToken      : Maybe ProgressToken
   partialResultToken : Maybe ProgressToken
   textDocument       : TextDocumentIdentifier
-  positions          : List Position
+  positions          : List Location.Position
 %runElab derive "SelectionRangeParams" [FromJSON, ToJSON]
 
 ||| Refer to https://microsoft.github.io/language-server-protocol/specification.html#textDocument_selectionRange

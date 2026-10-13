@@ -107,12 +107,18 @@ export
 ToJSON (Only v) where
   toJSON (OnlyValue x) = x
 
+optionalParam : String -> Bool
+optionalParam "parameters" = True
+optionalParam _ = False
+
 export
 nullMissingFields : Options
-nullMissingFields = {replaceMissingKeysWithNull := const True} defaultOptions
+nullMissingFields = {replaceMissingKeysWithNull := optionalParam} defaultOptions
 
 renameKeyword : String -> String
 renameKeyword "data_" = "data"
+renameKeyword "parameters_" = "parameters"
+renameKeyword "external_" = "external"
 renameKeyword "implementation_" = "implementation"
 renameKeyword x = x
 
@@ -122,8 +128,8 @@ renameKeywordOpts = {fieldNameModifier := renameKeyword} defaultOptions
 
 export
 ToJSONLSP : List Name -> ParamTypeInfo -> Res (List TopLevel)
-ToJSONLSP = customToJSON Export ({replaceMissingKeysWithNull := True, fieldNameModifier := renameKeyword} defaultOptions)
+ToJSONLSP = customToJSON Export ({replaceMissingKeysWithNull := const True, fieldNameModifier := renameKeyword} defaultOptions)
 
 export
 FromJSONLSP : List Name -> ParamTypeInfo -> Res (List TopLevel)
-FromJSONLSP = customFromJSON Export ({replaceMissingKeysWithNull := True, fieldNameModifier := renameKeyword} defaultOptions)
+FromJSONLSP = customFromJSON Export ({replaceMissingKeysWithNull := const True, fieldNameModifier := renameKeyword} defaultOptions)

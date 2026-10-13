@@ -7,6 +7,7 @@ import Data.Bits
 import Data.List
 import Data.String
 import Language.LSP.Message
+import Language.LSP.Message.Utils
 import System.File
 import System
 import System.Info
@@ -115,30 +116,6 @@ showString : String -> String
 showString x = "\"" ++ concatMap showChar (unpack x) ++ "\""
 
 export
-stringify : JSON -> String
-stringify JNull = "null"
-stringify (JBoolean x) = if x then "true" else "false"
-stringify (JNumber x) =
-  let s = show x
-   in if isSuffixOf ".0" s then substr 0 (length s `minus` 2) s else s
-stringify (JString x) = showString x
-stringify (JArray xs) = "[" ++ stringifyValues xs ++ "]"
-  where
-    stringifyValues : List JSON -> String
-    stringifyValues [] = ""
-    stringifyValues (x :: xs) =
-      stringify x ++ if isNil xs then "" else "," ++ stringifyValues xs
-stringify (JObject xs) = "{" ++ stringifyProps xs ++ "}"
-  where
-    stringifyProp : (String, JSON) -> String
-    stringifyProp (key, value) = showString key ++ ":" ++ stringify value
-
-    stringifyProps : List (String, JSON) -> String
-    stringifyProps [] = ""
-    stringifyProps (x :: xs) =
-      stringifyProp x ++ if isNil xs then "" else "," ++ stringifyProps xs
-
-export
 pathToURI : String -> URI
 pathToURI path =
   MkURI { scheme    = "file"
@@ -149,7 +126,7 @@ pathToURI path =
         }
 
 export
-Show Position where
+Show Location.Position where
   show (MkPosition line character) = "\{show line}:\{show character}"
 
 export

@@ -316,20 +316,22 @@ FromJSON (Method Server Request) where
 
 export
 FromJSON (from ** Method from Notification) where
-  fromJSON =
-    (map @{ParserF} (\method => (_ ** method)) (fromJSON {a = Method Client Notification}))
-    <|> (map @{ParserF} (\method => (_ ** method)) (fromJSON {a = Method Server Notification}))
+  fromJSON arg =
+    (fromJSON arg >>= \meth : Method Client Notification => pure (Client ** meth))
+      `orElse` (fromJSON arg >>= \meth : Method Server Notification => pure (Server ** meth))
 
 export
 FromJSON (from ** Method from Request) where
-  fromJSON =
-    (map @{ParserF} (\method => (_ ** method)) (fromJSON {a = Method Client Request}))
-    <|> (map @{ParserF} (\method => (_ ** method)) (fromJSON {a=  Method Server Request}))
+  fromJSON arg =
+    (fromJSON arg >>= \meth : Method Client Request => pure (_ ** meth))
+      `orElse` (fromJSON arg >>= \meth : Method Server Request => pure (_ ** meth))
+
+private infixl 5 `orElse`
 
 export
 FromJSON (from ** type ** Method from type) where
-  fromJSON =
-    (map @{ParserF} (\meth => (_ ** _ ** meth)) (fromJSON {a = Method Client Notification}))
-    <|> (map @{ParserF} (\meth => (_ ** _ ** meth)) (fromJSON {a = Method Client Request}))
-    <|> (map @{ParserF} (\meth => (_ ** _ ** meth)) (fromJSON {a = Method Server Notification}))
-    <|> (map @{ParserF} (\meth => (_ ** _ ** meth)) (fromJSON {a = Method Server Request}))
+  fromJSON arg =
+    (fromJSON arg >>= \meth : Method Client Notification => pure (_ ** _ ** meth))
+      `orElse` (fromJSON arg >>= \meth : Method Client Request => pure (_ ** _ ** meth))
+      `orElse` (fromJSON arg >>= \meth : Method Server Notification => pure (_ ** _ ** meth))
+      `orElse` (fromJSON arg >>= \meth : Method Server Request => pure (_ ** _ ** meth))
