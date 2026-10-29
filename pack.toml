@@ -1,0 +1,18 @@
+[custom.all.lsp-lib]
+type        = "github"
+url         = "https://github.com/andrevidela/lsp-lib"
+commit      = "94292b02804ff1c84b24b5b031748863b76ebc6d"
+ipkg        = "lsp-lib.ipkg"
+
+[custom.all.jsonrpc]
+type = "github"
+url = "https://gitlab.com/avidela/idris2-jsonrpc"
+ipkg = "jsonrpc.ipkg"
+commit = "b555f2cacedb39c7a0ff9a6e05d95a681fb051c4"
+
+[custom.all.json-simple]
+type   = "git"
+url    = "https://github.com/andrevidela/idris2-json.git"
+ipkg   = "simple/json-simple.ipkg"
+commit = "5639ce7fe9bbaa94a0adfcdc4daa33c8793fb3e8"
+

@@ -6,6 +6,7 @@ import Core.Env
 import Core.Metadata
 import Core.UnifyState
 import Data.String
+import Data.SortedMap
 import Idris.Parser
 import Idris.Pretty
 import Idris.REPL
@@ -13,11 +14,9 @@ import Idris.REPL.Common
 import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
-import Language.JSON
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
-import Language.LSP.Message.Derive
 import Language.LSP.Utils
 import Language.Reflection
 import Libraries.Data.NameMap
@@ -40,7 +39,7 @@ record RefineHoleParams where
   codeAction : CodeActionParams
   hint : String
 
-%runElab deriveJSON defaultOpts `{RefineHoleParams}
+%runElab derive "RefineHoleParams" [FromJSONLSP, ToJSONLSP]
 
 export
 refineHoleKind : CodeActionKind
@@ -68,12 +67,12 @@ buildCodeAction name uri range str =
     }
 
 export
-refineHole : Ref LSPConf LSPConfiguration
-          => Ref MD Metadata
-          => Ref Ctxt Defs
-          => Ref UST UState
-          => Ref Syn SyntaxInfo
-          => Ref ROpts REPLOpts
+refineHole : Context.Ref LSPConf LSPConfiguration
+          => Context.Ref MD Metadata
+          => Context.Ref Ctxt Defs
+          => Context.Ref UST UState
+          => Context.Ref Syn SyntaxInfo
+          => Context.Ref ROpts REPLOpts
           => RefineHoleParams -> Core (List CodeAction)
 refineHole params = do
   let True = isAllowed params.codeAction

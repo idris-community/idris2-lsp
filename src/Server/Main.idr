@@ -12,6 +12,7 @@ import Core.UnifyState
 import Compiler.Common
 import Data.List1
 import Data.String
+import Data.Either
 import Idris.CommandLine
 import Idris.Env
 import Idris.REPL.Opts
@@ -21,7 +22,6 @@ import Idris.SetOptions
 import Idris.Syntax
 import Idris.Version
 import IdrisPaths
-import Language.JSON
 import Language.LSP.Message
 import Language.LSP.Utils
 import Libraries.Utils.Path
@@ -35,6 +35,8 @@ import Idris.Version
 import System
 import System.Directory
 import System.File
+
+%hide Language.Reflection.catch
 
 data Header = ContentLength Int | ContentType String | StartContent
 
@@ -70,13 +72,17 @@ parseHeaderPart h = do
     Just StartContent => pure $ Right Nothing
     Nothing => pure $ Right Nothing
 
-handleMessage : Ref LSPConf LSPConfiguration
-            => Ref Ctxt Defs
-            => Ref UST UState
-            => Ref Syn SyntaxInfo
-            => Ref MD Metadata
-            => Ref ROpts REPLOpts
-            => Ref PostS PostSession
+fromValidId : OneOf [Int, String] -> JSONRPCId
+fromValidId (Here x) = IntegerId $ cast x
+fromValidId (There (Here x)) = StringId x
+
+handleMessage : Context.Ref LSPConf LSPConfiguration
+            => Context.Ref Ctxt Defs
+            => Context.Ref UST UState
+            => Context.Ref Syn SyntaxInfo
+            => Context.Ref MD Metadata
+            => Context.Ref ROpts REPLOpts
+            => Context.Ref PostS PostSession
             => Core ()
 handleMessage = do
   inputHandle <- gets LSPConf inputHandle
@@ -92,7 +98,7 @@ handleMessage = do
         sendUnknownResponseMessage $ internalError "Error while recovering the content part of a message"
         coreLift $ exitWith (ExitFailure 1)
   logD Channel "Received message: \{msg}"
-  let Just msg = parse msg
+  let Just msg = decodeMaybe msg
     | _ => do logE Channel "Cannot parse message"
               sendUnknownResponseMessage parseError
   let JObject fields = msg
@@ -105,31 +111,35 @@ handleMessage = do
     Just methodJSON => do -- request or notification
       case lookup "id" fields of
         Just idJSON => do -- request
-          let Just id = fromJSON {a=OneOf [Int, String]} idJSON
+          let Right id = fromJSON {a=OneOf [Int, String]} idJSON
             | _ => do logE Channel "Message id is not of the correct type"
                       sendUnknownResponseMessage (invalidRequest "id is not int or string")
-          let Just method = fromJSON {a=Method Client Request} methodJSON
+          let validId = fromValidId id
+          let Right method = fromJSON {a=Method Client Request} methodJSON
             | _ => do logE Channel "Method not found"
-                      sendResponseMessage Initialize $ Failure (extend id) methodNotFound
+                      sendResponseMessage Initialize $ Failure $ MkResponseError methodNotFound validId
           logI Channel "Received request for method \{show (toJSON method)}"
-          let Just params = fromMaybeJSONParameters method (lookup "params" fields)
-            | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
-                      sendResponseMessage method $ Failure (extend id) (invalidParams "Invalid params for send \{show methodJSON}")
+          let Right params = (maybe (Left $ ([],"no params")) Right $ lookup "params" fields) >>= (fromJSON @{findParamsImpl method})
+            | Left err => do
+                      logE Channel "Message with method \{encode method} has invalid parameters: \{show err}"
+                      sendResponseMessage method $ Failure $ MkResponseError
+                        (MkError InvalidParams "Invalid params for send \{show methodJSON}" Nothing)
+                        validId
           -- handleRequest can be modified to use a callback if needed
           result <- catch (handleRequest method params) $ \err => do
             logE Server "Error while handling request: \{show err}"
             resetContext (Virtual Interactive)
-            pure $ Left (MkResponseError (Custom 4) (show err) JNull)
+            pure $ Left $ MkError (CustomError 4) (show err) Nothing
           sendResponseMessage method $ case result of
-            Left error => Failure (extend id) error
-            Right result => Success (extend id) result
+            Left error => Failure (MkResponseError error validId)
+            Right result => Success (MkResponseSuccess (toJSON @{findResultImpl method} result) validId)
 
         Nothing => do -- notification
-          let Just method = fromJSON {a=Method Client Notification} methodJSON
+          let Right method = fromJSON {a=Method Client Notification} methodJSON
             | _ => do logE Channel "Method not found"
                       sendUnknownResponseMessage methodNotFound
           logI Channel "Received notification for method \{show (toJSON method)}"
-          let Just params = fromMaybeJSONParameters method (lookup "params" fields)
+          let Just params = (lookup "params" fields) >>= eitherToMaybe . (fromJSON @{findParamsImpl method})
             | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
                       sendUnknownResponseMessage $ invalidParams "Invalid params for send \{show methodJSON}"
           catch (handleNotification method params) $ \err => do
@@ -142,13 +152,13 @@ handleMessage = do
                   sendUnknownResponseMessage (invalidRequest "Message does not have method or id")
       logW Server "Ignoring response with id \{show idJSON}"
 
-runServer : Ref LSPConf LSPConfiguration
-         => Ref Ctxt Defs
-         => Ref UST UState
-         => Ref Syn SyntaxInfo
-         => Ref MD Metadata
-         => Ref ROpts REPLOpts
-         => Ref PostS PostSession
+runServer : Context.Ref LSPConf LSPConfiguration
+         => Context.Ref Ctxt Defs
+         => Context.Ref UST UState
+         => Context.Ref Syn SyntaxInfo
+         => Context.Ref MD Metadata
+         => Context.Ref ROpts REPLOpts
+         => Context.Ref PostS PostSession
          => Core ()
 runServer = handleMessage >> runServer
 

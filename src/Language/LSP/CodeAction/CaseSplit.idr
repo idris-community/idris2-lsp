@@ -5,6 +5,7 @@ import Core.Core
 import Core.Metadata
 import Core.UnifyState
 import Data.String
+import Data.SortedMap
 import Idris.IDEMode.CaseSplit
 import Idris.REPL.Opts
 import Idris.Syntax
@@ -17,6 +18,8 @@ import Server.Configuration
 import Server.Log
 import Server.Utils
 import TTImp.Interactive.CaseSplit
+
+%hide Language.Reflection.TT.Name
 
 buildCodeAction : URI -> Name -> TextEdit -> CodeAction
 buildCodeAction uri name edit =
@@ -44,12 +47,12 @@ isAllowed params =
   maybe True (\filter => (caseSplitKind `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
 
 export
-caseSplit : Ref LSPConf LSPConfiguration
-         => Ref MD Metadata
-         => Ref Ctxt Defs
-         => Ref UST UState
-         => Ref Syn SyntaxInfo
-         => Ref ROpts REPLOpts
+caseSplit : Context.Ref LSPConf LSPConfiguration
+         => Context.Ref MD Metadata
+         => Context.Ref Ctxt Defs
+         => Context.Ref UST UState
+         => Context.Ref Syn SyntaxInfo
+         => Context.Ref ROpts REPLOpts
          => CodeActionParams -> Core (Maybe CodeAction)
 caseSplit params = do
   let True = isAllowed params

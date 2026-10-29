@@ -12,7 +12,6 @@ import Idris.Pretty.Render
 import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
-import Language.JSON
 import Language.LSP.Message
 import Language.LSP.Definition
 import Server.Configuration
@@ -39,7 +38,7 @@ record Premise where
   type : String
   multiplicity : String
   isImplicit : Bool
-%runElab deriveJSON defaultOpts `{Metavars.Premise}
+%runElab derive "Metavars.Premise" [FromJSONLSP, ToJSONLSP]
 
 public export
 record Metavar where
@@ -48,15 +47,15 @@ record Metavar where
   location : Maybe Location
   type : String
   premises : List Metavars.Premise
-%runElab deriveJSON defaultOpts `{Metavars.Metavar}
+%runElab derive "Metavars.Metavar" [FromJSONLSP, ToJSONLSP]
 
 showName : Name -> Bool
 showName (UN Underscore) = False
 showName (MN {}) = False
 showName _ = True
 
-getUserHolesData : Ref Ctxt Defs
-                => Ref Syn SyntaxInfo
+getUserHolesData : Context.Ref Ctxt Defs
+                => Context.Ref Syn SyntaxInfo
                 => Core (List (Holes.Data, FC))
 getUserHolesData = do
   defs <- get Ctxt
@@ -82,10 +81,10 @@ getUserHolesData = do
 |||   isImplicit: bool;
 ||| }
 export
-metavarsCmd : Ref Ctxt Defs
-           => Ref Syn SyntaxInfo
-           => Ref ROpts REPLOpts
-           => Ref LSPConf LSPConfiguration
+metavarsCmd : Context.Ref Ctxt Defs
+           => Context.Ref Syn SyntaxInfo
+           => Context.Ref ROpts REPLOpts
+           => Context.Ref LSPConf LSPConfiguration
            => Core (List Metavar)
 metavarsCmd = do
     logI Metavars "Fetching metavar"

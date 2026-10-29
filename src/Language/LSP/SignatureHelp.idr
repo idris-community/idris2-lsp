@@ -6,6 +6,7 @@ import Core.Env
 import Core.Metadata
 import Data.List
 import Data.String
+import Data.SortedMap
 import Idris.Doc.String
 import Idris.REPL.Opts
 import Idris.Syntax
@@ -15,12 +16,15 @@ import Server.Configuration
 import Server.Utils
 import Server.Log
 
+%hide Language.Reflection.TT.Name
+%hide Language.Reflection.TT.FC
+
 -- Color codes in JSON messages makes the JSON parser fail, we have to
 -- turn temporarly the syntax highlight and coloring off when asking for
 -- for documentation.
-getNonColoredDocsForName : Ref Ctxt Defs
-                        => Ref ROpts REPLOpts
-                        => Ref Syn SyntaxInfo
+getNonColoredDocsForName : Context.Ref Ctxt Defs
+                        => Context.Ref ROpts REPLOpts
+                        => Context.Ref Syn SyntaxInfo
                         => FC -> Name -> Core String
 getNonColoredDocsForName fc n = do
   ropts <- get ROpts
@@ -45,9 +49,9 @@ findRefNamesInTerm (PrimVal fc c)         = []
 findRefNamesInTerm (Erased fc imp)        = []
 findRefNamesInTerm (TType fc u)           = []
 
-renderDataTypeInfo : Ref Ctxt Defs
-                  => Ref ROpts REPLOpts
-                  => Ref Syn SyntaxInfo
+renderDataTypeInfo : Context.Ref Ctxt Defs
+                  => Context.Ref ROpts REPLOpts
+                  => Context.Ref Syn SyntaxInfo
                   => Name -> Def -> Core (Maybe String)
 renderDataTypeInfo n d@(DCon tag arity newtypeArg) = do
   -- Render the related whole data structure information for the selected data constructor.
@@ -78,11 +82,11 @@ renderDataTypeInfo n other = pure Nothing
 ||| Generate the signature help for a callable function. In Idris many many things are
 ||| callable functions.
 export
-signatureHelp : Ref Ctxt Defs
-             => Ref MD Metadata
-             => Ref LSPConf LSPConfiguration
-             => Ref ROpts REPLOpts
-             => Ref Syn SyntaxInfo
+signatureHelp : Context.Ref Ctxt Defs
+             => Context.Ref MD Metadata
+             => Context.Ref LSPConf LSPConfiguration
+             => Context.Ref ROpts REPLOpts
+             => Context.Ref Syn SyntaxInfo
              => SignatureHelpParams -> Core (Maybe SignatureHelp)
 signatureHelp params =
   catch (do logI GotoDefinition "Checking for \{show params.textDocument.uri}"

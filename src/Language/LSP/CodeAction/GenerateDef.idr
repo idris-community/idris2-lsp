@@ -6,10 +6,10 @@ import Core.Env
 import Core.Metadata
 import Core.UnifyState
 import Data.String
+import Data.SortedMap
 import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
-import Language.JSON
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
@@ -47,12 +47,12 @@ buildCodeAction uri i lastLine edit =
     }
 
 export
-generateDef : Ref LSPConf LSPConfiguration
-           => Ref MD Metadata
-           => Ref Ctxt Defs
-           => Ref UST UState
-           => Ref Syn SyntaxInfo
-           => Ref ROpts REPLOpts
+generateDef : Context.Ref LSPConf LSPConfiguration
+           => Context.Ref MD Metadata
+           => Context.Ref Ctxt Defs
+           => Context.Ref UST UState
+           => Context.Ref Syn SyntaxInfo
+           => Context.Ref ROpts REPLOpts
            => CodeActionParams -> Core (List CodeAction)
 generateDef params = do
   let True = isAllowed params

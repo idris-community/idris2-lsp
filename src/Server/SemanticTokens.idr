@@ -10,6 +10,8 @@ import Server.Configuration
 import Server.Capabilities
 import Server.Log
 
+%hide Language.Reflection.TT.FilePos
+
 ||| encode using relative tokens according the to LSP spec
 encode : FilePos -> List ASemanticDecoration -> List Int
 encode _ [] = []
@@ -55,7 +57,10 @@ removeOverlap last stack (current@((fileName, start, end), decoration, name)::re
 
 ||| Get the semantic tokens from the Metadata
 export
-getSemanticTokens : Ref LSPConf LSPConfiguration => Ref Ctxt Defs => Metadata -> (getLineLength : Int -> Int) -> Core SemanticTokens
+getSemanticTokens :
+  Context.Ref LSPConf LSPConfiguration =>
+  Context.Ref Ctxt Defs =>
+  Metadata -> (getLineLength : Int -> Int) -> Core SemanticTokens
 getSemanticTokens md getLineLength = do
   logD SemanticTokens "Fetching semantic highlightning metadata"
   allSemHigh <- allSemanticHighlighting md

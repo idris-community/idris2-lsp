@@ -28,7 +28,6 @@ import Idris.REPL
 import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
-import Language.JSON
 import Language.LSP.BrowseNamespace
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.AddClause
@@ -71,13 +70,17 @@ import System.Clock
 import System.Directory
 import System.File
 
+%hide Core.Core.Error
+%hide Language.Reflection.TT.Name
+%hide Language.Reflection.TT.showSep
+
 ||| Mostly copied from Idris.REPL.displayResult.
 partial
-replResultToDoc : Ref Ctxt Defs
-               => Ref UST UState
-               => Ref Syn SyntaxInfo
-               => Ref MD Metadata
-               => Ref ROpts REPLOpts
+replResultToDoc : Context.Ref Ctxt Defs
+               => Context.Ref UST UState
+               => Context.Ref Syn SyntaxInfo
+               => Context.Ref MD Metadata
+               => Context.Ref ROpts REPLOpts
                => REPLResult -> Core (Doc IdrisAnn)
 replResultToDoc (REPLError err) = pure err
 replResultToDoc (Evaluated x Nothing) = pure (prettyTerm x)
@@ -120,8 +123,8 @@ replResultToDoc Exited = pure ""
 -- sending ansi codes over the socket is a probably a no-go.
 replResultToDoc (PrintedDoc doc) = pure (unAnnotate doc)
 
-displayType : Ref Ctxt Defs
-           => Ref Syn SyntaxInfo
+displayType : Context.Ref Ctxt Defs
+           => Context.Ref Syn SyntaxInfo
            => Defs -> (Name, Int, GlobalDef) -> Core (Doc IdrisAnn)
 displayType defs (n, i, gdef) =
   maybe (do tm <- resugar [] =<< normaliseHoles defs [] (type gdef)
@@ -129,31 +132,33 @@ displayType defs (n, i, gdef) =
         (\num => reAnnotate Syntax <$> prettyHole defs [] n num (type gdef))
         (isHole gdef)
 
-displayTerm : Ref Ctxt Defs
-           => Ref Syn SyntaxInfo
+displayTerm : Context.Ref Ctxt Defs
+           => Context.Ref Syn SyntaxInfo
            => Defs -> ClosedTerm -> Core (Doc IdrisAnn)
 displayTerm defs = map prettyTerm . (resugar [] <=< normaliseHoles defs [])
 
-processSettings : Ref Ctxt Defs => Ref LSPConf LSPConfiguration => JSON -> Core ()
+processSettings : Context.Ref Ctxt Defs
+               => Context.Ref LSPConf LSPConfiguration
+               => JSON -> Core ()
 processSettings (JObject xs) = do
   case lookup "logFile" xs of
        Just (JString fname) => changeLogFile fname
        Just _ => logE Configuration "Incorrect type for log file location, expected string"
        Nothing => pure ()
   case lookup "longActionTimeout" xs of
-       Just (JNumber v) => do
+       Just (JInteger v) => do
          setSearchTimeout (cast v)
          logI Configuration "Long action timeout set to \{show $ cast {to = Int} v}"
        Just _ => logE Configuration "Incorrect type for long action timeout, expected number"
        Nothing => pure ()
   case lookup "maxCodeActionResults" xs of
-       Just (JNumber v) => do
+       Just (JInteger v) => do
          update LSPConf ({ searchLimit := integerToNat (cast v) })
          logI Configuration "Max code action results set to \{show $ cast {to = Int} v}"
        Just _ => logE Configuration "Incorrect type for max code action results, expected number"
        Nothing => pure ()
   case lookup "showImplicits" xs of
-       Just (JBoolean b) => do
+       Just (JBool b) => do
          pp <- getPPrint
          when (pp.showImplicits /= b) $ do
            setPPrint ({ showImplicits := b } pp)
@@ -162,7 +167,7 @@ processSettings (JObject xs) = do
        Just _ => logE Configuration "Incorrect type for show implicits, expected boolean"
        Nothing => pure ()
   case lookup "fullNamespace" xs of
-       Just (JBoolean b) => do
+       Just (JBool b) => do
          pp <- getPPrint
          when (pp.fullNamespace /= b) $ do
            setPPrint ({ fullNamespace := b } pp)
@@ -171,7 +176,7 @@ processSettings (JObject xs) = do
        Just _ => logE Configuration "Incorrect type for full namespace, expected boolean"
        Nothing => pure ()
   case lookup "showMachineNames" xs of
-       Just (JBoolean b) => do
+       Just (JBool b) => do
          pp <- getPPrint
          when (pp.showMachineNames /= b) $ do
            setPPrint ({ showMachineNames := b } pp)
@@ -184,23 +189,23 @@ processSettings (JObject xs) = do
        Just _ => logE Configuration "Incorrect type for log severity, expected string"
        Nothing => pure ()
   case lookup "briefCompletions" xs of
-      Just (JBoolean b) => update LSPConf ({ briefCompletions := b})
+      Just (JBool b) => update LSPConf ({ briefCompletions := b})
       _ => pure ()
 processSettings _ = logE Configuration "Incorrect type for options"
 
-isDirty : Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
+isDirty : Context.Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
 isDirty uri = gets LSPConf (contains uri . dirtyFiles)
 
-isError : Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
+isError : Context.Ref LSPConf LSPConfiguration => DocumentURI -> Core Bool
 isError uri = gets LSPConf (contains uri . errorFiles)
 
-loadURI : Ref LSPConf LSPConfiguration
-       => Ref Ctxt Defs
-       => Ref UST UState
-       => Ref Syn SyntaxInfo
-       => Ref MD Metadata
-       => Ref ROpts REPLOpts
-       => Ref PostS PostSession
+loadURI : Context.Ref LSPConf LSPConfiguration
+       => Context.Ref Ctxt Defs
+       => Context.Ref UST UState
+       => Context.Ref Syn SyntaxInfo
+       => Context.Ref MD Metadata
+       => Context.Ref ROpts REPLOpts
+       => Context.Ref PostS PostSession
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
   logI Server "Loading file \{show uri}"
@@ -264,13 +269,13 @@ loadURI conf uri version = do
   update LSPConf ({completionCache $= insert uri cNames})
   pure $ Right ()
 
-loadIfNeeded : Ref LSPConf LSPConfiguration
-            => Ref Ctxt Defs
-            => Ref UST UState
-            => Ref Syn SyntaxInfo
-            => Ref MD Metadata
-            => Ref ROpts REPLOpts
-            => Ref PostS PostSession
+loadIfNeeded : Context.Ref LSPConf LSPConfiguration
+            => Context.Ref Ctxt Defs
+            => Context.Ref UST UState
+            => Context.Ref Syn SyntaxInfo
+            => Context.Ref MD Metadata
+            => Context.Ref ROpts REPLOpts
+            => Context.Ref PostS PostSession
             => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadIfNeeded conf uri version = do
   Just (oldUri, oldVersion) <- gets LSPConf openFile
@@ -279,25 +284,25 @@ loadIfNeeded conf uri version = do
      then pure $ Right ()
      else loadURI conf uri version
 
-withURI : Ref LSPConf LSPConfiguration
-       => Ref Ctxt Defs
-       => Ref UST UState
-       => Ref Syn SyntaxInfo
-       => Ref MD Metadata
-       => Ref ROpts REPLOpts
-       => Ref PostS PostSession
+withURI : Context.Ref LSPConf LSPConfiguration
+       => Context.Ref Ctxt Defs
+       => Context.Ref UST UState
+       => Context.Ref Syn SyntaxInfo
+       => Context.Ref MD Metadata
+       => Context.Ref ROpts REPLOpts
+       => Context.Ref PostS PostSession
        => InitializeParams
-       -> URI -> Maybe Int -> Core (Either ResponseError a) -> Core (Either ResponseError a) -> Core (Either ResponseError a)
+       -> URI -> Maybe Int -> Core (Either RPC.Error a) -> Core (Either RPC.Error a) -> Core (Either RPC.Error a)
 withURI conf uri version d k = do
   when !(isError uri) $ ignore $ logW Server "Trying to load \{show uri} which has errors" >> d
   case !(loadIfNeeded conf uri version) of
        Right () => k
        Left err => do
          logE Server "Error while loading \{show uri}: \{show err}"
-         pure $ Left (MkResponseError (Custom 3) err JNull)
+         pure $ Left (MkError (CustomError 3) err Nothing)
 
 ||| Guard for requests that requires a successful initialization before being allowed.
-whenInitializedRequest : Ref LSPConf LSPConfiguration => (InitializeParams -> Core (Either ResponseError a)) -> Core (Either ResponseError a)
+whenInitializedRequest : Context.Ref LSPConf LSPConfiguration => (InitializeParams -> Core (Either RPC.Error a)) -> Core (Either RPC.Error a)
 whenInitializedRequest k =
   case !(gets LSPConf initialized) of
        Just conf => k conf
@@ -305,7 +310,7 @@ whenInitializedRequest k =
                      pure $ Left $ serverNotInitialized
 
 ||| Guard for requests that cannot be sent after the shutdown protocol.
-whenNotShutdownRequest : Ref LSPConf LSPConfiguration => Core (Either ResponseError a) -> Core (Either ResponseError a)
+whenNotShutdownRequest : Context.Ref LSPConf LSPConfiguration => Core (Either RPC.Error a) -> Core (Either RPC.Error a)
 whenNotShutdownRequest k =
   if !(gets LSPConf isShutdown)
      then do logE Server "Cannot process requests after shutdown"
@@ -313,11 +318,11 @@ whenNotShutdownRequest k =
      else k
 
 ||| whenInitializedRequest + whenNotShutdownRequest
-whenActiveRequest : Ref LSPConf LSPConfiguration => (InitializeParams -> Core (Either ResponseError a)) -> Core (Either ResponseError a)
+whenActiveRequest : Context.Ref LSPConf LSPConfiguration => (InitializeParams -> Core (Either RPC.Error a)) -> Core (Either RPC.Error a)
 whenActiveRequest = whenNotShutdownRequest . whenInitializedRequest
 
 ||| Guard for notifications that requires a successful initialization before being allowed.
-whenInitializedNotification : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
+whenInitializedNotification : Context.Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
 whenInitializedNotification k =
   case !(gets LSPConf initialized) of
        Just conf => k conf
@@ -325,7 +330,7 @@ whenInitializedNotification k =
                      sendUnknownResponseMessage $ serverNotInitialized
 
 ||| Guard for notifications that cannot be sent after the shutdown protocol.
-whenNotShutdownNotification : Ref LSPConf LSPConfiguration => Core () -> Core ()
+whenNotShutdownNotification : Context.Ref LSPConf LSPConfiguration => Core () -> Core ()
 whenNotShutdownNotification k =
   if !(gets LSPConf isShutdown)
      then do logE Server "Cannot process notifications after shutdown"
@@ -333,21 +338,21 @@ whenNotShutdownNotification k =
      else k
 
 ||| whenInitializedNotification + whenNotShutdownNotification
-whenActiveNotification : Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
+whenActiveNotification : Context.Ref LSPConf LSPConfiguration => (InitializeParams -> Core ()) -> Core ()
 whenActiveNotification = whenNotShutdownNotification . whenInitializedNotification
 
 export
 handleRequest :
-       Ref LSPConf LSPConfiguration
-    => Ref Ctxt Defs
-    => Ref UST UState
-    => Ref Syn SyntaxInfo
-    => Ref MD Metadata
-    => Ref ROpts REPLOpts
-    => Ref PostS PostSession
+       Context.Ref LSPConf LSPConfiguration
+    => Context.Ref Ctxt Defs
+    => Context.Ref UST UState
+    => Context.Ref Syn SyntaxInfo
+    => Context.Ref MD Metadata
+    => Context.Ref ROpts REPLOpts
+    => Context.Ref PostS PostSession
     => (method : Method Client Request)
     -> (params : MessageParams method)
-    -> Core (Either ResponseError (ResponseResult method))
+    -> Core (Either RPC.Error (ResponseResult method))
 
 handleRequest Initialize params = do
   logI Channel "Received initialization request"
@@ -498,10 +503,10 @@ handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf => do
 
 handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf => do
     False <- isDirty params.textDocument.uri
-      | True => pure $ Left (MkResponseError RequestCancelled "Document Dirty" JNull)
+      | True => pure $ Left (MkError (toErrorCode RequestCancelled) "Document Dirty" Nothing)
     Nothing <- gets LSPConf (lookup params.textDocument.uri . semanticTokensSentFiles)
       | Just tokens => pure $ pure $ (make $ tokens)
-    withURI conf params.textDocument.uri Nothing (pure $ Left (MkResponseError RequestCancelled "Document Errors" JNull)) $ do
+    withURI conf params.textDocument.uri Nothing (pure $ Left (MkError (toErrorCode RequestCancelled) "Document Errors" Nothing)) $ do
       md <- get MD
       src <- getSource
       let srcLines = lines src
@@ -512,8 +517,8 @@ handleRequest TextDocumentSemanticTokensFull params = whenActiveRequest $ \conf 
 handleRequest WorkspaceExecuteCommand
   (MkExecuteCommandParams partialResultToken "repl" (Just [json])) = whenActiveRequest $ \conf => do
     logI Channel "Received repl command request"
-    let Just cmd = fromJSON {a = String} json
-      | Nothing => pure $ Left (invalidParams "Expected String")
+    let Right cmd = fromJSON {a = String} json
+      | Left _ => pure $ Left (invalidParams "Expected String")
     c <- getColor
     -- Turn off the colour, because JSON
     -- seems to fail to correctly escape the codes.
@@ -528,20 +533,20 @@ handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "metavars" _) = 
   Right . toJSON <$> metavarsCmd
 handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "exprSearchWithHints" (Just [json])) = whenActiveRequest $ \conf => do
   logI Channel "Received exprSearchWithHints command request"
-  let Just params = fromJSON json
-    | Nothing => pure $ Left (invalidParams "Expected ExprSearchWithHintsParams")
+  let Right params = fromJSON json
+    | Left _ => pure $ Left (invalidParams "Expected ExprSearchWithHintsParams")
   actions <- exprSearchWithHints params
   pure $ Right (toJSON actions)
 handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "refineHole" (Just [json])) = whenActiveRequest $ \conf => do
   logI Channel "Received refineHole command request"
-  let Just params = fromJSON json
-    | Nothing => pure $ Left (invalidParams "Expected RefineHoleParams")
+  let Right params = fromJSON json
+    | Left _ => pure $ Left (invalidParams "Expected RefineHoleParams")
   actions <- refineHole params
   pure $ Right (toJSON actions)
 handleRequest WorkspaceExecuteCommand (MkExecuteCommandParams _ "browseNamespace" (Just [json])) = whenActiveRequest $ \conf => do
   logI Channel "Received browseNamespace command request"
-  let Just params = fromJSON {a = String} json
-    | Nothing => pure $ Left (invalidParams "Expected String")
+  let Right params = fromJSON {a = String} json
+    | Left _ => pure $ Left (invalidParams "Expected String")
   names <- browseNamespaceCmd params
   pure $ Right (toJSON names)
 handleRequest method params = whenActiveRequest $ \conf => do
@@ -549,13 +554,13 @@ handleRequest method params = whenActiveRequest $ \conf => do
     pure $ Left methodNotFound
 
 export
-handleNotification : Ref LSPConf LSPConfiguration
-                  => Ref Ctxt Defs
-                  => Ref UST UState
-                  => Ref Syn SyntaxInfo
-                  => Ref MD Metadata
-                  => Ref ROpts REPLOpts
-                  => Ref PostS PostSession
+handleNotification : Context.Ref LSPConf LSPConfiguration
+                  => Context.Ref Ctxt Defs
+                  => Context.Ref UST UState
+                  => Context.Ref Syn SyntaxInfo
+                  => Context.Ref MD Metadata
+                  => Context.Ref ROpts REPLOpts
+                  => Context.Ref PostS PostSession
                   => (method : Method Client Notification)
                   -> (params : MessageParams method)
                   -> Core ()
@@ -618,4 +623,4 @@ handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf 
   logI Server $ "File \{show params.textDocument.uri} closed"
 
 handleNotification method params = whenActiveNotification $ \conf =>
-  logW Channel "Received unhandled notification for method \{stringify $ toJSON method}"
+  logW Channel "Received unhandled notification for method \{encode method}"

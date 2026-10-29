@@ -27,6 +27,11 @@ import Server.Utils
 
 %default total
 
+%hide Language.Reflection.TT.Name
+%hide Language.Reflection.TT.Namespace
+%hide Language.Reflection.TT.UserName
+%hide Data.Linear.Notation.(.)
+
 -- When a file is opened the context is filled with definitions.
 --
 -- Cache names from opened files.
@@ -84,10 +89,10 @@ arguments (TType fc n)                                 = []
 
 export
 covering
-completionNames : Ref Ctxt Defs
-               => Ref LSPConf LSPConfiguration
-               => Ref Syn SyntaxInfo
-               => Ref ROpts REPLOpts
+completionNames : Context.Ref Ctxt Defs
+               => Context.Ref LSPConf LSPConfiguration
+               => Context.Ref Syn SyntaxInfo
+               => Context.Ref ROpts REPLOpts
                => Core (SortedMap NameCategory (List Entry))
 completionNames = do
   defs <- get Ctxt
@@ -191,7 +196,7 @@ mkCompletionItem isBrief w (MkEntry c n ty ar doc) =
 ||| Gets the identifier at the position of cursor.
 |||
 ||| If the document URI is not registered in the cache it returns Nothing.
-identifierAtCursor : Ref LSPConf LSPConfiguration
+identifierAtCursor : Context.Ref LSPConf LSPConfiguration
                    => CompletionParams
                    -> Core (Maybe String)
 identifierAtCursor params = do
@@ -210,9 +215,9 @@ identifierAtCursor params = do
 ||| is necessary; otherwise, the generated JSON clogs up the channel and slows
 ||| the response generation, making the developer experience terrible.
 export
-completion : Ref Ctxt Defs
-          => Ref MD Metadata
-          => Ref LSPConf LSPConfiguration
+completion : Context.Ref Ctxt Defs
+          => Context.Ref MD Metadata
+          => Context.Ref LSPConf LSPConfiguration
           => CompletionParams
           -> Core (Maybe CompletionList)
 completion params = do
@@ -226,7 +231,7 @@ completion params = do
   Just identifier <- identifierAtCursor params
     | Nothing => do
         pure Nothing
-  let nameCategories = if strLength identifier < 3
+  let nameCategories : List NameCategory = if strLength identifier < 3
         then [CurrentNsName, InNestedNs]
         else [CurrentNsName, InNestedNs, OtherName, FieldName]
   let candidates = concat $ mapMaybe (flip lookup completions) nameCategories

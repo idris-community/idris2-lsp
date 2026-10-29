@@ -6,6 +6,7 @@ import Core.Env
 import Core.Metadata
 import Core.UnifyState
 import Data.String
+import Data.SortedMap
 import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
@@ -23,6 +24,8 @@ import TTImp.Interactive.GenerateDef
 import TTImp.Interactive.ExprSearch
 import TTImp.TTImp
 import TTImp.TTImp.Functor
+
+%hide Language.Reflection.TT.FC
 
 generateDefNextKind : CodeActionKind
 generateDefNextKind = Other "refactor.rewrite.GenerateDefNext"
@@ -55,9 +58,9 @@ findBlankLine [] acc = acc
 findBlankLine (x :: xs) acc = if trim x == "" then acc else findBlankLine xs (acc + 1)
 
 -- reproduced from compiler repo because it is not exported there (as of now)
-nextGenDef : {auto c : Ref Ctxt Defs} ->
-             {auto u : Ref UST UState} ->
-             {auto o : Ref ROpts REPLOpts} ->
+nextGenDef : {auto c : Context.Ref Ctxt Defs} ->
+             {auto u : Context.Ref UST UState} ->
+             {auto o : Context.Ref ROpts REPLOpts} ->
              (reject : Nat) ->
              Core (Maybe (Int, (FC, List ImpClause)))
 nextGenDef reject
@@ -74,12 +77,12 @@ nextGenDef reject
               S k => nextGenDef k
 
 export
-generateDefNext : Ref LSPConf LSPConfiguration
-               => Ref MD Metadata
-               => Ref Ctxt Defs
-               => Ref UST UState
-               => Ref Syn SyntaxInfo
-               => Ref ROpts REPLOpts
+generateDefNext : Context.Ref LSPConf LSPConfiguration
+               => Context.Ref MD Metadata
+               => Context.Ref Ctxt Defs
+               => Context.Ref UST UState
+               => Context.Ref Syn SyntaxInfo
+               => Context.Ref ROpts REPLOpts
                => CodeActionParams -> Core (List CodeAction)
 generateDefNext params = do
   let True = isAllowed params
@@ -129,10 +132,10 @@ generateDefNext params = do
       defToOverride <- lookupDefExact n defs.gamma
       rng <- case defToOverride of
            Nothing => do
-             logD GenerateDefNext "No def to override, inserting new def" 
+             logD GenerateDefNext "No def to override, inserting new def"
              pure $ MkRange (MkPosition newLine 0) (MkPosition newLine 0) -- insert
            (Just None) => do
-             logD GenerateDefNext "No def to override, inserting new def" 
+             logD GenerateDefNext "No def to override, inserting new def"
              pure $ MkRange (MkPosition newLine 0) (MkPosition newLine 0) -- insert
            (Just (PMDef pminfo args treeCT treeRT pats)) => do
              src <- String.lines <$> getSource

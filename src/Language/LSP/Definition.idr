@@ -19,8 +19,11 @@ import Server.Utils
 import System.File
 import System.Path
 
-mkLocation' : Ref Ctxt Defs
-           => Ref LSPConf LSPConfiguration
+%hide Language.Reflection.TT.FC
+%hide Language.Reflection.TT.OriginDesc
+
+mkLocation' : Context.Ref Ctxt Defs
+           => Context.Ref LSPConf LSPConfiguration
            => OriginDesc -> (Int, Int) -> (Int, Int) -> Core (Maybe Location)
 mkLocation' origin (sline, scol) (eline, ecol) = do
   defs <- get Ctxt
@@ -51,17 +54,17 @@ mkLocation' origin (sline, scol) (eline, ecol) = do
   pure $ Just $ MkLocation uri (MkRange (MkPosition sline scol) (MkPosition eline ecol))
 
 export
-mkLocation : Ref Ctxt Defs
-          => Ref LSPConf LSPConfiguration
+mkLocation : Context.Ref Ctxt Defs
+          => Context.Ref LSPConf LSPConfiguration
           => FC -> Core (Maybe Location)
 mkLocation (MkFC f s e) = mkLocation' f s e
 mkLocation (MkVirtualFC f s e) = mkLocation' f s e
 mkLocation _ = pure Nothing
 
 export
-gotoDefinition : Ref Ctxt Defs
-              => Ref MD Metadata
-              => Ref LSPConf LSPConfiguration
+gotoDefinition : Context.Ref Ctxt Defs
+              => Context.Ref MD Metadata
+              => Context.Ref LSPConf LSPConfiguration
               => DefinitionParams -> Core (Maybe Location)
 gotoDefinition params = do
   logI GotoDefinition "Checking for \{show params.textDocument.uri} at \{show params.position}"

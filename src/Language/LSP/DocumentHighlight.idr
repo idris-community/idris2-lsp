@@ -13,6 +13,8 @@ import Server.Configuration
 import Server.Log
 import Server.Utils
 
+%hide Data.Linear.Notation.(.)
+
 makeHighlight : NonEmptyFC -> DocumentHighlight
 makeHighlight fc = MkDocumentHighlight
   { range = cast fc
@@ -20,9 +22,9 @@ makeHighlight fc = MkDocumentHighlight
   }
 
 export
-documentHighlights : Ref Ctxt Defs
-                  => Ref MD Metadata
-                  => Ref LSPConf LSPConfiguration
+documentHighlights : Context.Ref Ctxt Defs
+                  => Context.Ref MD Metadata
+                  => Context.Ref LSPConf LSPConfiguration
                   => DocumentHighlightParams -> Core (List DocumentHighlight)
 documentHighlights params = do
   logI DocumentHighlight "Searching for \{show params.textDocument.uri}"

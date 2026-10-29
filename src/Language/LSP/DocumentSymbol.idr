@@ -13,6 +13,10 @@ import Server.Configuration
 import Server.Log
 import Server.Utils
 
+%hide Language.Reflection.TT.Name
+%hide Language.Reflection.TT.FilePos
+%hide Language.Reflection.TT.Namespace
+
 -- NOTE: Structured information should be rendereded from the actual Term of the expressions
 -- in a file, that would give a better high-level overview. For now this is more like a placeholder
 -- rather than a useful functionality.
@@ -20,7 +24,7 @@ import Server.Utils
 
 ||| Check if the name is visible in the local namespaces, if yes return Just its full name, otherwise Nothing.
 ||| This function meant to be used with GlobalNames.
-checkVisibleName : Ref Ctxt Defs => List Namespace -> Name -> Core (Maybe Name)
+checkVisibleName : Context.Ref Ctxt Defs => List Namespace -> Name -> Core (Maybe Name)
 checkVisibleName namespaces name = do
   fullName <- toFullNames name
   let True = isUserName fullName
@@ -30,7 +34,7 @@ checkVisibleName namespaces name = do
   pure $ if elem fullNamespace namespaces then Just fullName else Nothing
 
 ||| Check if the name is visible and returns the associated NonEmpty location.
-currentNSNameWithLoc : Ref Ctxt Defs => List Namespace -> Name -> Core (Maybe (Name, FilePos, FilePos))
+currentNSNameWithLoc : Context.Ref Ctxt Defs => List Namespace -> Name -> Core (Maybe (Name, FilePos, FilePos))
 currentNSNameWithLoc namespaces name = do
   Just visibleName <- checkVisibleName namespaces name
     | Nothing => pure Nothing
@@ -55,9 +59,9 @@ buildSymbolInformation n uri range kind deprecated = MkSymbolInformation
 ||| Render all names form Meta and current namespace matching Global names as SymbolInformation.
 ||| The LSP client needs to handle the SymbolInformations correctly.
 export
-documentSymbol : Ref Ctxt Defs
-              => Ref MD Metadata
-              => Ref LSPConf LSPConfiguration
+documentSymbol : Context.Ref Ctxt Defs
+              => Context.Ref MD Metadata
+              => Context.Ref LSPConf LSPConfiguration
               => DocumentSymbolParams -> Core (List SymbolInformation)
 documentSymbol params = do
   logI DocumentSymbol "Making for \{show params.textDocument.uri}"

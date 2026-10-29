@@ -5,6 +5,7 @@ import Core.Core
 import Core.Env
 import Core.Metadata
 import Core.UnifyState
+import Data.SortedMap
 import Idris.IDEMode.CaseSplit
 import Idris.REPL.Opts
 import Idris.Syntax
@@ -42,12 +43,12 @@ isAllowed params =
   maybe True (\filter => (addClauseKind `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
 
 export
-addClause : Ref LSPConf LSPConfiguration
-         => Ref Ctxt Defs
-         => Ref MD Metadata
-         => Ref ROpts REPLOpts
-         => Ref Syn SyntaxInfo
-         => Ref UST UState
+addClause : Context.Ref LSPConf LSPConfiguration
+         => Context.Ref Ctxt Defs
+         => Context.Ref MD Metadata
+         => Context.Ref ROpts REPLOpts
+         => Context.Ref Syn SyntaxInfo
+         => Context.Ref UST UState
          => CodeActionParams -> Core (Maybe CodeAction)
 addClause params = do
   let True = isAllowed params

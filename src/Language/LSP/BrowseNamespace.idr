@@ -20,8 +20,11 @@ import Server.Configuration
 import Server.Log
 import Server.Utils
 
+%hide Language.Reflection.TT.Name
+%hide Language.Reflection.TT.Namespace
+
 visible : Defs -> Name -> Core Bool
-visible defs n = do 
+visible defs n = do
   Just def <- lookupCtxtExact n (gamma defs)
     | Nothing => pure False
   pure $ collapseDefault (visibility def) /= Private
@@ -30,9 +33,9 @@ inNS : Namespace -> Name -> Bool
 inNS ns (NS xns (UN _)) = ns `isParentOf` xns
 inNS _ _ = False
 
-getNames : Ref ROpts REPLOpts
-        => Ref Ctxt Defs
-        => Ref Syn SyntaxInfo
+getNames : Context.Ref ROpts REPLOpts
+        => Context.Ref Ctxt Defs
+        => Context.Ref Syn SyntaxInfo
         => Namespace -> Core (List Name)
 getNames ns = do
   defs <- get Ctxt
@@ -41,9 +44,9 @@ getNames ns = do
   allNames <- filterM (visible defs) allNames
   pure $ sort allNames
 
-buildDocumentSymbol : Ref Ctxt Defs
-                   => Ref LSPConf LSPConfiguration
-                   => Ref Syn SyntaxInfo
+buildDocumentSymbol : Context.Ref Ctxt Defs
+                   => Context.Ref LSPConf LSPConfiguration
+                   => Context.Ref Syn SyntaxInfo
                    => Name -> Core (Maybe SymbolInformation)
 buildDocumentSymbol n = do
   defs <- get Ctxt
@@ -74,10 +77,10 @@ buildDocumentSymbol n = do
 ||| Returns the list of functions visible in the given namespace.
 ||| The response in the same format as a textDocument/documentSymbol request.
 export
-browseNamespaceCmd : Ref Ctxt Defs
-                  => Ref Syn SyntaxInfo
-                  => Ref ROpts REPLOpts
-                  => Ref LSPConf LSPConfiguration
+browseNamespaceCmd : Context.Ref Ctxt Defs
+                  => Context.Ref Syn SyntaxInfo
+                  => Context.Ref ROpts REPLOpts
+                  => Context.Ref LSPConf LSPConfiguration
                   => String -> Core (List SymbolInformation)
 browseNamespaceCmd str = do
   let Right (_, _, ns) = runParser (Virtual Interactive) Nothing str namespaceId

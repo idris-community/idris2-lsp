@@ -6,6 +6,7 @@ import Core.Metadata
 import Core.Name
 import Core.UnifyState
 import Data.String
+import Data.SortedMap
 import Idris.Pretty
 import Idris.REPL
 import Idris.REPL.Common
@@ -18,6 +19,8 @@ import Language.LSP.Utils
 import Server.Configuration
 import Server.Log
 import Server.Utils
+
+%hide Language.Reflection.TT.Name
 
 export
 introKind : CodeActionKind
@@ -45,12 +48,12 @@ buildCodeAction name uri range str =
     }
 
 export
-intro : Ref LSPConf LSPConfiguration
-     => Ref MD Metadata
-     => Ref Ctxt Defs
-     => Ref UST UState
-     => Ref Syn SyntaxInfo
-     => Ref ROpts REPLOpts
+intro : Context.Ref LSPConf LSPConfiguration
+     => Context.Ref MD Metadata
+     => Context.Ref Ctxt Defs
+     => Context.Ref UST UState
+     => Context.Ref Syn SyntaxInfo
+     => Context.Ref ROpts REPLOpts
      => CodeActionParams -> Core (List CodeAction)
 intro params = do
   let True = isAllowed params

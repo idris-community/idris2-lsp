@@ -7,14 +7,15 @@ import Core.Env
 import Core.Metadata
 import Core.UnifyState
 import Data.String
+import Data.SortedMap
 import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
-import Language.JSON
+import JSON.Simple.Derive
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
-import Language.LSP.Message.Derive
+import Language.LSP.Message.Utils
 import Language.LSP.Utils
 import Language.Reflection
 import Parser.Rule.Source
@@ -29,6 +30,7 @@ import TTImp.Utils
 
 %language ElabReflection
 %hide TT.Name
+%hide Data.Linear.Notation.(.)
 
 export
 record ExprSearchWithHintsParams where
@@ -36,7 +38,7 @@ record ExprSearchWithHintsParams where
   codeAction : CodeActionParams
   hints : List String
 
-%runElab deriveJSON defaultOpts `{ExprSearchWithHintsParams}
+%runElab derive "ExprSearchWithHintsParams" [ToJSONLSP, FromJSONLSP]
 
 dropLams : Nat -> RawImp -> RawImp
 dropLams Z tm = tm
@@ -73,12 +75,12 @@ isAllowed : CodeActionParams -> Bool
 isAllowed params =
   maybe True (\filter => (exprSearchKind `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
 
-exprSearch' : Ref LSPConf LSPConfiguration
-           => Ref MD Metadata
-           => Ref Ctxt Defs
-           => Ref UST UState
-           => Ref Syn SyntaxInfo
-           => Ref ROpts REPLOpts
+exprSearch' : Context.Ref LSPConf LSPConfiguration
+           => Context.Ref MD Metadata
+           => Context.Ref Ctxt Defs
+           => Context.Ref UST UState
+           => Context.Ref Syn SyntaxInfo
+           => Context.Ref ROpts REPLOpts
            => CodeActionParams -> List Name -> Core (List CodeAction)
 exprSearch' params hints = do
   let True = isAllowed params
@@ -116,22 +118,22 @@ exprSearch' params hints = do
     pure actions
 
 export
-exprSearch : Ref LSPConf LSPConfiguration
-          => Ref MD Metadata
-          => Ref Ctxt Defs
-          => Ref UST UState
-          => Ref Syn SyntaxInfo
-          => Ref ROpts REPLOpts
+exprSearch : Context.Ref LSPConf LSPConfiguration
+          => Context.Ref MD Metadata
+          => Context.Ref Ctxt Defs
+          => Context.Ref UST UState
+          => Context.Ref Syn SyntaxInfo
+          => Context.Ref ROpts REPLOpts
           => CodeActionParams -> Core (List CodeAction)
 exprSearch params = exprSearch' params []
 
 export
-exprSearchWithHints : Ref LSPConf LSPConfiguration
-                   => Ref MD Metadata
-                   => Ref Ctxt Defs
-                   => Ref UST UState
-                   => Ref Syn SyntaxInfo
-                   => Ref ROpts REPLOpts
+exprSearchWithHints : Context.Ref LSPConf LSPConfiguration
+                   => Context.Ref MD Metadata
+                   => Context.Ref Ctxt Defs
+                   => Context.Ref UST UState
+                   => Context.Ref Syn SyntaxInfo
+                   => Context.Ref ROpts REPLOpts
                    => ExprSearchWithHintsParams -> Core (List CodeAction)
 exprSearchWithHints params = do
   defs <- get Ctxt

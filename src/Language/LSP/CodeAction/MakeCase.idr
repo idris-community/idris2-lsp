@@ -6,6 +6,7 @@ import Core.Env
 import Core.Metadata
 import Core.UnifyState
 import Data.String
+import Data.SortedMap
 import Idris.IDEMode.CaseSplit
 import Idris.IDEMode.MakeClause
 import Idris.REPL.Opts
@@ -21,6 +22,8 @@ import Server.Configuration
 import Server.Log
 import Server.Utils
 import TTImp.Interactive.CaseSplit
+
+%hide Language.Reflection.TT.Name
 
 currentLineRange : Int -> String -> Range
 currentLineRange i origLine = MkRange (MkPosition i 0) (MkPosition i (cast $ length origLine))
@@ -59,12 +62,12 @@ buildCodeAction uri name edit =
     }
 
 export
-makeCase : Ref LSPConf LSPConfiguration
-        => Ref MD Metadata
-        => Ref Ctxt Defs
-        => Ref UST UState
-        => Ref Syn SyntaxInfo
-        => Ref ROpts REPLOpts
+makeCase : Context.Ref LSPConf LSPConfiguration
+        => Context.Ref MD Metadata
+        => Context.Ref Ctxt Defs
+        => Context.Ref UST UState
+        => Context.Ref Syn SyntaxInfo
+        => Context.Ref ROpts REPLOpts
         => CodeActionParams -> Core (Maybe CodeAction)
 makeCase params = do
   let True = isAllowed params

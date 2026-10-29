@@ -8,6 +8,7 @@ import Core.Metadata
 import Data.List
 import Data.List1
 import Data.String
+import Data.SortedMap
 import Idris.Pretty
 import Idris.REPL.Opts
 import Idris.Resugar
@@ -19,6 +20,8 @@ import Server.Diagnostics
 import Server.Utils
 import Server.Log
 
+%hide JSON.RPC.Error
+
 pShowMN : {vars : _} -> Term vars -> Env Term vars -> Doc IdrisAnn -> Doc IdrisAnn
 pShowMN (Local _ _ _ p) env acc =
   case dropAllNS (nameAt p) of
@@ -27,8 +30,8 @@ pShowMN (Local _ _ _ p) env acc =
 pShowMN _ _ acc = acc
 
 pshow : {vars : _}
-     -> Ref Ctxt Defs
-     => Ref Syn SyntaxInfo
+     -> Context.Ref Ctxt Defs
+     => Context.Ref Syn SyntaxInfo
      => Env Term vars
      -> Term vars
      -> Core String
@@ -38,8 +41,8 @@ pshow env tm = do
   itm <- resugar env ntm
   pure $ show (pShowMN ntm env $ prettyTerm itm)
 
-addMissingCases : Ref Ctxt Defs
-               => Ref Syn SyntaxInfo
+addMissingCases : Context.Ref Ctxt Defs
+               => Context.Ref Syn SyntaxInfo
                => String -> List ClosedTerm -> Nat -> Core String
 addMissingCases n [] k = pure ""
 addMissingCases n (x :: xs) k =
@@ -66,11 +69,11 @@ buildQuickfix uri msg diagnostic edit = MkCodeAction
   }
 
 export
-findQuickfix : Ref LSPConf LSPConfiguration
-            => Ref Ctxt Defs
-            => Ref Syn SyntaxInfo
-            => Ref ROpts REPLOpts
-            => Ref MD Metadata
+findQuickfix : Context.Ref LSPConf LSPConfiguration
+            => Context.Ref Ctxt Defs
+            => Context.Ref Syn SyntaxInfo
+            => Context.Ref ROpts REPLOpts
+            => Context.Ref MD Metadata
             => (caps : Maybe PublishDiagnosticsClientCapabilities)
             -> (uri : URI)
             -> Error

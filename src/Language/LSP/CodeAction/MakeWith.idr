@@ -5,6 +5,7 @@ import Core.Core
 import Core.Env
 import Core.Metadata
 import Core.UnifyState
+import Data.SortedMap
 import Idris.IDEMode.MakeClause
 import Idris.REPL.Opts
 import Idris.Resugar
@@ -20,6 +21,8 @@ import Server.Configuration
 import Server.Log
 import Server.Utils
 import TTImp.TTImp
+
+%hide Language.Reflection.TT.Name
 
 buildCodeAction : Name -> URI -> TextEdit -> CodeAction
 buildCodeAction name uri edit =
@@ -47,12 +50,12 @@ isAllowed params =
   maybe True (\filter => (makeWithKind `elem` filter) || (RefactorRewrite `elem` filter)) params.context.only
 
 export
-makeWith : Ref LSPConf LSPConfiguration
-        => Ref MD Metadata
-        => Ref Ctxt Defs
-        => Ref UST UState
-        => Ref Syn SyntaxInfo
-        => Ref ROpts REPLOpts
+makeWith : Context.Ref LSPConf LSPConfiguration
+        => Context.Ref MD Metadata
+        => Context.Ref Ctxt Defs
+        => Context.Ref UST UState
+        => Context.Ref Syn SyntaxInfo
+        => Context.Ref ROpts REPLOpts
         => CodeActionParams -> Core (Maybe CodeAction)
 makeWith params = do
   let True = isAllowed params
