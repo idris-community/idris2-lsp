@@ -203,10 +203,15 @@ loadURI : Ref LSPConf LSPConfiguration
        => Ref PostS PostSession
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
+  reloadStart <- profileClock
+  -- this is used by the benchmarker to idetify the start of the reload
+  profile ("begin\t" ++ show uri ++ "\t" ++ show (fromMaybe (-1) version))
   logI Server "Loading file \{show uri}"
   defs <- get Ctxt
   let extraDirs = defs.options.dirs.extra_dirs
-  update LSPConf ({ openFile := Just (uri, fromMaybe 0 version) })
+  -- i chnaged that to remove the document's cached completions
+  update LSPConf ({ openFile := Just (uri, fromMaybe 0 version)
+                 , completionCache $= delete uri })
   update ROpts { evalResultName := Nothing }
   resetContext (Virtual Interactive)
   let fpath = uriPathToSystemPath uri.path
@@ -230,16 +235,19 @@ loadURI conf uri version = do
   update LSPConf ({ virtualDocuments $= insert uri (fromMaybe 0 version, res ++ "\n") })
   --     A hack to solve some interesting edge-cases around missing newlines ^^^^^^^
   setSource res
+  buildStart <- profileClock
   errs <- catch
             (buildDeps fname)
             (\err => do
               logE Server "Caught error which shouldn't be leaked while loading file: \{show err}"
               pure [err])
+  profileSince "build" buildStart
   -- FIXME: the compiler always dumps the errors on stdout, requires
   --        a compiler change.
   -- NOTE on catch: It seems the compiler sometimes throws errors instead
   -- of accumulating them in the buildDeps.
   unless (null errs) $ do
+    errorStart <- profileClock
     update LSPConf ({ errorFiles $= insert uri })
     -- ModTree 397--308 loads data into context from ttf/ttm if no errors
     -- In case of error, we reprocess fname to populate metadata and syntax
@@ -250,7 +258,11 @@ loadURI conf uri version = do
     clearCtxt; addPrimitives
     put MD (initMetadata (PhysicalIdrSrc modIdent))
     ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
+    -- logging the second error pocessing pass time
+    profileSince "error_reprocessing" errorStart
+  when (null errs) $ profile "error_reprocessing\t0"
 
+  diagnosticsStart <- profileClock
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   update LSPConf ({ quickfixes := [], cachedActions := empty, cachedHovers := empty })
   traverse_ (findQuickfix caps uri) errs
@@ -258,10 +270,12 @@ loadURI conf uri version = do
   session <- getSession
   let warnings = if session.warningsAsErrors then [] else reverse (warnings defs)
   sendDiagnostics caps uri version warnings errs
+  profileSince "diagnostics" diagnosticsStart
   defs <- get Ctxt
   put Ctxt ({ options->dirs->extra_dirs := extraDirs } defs)
-  cNames <- completionNames
-  update LSPConf ({completionCache $= insert uri cNames})
+  profile "completions\t0"
+  profileSince "total" reloadStart
+  profile "end"
   pure $ Right ()
 
 loadIfNeeded : Ref LSPConf LSPConfiguration
@@ -486,9 +500,21 @@ handleRequest TextDocumentCodeLens params = whenActiveRequest $ \conf => do
 
 handleRequest TextDocumentCompletion params = whenActiveRequest $ \conf => do
   logW Channel $ "Received an completion request for \{show params.textDocument.uri}"
-  case !(completion params) of
-    Nothing => pure $ pure $ make MkNull
-    Just cs => pure $ pure $ make cs
+  Nothing <- gets LSPConf (lookup params.textDocument.uri . completionCache)
+    | Just _ => do
+        case !(completion params) of
+          Nothing => pure $ pure $ make MkNull
+          Just cs => pure $ pure $ make cs
+  document <- gets LSPConf (lookup params.textDocument.uri . virtualDocuments)
+  withURI conf params.textDocument.uri Nothing (pure $ pure $ make MkNull) $ do
+    -- Loading the saved context must not replace the text being completed
+    whenJust document $ \content =>
+      update LSPConf ({ virtualDocuments $= insert params.textDocument.uri content })
+    cNames <- completionNames
+    update LSPConf ({ completionCache $= insert params.textDocument.uri cNames })
+    case !(completion params) of
+      Nothing => pure $ pure $ make MkNull
+      Just cs => pure $ pure $ make cs
 
 handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf => do
   -- TODO: still unimplemented, but send empty message to avoid errors

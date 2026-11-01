@@ -27,10 +27,8 @@ import Server.Utils
 
 %default total
 
--- When a file is opened the context is filled with definitions.
---
--- Cache names from opened files.
--- Update cache on saving a file.
+-- Build the cache on the first completion request after loading a file.
+-- Invalidate cache on saving a file.
 -- Remove cache on closing a file.
 --
 -- TODO: Don't suggest on comment lines.
@@ -205,7 +203,7 @@ identifierAtCursor params = do
 
 ||| Generating the completion response.
 |||
-||| The possible candidates are collected when saving the file, and the list could
+||| The possible candidates are cached on the first completion request, and the list could
 ||| be enormous. Filtering it based on the identifier at the cursor position
 ||| is necessary; otherwise, the generated JSON clogs up the channel and slows
 ||| the response generation, making the developer experience terrible.
