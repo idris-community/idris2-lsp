@@ -276,6 +276,7 @@ loadURI conf uri version = do
   profile "completions\t0"
   profileSince "total" reloadStart
   profile "end"
+  scheduleCompletions
   pure $ Right ()
 
 loadIfNeeded : Ref LSPConf LSPConfiguration
@@ -510,8 +511,8 @@ handleRequest TextDocumentCompletion params = whenActiveRequest $ \conf => do
     -- Loading the saved context must not replace the text being completed
     whenJust document $ \content =>
       update LSPConf ({ virtualDocuments $= insert params.textDocument.uri content })
-    cNames <- completionNames
-    update LSPConf ({ completionCache $= insert params.textDocument.uri cNames })
+    True <- buildCompletionCache params.textDocument.uri
+      | False => pure $ Left (MkResponseError RequestCancelled "Completion interrupted by incoming input" JNull)
     case !(completion params) of
       Nothing => pure $ pure $ make MkNull
       Just cs => pure $ pure $ make cs
@@ -620,6 +621,8 @@ handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf =
 handleNotification TextDocumentDidChange params = whenActiveNotification $ \conf => do
   logI Channel "Received didChange notification for \{show params.textDocument.uri}"
   update LSPConf ({ dirtyFiles $= insert params.textDocument.uri})
+  update LSPConf ({ completionCache $= delete params.textDocument.uri })
+  scheduleCompletions
   whenJust !(gets LSPConf (lookup params.textDocument.uri . virtualDocuments)) $ \(v,content) => do
     case changeVirtualContent params.contentChanges content of
       Left e => do
@@ -632,6 +635,7 @@ handleNotification TextDocumentDidChange params = whenActiveNotification $ \conf
 handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf => do
   logI Channel "Received didClose notification for \{show params.textDocument.uri}"
   update LSPConf ({ openFile := Nothing
+                  , completionRetry := Nothing
                   , quickfixes := []
                   , cachedActions := empty
                   , cachedHovers := empty
