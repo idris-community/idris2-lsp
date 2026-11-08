@@ -7,7 +7,6 @@ module Server.ProcessMessage
 import Core.Context
 import Core.Core
 import Core.Directory
-import Core.InitPrimitives
 import Core.Env
 import Core.Metadata
 import Core.UnifyState
@@ -236,31 +235,30 @@ loadURI conf uri version = do
   --     A hack to solve some interesting edge-cases around missing newlines ^^^^^^^
   setSource res
   buildStart <- profileClock
-  errs <- catch
+  result <- catch
             (buildDeps fname)
             (\err => do
               logE Server "Caught error which shouldn't be leaked while loading file: \{show err}"
-              pure [err])
+              pure (MkBuildDepsResult [err] False))
+  let errs = result.errors
   profileSince "build" buildStart
   -- FIXME: the compiler always dumps the errors on stdout, requires
   --        a compiler change.
   -- NOTE on catch: It seems the compiler sometimes throws errors instead
   -- of accumulating them in the buildDeps.
-  unless (null errs) $ do
-    errorStart <- profileClock
-    update LSPConf ({ errorFiles $= insert uri })
-    -- ModTree 397--308 loads data into context from ttf/ttm if no errors
-    -- In case of error, we reprocess fname to populate metadata and syntax
-    logI Channel "Rebuild \{fname} due to errors"
-    modIdent <- ctxtPathToNS fname
-    let msgPrefix : Doc IdrisAnn = pretty0 ""
-    let buildMsg : Doc IdrisAnn = pretty0 modIdent
-    clearCtxt; addPrimitives
-    put MD (initMetadata (PhysicalIdrSrc modIdent))
-    ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
-    -- logging the second error pocessing pass time
-    profileSince "error_reprocessing" errorStart
-  when (null errs) $ profile "error_reprocessing\t0"
+  unless (null errs) $ update LSPConf ({ errorFiles $= insert uri })
+  if null errs || result.hasMainFileState
+    then profile "error_reprocessing\t0"
+    else do
+      errorStart <- profileClock
+      -- reprocess only when the build did not retain state for this file
+      logI Channel "Rebuild \{fname} due to errors"
+      modIdent <- ctxtPathToNS fname
+      let msgPrefix : Doc IdrisAnn = pretty0 ""
+      let buildMsg : Doc IdrisAnn = pretty0 modIdent
+      resetContext (PhysicalIdrSrc modIdent)
+      ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
+      profileSince "error_reprocessing" errorStart
 
   diagnosticsStart <- profileClock
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
