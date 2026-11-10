@@ -86,7 +86,7 @@ export
 logD : Ref LSPConf LSPConfiguration => Topic -> Lazy String -> Core ()
 logD = log Debug
 
--- returns the current time in nanoseconds since the epoch, using a monotonic clock
+-- returns a monotonic timestamp in nanoseconds for measuring elapsed time
 export
 profileClock : Core Integer
 profileClock = do

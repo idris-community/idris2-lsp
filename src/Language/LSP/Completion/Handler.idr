@@ -95,11 +95,7 @@ completionInterrupted = do
     | Nothing => pure False
   coreLift $ hasInput inbox
 
-||| collects the results of a function over a list,
-||| returning Nothing if the function returns Nothing for any element
-||| this is a replacement for the standard traverse function used in completionNames
-||| but we need it to return Nothing when the completion cache building is interrupted
-||| so just feed traverse into this
+||| traverses a list, returns Nothing if incoming input interrupts the work
 collect : Ref LSPConf LSPConfiguration
        => (a -> Core b) -> List a -> Core (Maybe (List b))
 collect f [] = pure $ Just []

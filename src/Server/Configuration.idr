@@ -34,8 +34,6 @@ data LSPConf : Type where
 public export
 record LSPConfiguration where
   constructor MkLSPConfiguration
-  ||| File handle where to read LSP messages.
-  inputHandle : File
   ||| Queue for incoming LSP messages.
   inputQueue : Maybe Inbox
   ||| Earliest time to retry completion-cache building, in monotonic nanoseconds.
@@ -77,13 +75,12 @@ record LSPConfiguration where
   ||| Insert only function name for completions
   briefCompletions : Bool
 
-||| Server default configuration. Uses standard input and standard output for input/output.
+||| Server default configuration. Uses standard output for LSP messages.
 export
 defaultConfig : LSPConfiguration
 defaultConfig =
   MkLSPConfiguration
-    { inputHandle             = stdin
-    , inputQueue              = Nothing
+    { inputQueue              = Nothing
     , completionRetry         = Nothing
     , outputHandle            = stdout
     , logHandle               = stderr

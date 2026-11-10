@@ -245,7 +245,7 @@ loadURI conf uri version = do
   -- NOTE on catch: It seems the compiler sometimes throws errors instead
   -- of accumulating them in the buildDeps.
   unless (null errs) $ update LSPConf ({ errorFiles $= insert uri })
-  if null errs || result.hasMainFileState
+  if result.hasMainFileState
     then profile "error_reprocessing\t0"
     else do
       errorStart <- profileClock
@@ -617,8 +617,6 @@ handleNotification TextDocumentDidSave params = whenActiveNotification $ \conf =
 handleNotification TextDocumentDidChange params = whenActiveNotification $ \conf => do
   logI Channel "Received didChange notification for \{show params.textDocument.uri}"
   update LSPConf ({ dirtyFiles $= insert params.textDocument.uri})
-  update LSPConf ({ completionCache $= delete params.textDocument.uri })
-  scheduleCompletions
   whenJust !(gets LSPConf (lookup params.textDocument.uri . virtualDocuments)) $ \(v,content) => do
     case changeVirtualContent params.contentChanges content of
       Left e => do
