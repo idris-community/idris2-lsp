@@ -28,10 +28,9 @@ import Server.Utils
 
 %default total
 
--- Build the cache while idle, stopping between entries when input arrives.
--- Invalidate cache on saving a file.
--- Remove cache on closing a file.
---
+-- Build the cache while idle, interrupting when input arrives
+-- Invalidate cache on saving a file
+-- Remove cache on closing a file
 -- TODO: Don't suggest on comment lines.
 
 config : Config

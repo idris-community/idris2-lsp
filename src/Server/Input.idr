@@ -1,6 +1,6 @@
 ||| input reader that can run while completions are building
-||| the server used to only read the next message after
-||| finishing the current operation
+||| so that the server can read messages without waiting
+||| for the current operation to complete
 module Server.Input
 
 import Data.IORef

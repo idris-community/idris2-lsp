@@ -203,12 +203,10 @@ loadURI : Ref LSPConf LSPConfiguration
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
   reloadStart <- profileClock
-  -- this is used by the benchmarker to idetify the start of the reload
   profile ("begin\t" ++ show uri ++ "\t" ++ show (fromMaybe (-1) version))
   logI Server "Loading file \{show uri}"
   defs <- get Ctxt
   let extraDirs = defs.options.dirs.extra_dirs
-  -- i chnaged that to remove the document's cached completions
   update LSPConf ({ openFile := Just (uri, fromMaybe 0 version)
                  , completionCache $= delete uri })
   update ROpts { evalResultName := Nothing }
