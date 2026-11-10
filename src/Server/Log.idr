@@ -10,7 +10,6 @@ import Server.Configuration
 import Language.LSP.Severity
 import Server.Utils
 import System.Directory
-import System.Clock
 import System.File
 import System.Path
 
@@ -85,25 +84,6 @@ log severity topic msg = do
 export
 logD : Ref LSPConf LSPConfiguration => Topic -> Lazy String -> Core ()
 logD = log Debug
-
--- returns a monotonic timestamp in nanoseconds for measuring elapsed time
-export
-profileClock : Core Integer
-profileClock = do
-  clock <- coreLift $ clockTime Monotonic
-  pure $ seconds clock * 1000000000 + nanoseconds clock
-
--- logs a profiling message with the provided string
-export
-profile : Ref LSPConf LSPConfiguration => String -> Core ()
-profile message = logD Server ("PROFILE\t" ++ message)
-
--- logs the time since the provided start time, in nanoseconds, with the provided stage name
-export
-profileSince : Ref LSPConf LSPConfiguration => String -> Integer -> Core ()
-profileSince stage start = do
-  end <- profileClock
-  profile (stage ++ "\t" ++ show (end - start))
 
 export
 logI : Ref LSPConf LSPConfiguration => Topic -> Lazy String -> Core ()

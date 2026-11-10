@@ -85,7 +85,7 @@ arguments (TType fc n)                                 = []
 export
 scheduleCompletions : Ref LSPConf LSPConfiguration => Core ()
 scheduleCompletions = do
-  now <- profileClock
+  now <- monotonicNanos
   update LSPConf ({ completionRetry := Just (now + 500000000) })
 
 ||| checks if the completion cache building is interrupted by input

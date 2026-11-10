@@ -167,7 +167,7 @@ runServer = do
       whenJust !(gets LSPConf completionRetry) $ \_ => scheduleCompletions
     Nothing => do
       whenJust !(gets LSPConf completionRetry) $ \deadline => do
-        now <- profileClock
+        now <- monotonicNanos
         when (now >= deadline) $ do
           update LSPConf ({ completionRetry := Nothing })
           False <- gets LSPConf isShutdown

@@ -66,7 +66,6 @@ import Server.Response
 import Server.SemanticTokens
 import Server.Utils
 import System
-import System.Clock
 import System.Directory
 import System.File
 
@@ -202,8 +201,6 @@ loadURI : Ref LSPConf LSPConfiguration
        => Ref PostS PostSession
        => InitializeParams -> URI -> Maybe Int -> Core (Either String ())
 loadURI conf uri version = do
-  reloadStart <- profileClock
-  profile ("begin\t" ++ show uri ++ "\t" ++ show (fromMaybe (-1) version))
   logI Server "Loading file \{show uri}"
   defs <- get Ctxt
   let extraDirs = defs.options.dirs.extra_dirs
@@ -232,33 +229,26 @@ loadURI conf uri version = do
   update LSPConf ({ virtualDocuments $= insert uri (fromMaybe 0 version, res ++ "\n") })
   --     A hack to solve some interesting edge-cases around missing newlines ^^^^^^^
   setSource res
-  buildStart <- profileClock
   result <- catch
             (buildDeps fname)
             (\err => do
               logE Server "Caught error which shouldn't be leaked while loading file: \{show err}"
               pure (MkBuildDepsResult [err] False))
   let errs = result.errors
-  profileSince "build" buildStart
   -- FIXME: the compiler always dumps the errors on stdout, requires
   --        a compiler change.
   -- NOTE on catch: It seems the compiler sometimes throws errors instead
   -- of accumulating them in the buildDeps.
   unless (null errs) $ update LSPConf ({ errorFiles $= insert uri })
-  if result.hasMainFileState
-    then profile "error_reprocessing\t0"
-    else do
-      errorStart <- profileClock
-      -- reprocess only when the build did not retain state for this file
-      logI Channel "Rebuild \{fname} due to errors"
-      modIdent <- ctxtPathToNS fname
-      let msgPrefix : Doc IdrisAnn = pretty0 ""
-      let buildMsg : Doc IdrisAnn = pretty0 modIdent
-      resetContext (PhysicalIdrSrc modIdent)
-      ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
-      profileSince "error_reprocessing" errorStart
+  unless result.hasMainFileState $ do
+    -- reprocess only when the build did not retain state for this file
+    logI Channel "Rebuild \{fname} due to errors"
+    modIdent <- ctxtPathToNS fname
+    let msgPrefix : Doc IdrisAnn = pretty0 ""
+    let buildMsg : Doc IdrisAnn = pretty0 modIdent
+    resetContext (PhysicalIdrSrc modIdent)
+    ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
 
-  diagnosticsStart <- profileClock
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
   update LSPConf ({ quickfixes := [], cachedActions := empty, cachedHovers := empty })
   traverse_ (findQuickfix caps uri) errs
@@ -266,12 +256,8 @@ loadURI conf uri version = do
   session <- getSession
   let warnings = if session.warningsAsErrors then [] else reverse (warnings defs)
   sendDiagnostics caps uri version warnings errs
-  profileSince "diagnostics" diagnosticsStart
   defs <- get Ctxt
   put Ctxt ({ options->dirs->extra_dirs := extraDirs } defs)
-  profile "completions\t0"
-  profileSince "total" reloadStart
-  profile "end"
   scheduleCompletions
   pure $ Right ()
 
