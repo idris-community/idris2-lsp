@@ -21,6 +21,7 @@ import Language.LSP.Message.SemanticTokens
 import Language.LSP.Message.URI
 import Language.LSP.Severity
 import System.File
+import Server.Input
 import Data.String
 import Data.List1
 
@@ -33,8 +34,10 @@ data LSPConf : Type where
 public export
 record LSPConfiguration where
   constructor MkLSPConfiguration
-  ||| File handle where to read LSP messages.
-  inputHandle : File
+  ||| Queue for incoming LSP messages.
+  inputQueue : Maybe Inbox
+  ||| Earliest time to retry completion-cache building, in monotonic nanoseconds.
+  completionRetry : Maybe Integer
   ||| File handle where to output LSP messages.
   outputHandle : File
   ||| File handle where to put log messages.
@@ -72,12 +75,13 @@ record LSPConfiguration where
   ||| Insert only function name for completions
   briefCompletions : Bool
 
-||| Server default configuration. Uses standard input and standard output for input/output.
+||| Server default configuration. Uses standard output for LSP messages.
 export
 defaultConfig : LSPConfiguration
 defaultConfig =
   MkLSPConfiguration
-    { inputHandle             = stdin
+    { inputQueue              = Nothing
+    , completionRetry         = Nothing
     , outputHandle            = stdout
     , logHandle               = stderr
     , logSeverity             = Debug

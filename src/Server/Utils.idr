@@ -18,9 +18,17 @@ import Language.LSP.CodeAction
 import Language.LSP.Message
 import Libraries.Data.PosMap
 import Server.Configuration
+import System.Clock
 import System.File
 import System
 import System.Info
+
+||| Monotonic timestamp in nanoseconds for scheduling idle work.
+export
+monotonicNanos : Core Integer
+monotonicNanos = do
+  clock <- coreLift $ clockTime Monotonic
+  pure $ seconds clock * 1000000000 + nanoseconds clock
 
 ||| Gets a specific component of a reference, using the supplied projection.
 export

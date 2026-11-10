@@ -11,6 +11,7 @@ import Core.Metadata
 import Core.UnifyState
 import Compiler.Common
 import Data.List1
+import Data.SortedMap
 import Data.String
 import Idris.CommandLine
 import Idris.Env
@@ -23,9 +24,12 @@ import Idris.Version
 import IdrisPaths
 import Language.JSON
 import Language.LSP.Message
+import Language.LSP.Completion.Handler
+import Language.LSP.Completion.Info
 import Language.LSP.Utils
 import Libraries.Utils.Path
 import Server.Configuration
+import Server.Input
 import Server.Log
 import Server.ProcessMessage
 import Server.Response
@@ -60,15 +64,27 @@ parseHeader str =
                       Just $ ContentType (fastConcat xs)
              else Nothing
 
-parseHeaderPart : (h : File) -> Core (Either FileError (Maybe Int))
-parseHeaderPart h = do
-  Right line <- coreLift $ fGetHeader h
-    | Left err => pure $ Left err
-  case parseHeader line of
-    Just (ContentLength l) => parseHeaderPart h *> pure (Right (Just l))
-    Just (ContentType s) => parseHeaderPart h
-    Just StartContent => pure $ Right Nothing
-    Nothing => pure $ Right Nothing
+parseHeaderPart : InputPort -> IO (Maybe Int)
+parseHeaderPart port = go Nothing
+  where
+    go : Maybe Int -> IO (Maybe Int)
+    go size = do
+      line <- readInputLine port
+      case parseHeader line of
+        Just (ContentLength l) => go (Just l)
+        Just (ContentType s) => go size
+        Just StartContent => pure size
+        Nothing => pure Nothing
+
+readMessages : InputPort -> Inbox -> IO ()
+readMessages port inbox = do
+  Just size <- parseHeaderPart port
+    | Nothing => enqueue inbox (Left "Cannot parse message header or input closed")
+  if size < 0 then enqueue inbox (Left "Negative message length") else do
+    Just body <- readInputBody port size
+      | Nothing => enqueue inbox (Left "Input closed while reading message body")
+    enqueue inbox (Right body)
+    readMessages port inbox
 
 handleMessage : Ref LSPConf LSPConfiguration
             => Ref Ctxt Defs
@@ -77,20 +93,8 @@ handleMessage : Ref LSPConf LSPConfiguration
             => Ref MD Metadata
             => Ref ROpts REPLOpts
             => Ref PostS PostSession
-            => Core ()
-handleMessage = do
-  inputHandle <- gets LSPConf inputHandle
-  Right (Just l) <- parseHeaderPart inputHandle
-    | _ => do logD Channel "Cannot parse message header"
-              sendUnknownResponseMessage parseError
-              coreLift $ exitWith (ExitFailure 1)
-  False <- coreLift $ fEOF inputHandle
-    | True => coreLift $ exitWith (ExitFailure 1)
-  Right msg <- coreLift $ fGetChars inputHandle l
-    | Left err => do
-        logE Server "Cannot retrieve body of message: \{show err}"
-        sendUnknownResponseMessage $ internalError "Error while recovering the content part of a message"
-        coreLift $ exitWith (ExitFailure 1)
+            => String -> Core ()
+handleMessage msg = do
   logD Channel "Received message: \{msg}"
   let Just msg = parse msg
     | _ => do logE Channel "Cannot parse message"
@@ -150,7 +154,34 @@ runServer : Ref LSPConf LSPConfiguration
          => Ref ROpts REPLOpts
          => Ref PostS PostSession
          => Core ()
-runServer = handleMessage >> runServer
+runServer = do
+  Just inbox <- gets LSPConf inputQueue
+    | Nothing => throw (InternalError "Missing input queue")
+  case !(coreLift $ dequeue inbox) of
+    Just (Left err) => do
+      logE Server err
+      coreLift $ exitWith (ExitFailure 1)
+    Just (Right msg) => do
+      handleMessage msg
+      -- every message postpones idle work, queued edits always take priority
+      whenJust !(gets LSPConf completionRetry) $ \_ => scheduleCompletions
+    Nothing => do
+      whenJust !(gets LSPConf completionRetry) $ \deadline => do
+        now <- monotonicNanos
+        when (now >= deadline) $ do
+          update LSPConf ({ completionRetry := Nothing })
+          False <- gets LSPConf isShutdown
+            | True => pure ()
+          Just (uri, _) <- gets LSPConf openFile
+            | Nothing => pure ()
+          Nothing <- gets LSPConf (lookup uri . completionCache)
+            | Just _ => pure ()
+          catch (ignore $ buildCompletionCache uri) $ \err => do
+            logE Completion "Completion cache failed: \{show err}"
+            resetContext (Virtual Interactive)
+            update LSPConf ({ openFile := Nothing })
+      coreLift $ usleep 1000
+  runServer
 
 startServer : IO ()
 startServer =
@@ -199,6 +230,10 @@ startServer =
               u <- newRef UST initUState
               m <- newRef MD (initMetadata (Virtual Interactive))
               p <- newRef PostS defaultPost
+              inbox <- coreLift newInbox
+              port <- coreLift openInput
+              update LSPConf ({ inputQueue := Just inbox })
+              ignore $ coreLift $ fork (readMessages port inbox)
               runServer)
     (\err => fPutStrLn stderr ("CRITICAL UNCAUGHT ERROR " ++ show err) *> exitWith (ExitFailure 1))
     (\res => pure ())

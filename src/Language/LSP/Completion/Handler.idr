@@ -23,16 +23,14 @@ import Libraries.Data.UserNameMap
 import Libraries.Data.WithDefault
 import Server.Configuration
 import Server.Log
+import Server.Input
 import Server.Utils
 
 %default total
 
--- When a file is opened the context is filled with definitions.
---
--- Cache names from opened files.
--- Update cache on saving a file.
--- Remove cache on closing a file.
---
+-- Build the cache while idle, interrupting when input arrives
+-- Invalidate cache on saving a file
+-- Remove cache on closing a file
 -- TODO: Don't suggest on comment lines.
 
 config : Config
@@ -82,13 +80,40 @@ arguments (PrimVal fc c)                               = []
 arguments (Erased fc why)                              = []
 arguments (TType fc n)                                 = []
 
+||| schedules a completion documnentation building retry
+||| reads the clock and sets the completionRetry to 500ms
+export
+scheduleCompletions : Ref LSPConf LSPConfiguration => Core ()
+scheduleCompletions = do
+  now <- monotonicNanos
+  update LSPConf ({ completionRetry := Just (now + 500000000) })
+
+||| checks if the completion cache building is interrupted by input
+completionInterrupted : Ref LSPConf LSPConfiguration => Core Bool
+completionInterrupted = do
+  Just inbox <- gets LSPConf inputQueue
+    | Nothing => pure False
+  coreLift $ hasInput inbox
+
+||| traverses a list, returns Nothing if incoming input interrupts the work
+collect : Ref LSPConf LSPConfiguration
+       => (a -> Core b) -> List a -> Core (Maybe (List b))
+collect f [] = pure $ Just []
+collect f (x :: xs) = do
+  False <- completionInterrupted
+    | True => pure Nothing
+  value <- f x
+  Just values <- collect f xs
+    | Nothing => pure Nothing
+  pure $ Just (value :: values)
+
 export
 covering
 completionNames : Ref Ctxt Defs
                => Ref LSPConf LSPConfiguration
                => Ref Syn SyntaxInfo
                => Ref ROpts REPLOpts
-               => Core (SortedMap NameCategory (List Entry))
+               => Core (Maybe (SortedMap NameCategory (List Entry)))
 completionNames = do
   defs <- get Ctxt
   let ctxt = gamma defs
@@ -105,7 +130,7 @@ completionNames = do
                   then InNestedNs
                   else OtherName
   let inImportedNamespaces = mapMaybe (accessibleName namespaces) $ keys $ resolvedAs ctxt
-  visibleExportedNames <- traverse
+  Just visibleExportedNames <- collect
     (\(ns, un, n) => do
         mdef <- lookupCtxtExact n ctxt
         case mdef of
@@ -126,9 +151,12 @@ completionNames = do
                     }
               else pure Nothing)
     inImportedNamespaces
+    | Nothing => pure Nothing
+  False <- completionInterrupted
+    | True => pure Nothing
   let completionEntries = catMaybes visibleExportedNames
   logD Completion "Found \{show (length completionEntries)} completion entries."
-  pure $ foldl (\m , c => mergeWith (++) m (singleton c.category [c])) empty completionEntries
+  pure $ Just $ foldl (\m , c => mergeWith (++) m (singleton c.category [c])) empty completionEntries
   where
     accessibleName : List Namespace -> Name -> Maybe (Namespace, UserName, Name)
     accessibleName nps n = do
@@ -136,6 +164,26 @@ completionNames = do
       if any (\p => isParentOf p ns || p == ns) nps
         then Just (ns, un, n)
         else Nothing
+
+||| builds and publishes the completion cache for a given document URI
+||| calls completionNames. if that gets interrupted by input, it returns False,
+||| does not update the cache, and schedules a retry
+export covering
+buildCompletionCache : Ref Ctxt Defs
+                    => Ref LSPConf LSPConfiguration
+                    => Ref Syn SyntaxInfo
+                    => Ref ROpts REPLOpts
+                    => DocumentURI -> Core Bool
+buildCompletionCache uri = do
+  logD Completion "Building completion cache for \{show uri}"
+  Just names <- completionNames
+    | Nothing => do
+        logD Completion "Cancelled completion cache: input is waiting"
+        scheduleCompletions
+        pure False
+  update LSPConf ({ completionCache $= insert uri names, completionRetry := Nothing })
+  logD Completion "Published completion cache for \{show uri}"
+  pure True
 
 mkCompletionItem : Bool -> String -> Entry -> Maybe CompletionItem
 mkCompletionItem isBrief w (MkEntry c n ty ar doc) =
@@ -205,7 +253,7 @@ identifierAtCursor params = do
 
 ||| Generating the completion response.
 |||
-||| The possible candidates are collected when saving the file, and the list could
+||| The possible candidates are cached while idle or on request, and the list could
 ||| be enormous. Filtering it based on the identifier at the cursor position
 ||| is necessary; otherwise, the generated JSON clogs up the channel and slows
 ||| the response generation, making the developer experience terrible.

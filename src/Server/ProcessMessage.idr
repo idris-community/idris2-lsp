@@ -7,7 +7,6 @@ module Server.ProcessMessage
 import Core.Context
 import Core.Core
 import Core.Directory
-import Core.InitPrimitives
 import Core.Env
 import Core.Metadata
 import Core.UnifyState
@@ -67,7 +66,6 @@ import Server.Response
 import Server.SemanticTokens
 import Server.Utils
 import System
-import System.Clock
 import System.Directory
 import System.File
 
@@ -206,7 +204,8 @@ loadURI conf uri version = do
   logI Server "Loading file \{show uri}"
   defs <- get Ctxt
   let extraDirs = defs.options.dirs.extra_dirs
-  update LSPConf ({ openFile := Just (uri, fromMaybe 0 version) })
+  update LSPConf ({ openFile := Just (uri, fromMaybe 0 version)
+                 , completionCache $= delete uri })
   update ROpts { evalResultName := Nothing }
   resetContext (Virtual Interactive)
   let fpath = uriPathToSystemPath uri.path
@@ -230,25 +229,24 @@ loadURI conf uri version = do
   update LSPConf ({ virtualDocuments $= insert uri (fromMaybe 0 version, res ++ "\n") })
   --     A hack to solve some interesting edge-cases around missing newlines ^^^^^^^
   setSource res
-  errs <- catch
+  result <- catch
             (buildDeps fname)
             (\err => do
               logE Server "Caught error which shouldn't be leaked while loading file: \{show err}"
-              pure [err])
+              pure (MkBuildDepsResult [err] False))
+  let errs = result.errors
   -- FIXME: the compiler always dumps the errors on stdout, requires
   --        a compiler change.
   -- NOTE on catch: It seems the compiler sometimes throws errors instead
   -- of accumulating them in the buildDeps.
-  unless (null errs) $ do
-    update LSPConf ({ errorFiles $= insert uri })
-    -- ModTree 397--308 loads data into context from ttf/ttm if no errors
-    -- In case of error, we reprocess fname to populate metadata and syntax
+  unless (null errs) $ update LSPConf ({ errorFiles $= insert uri })
+  unless result.hasMainFileState $ do
+    -- reprocess only when the build did not retain state for this file
     logI Channel "Rebuild \{fname} due to errors"
     modIdent <- ctxtPathToNS fname
     let msgPrefix : Doc IdrisAnn = pretty0 ""
     let buildMsg : Doc IdrisAnn = pretty0 modIdent
-    clearCtxt; addPrimitives
-    put MD (initMetadata (PhysicalIdrSrc modIdent))
+    resetContext (PhysicalIdrSrc modIdent)
     ignore $ ProcessIdr.process msgPrefix buildMsg fname modIdent
 
   let caps = (publishDiagnostics <=< textDocument) . capabilities $ conf
@@ -260,8 +258,7 @@ loadURI conf uri version = do
   sendDiagnostics caps uri version warnings errs
   defs <- get Ctxt
   put Ctxt ({ options->dirs->extra_dirs := extraDirs } defs)
-  cNames <- completionNames
-  update LSPConf ({completionCache $= insert uri cNames})
+  scheduleCompletions
   pure $ Right ()
 
 loadIfNeeded : Ref LSPConf LSPConfiguration
@@ -486,9 +483,21 @@ handleRequest TextDocumentCodeLens params = whenActiveRequest $ \conf => do
 
 handleRequest TextDocumentCompletion params = whenActiveRequest $ \conf => do
   logW Channel $ "Received an completion request for \{show params.textDocument.uri}"
-  case !(completion params) of
-    Nothing => pure $ pure $ make MkNull
-    Just cs => pure $ pure $ make cs
+  Nothing <- gets LSPConf (lookup params.textDocument.uri . completionCache)
+    | Just _ => do
+        case !(completion params) of
+          Nothing => pure $ pure $ make MkNull
+          Just cs => pure $ pure $ make cs
+  document <- gets LSPConf (lookup params.textDocument.uri . virtualDocuments)
+  withURI conf params.textDocument.uri Nothing (pure $ pure $ make MkNull) $ do
+    -- Loading the saved context must not replace the text being completed
+    whenJust document $ \content =>
+      update LSPConf ({ virtualDocuments $= insert params.textDocument.uri content })
+    True <- buildCompletionCache params.textDocument.uri
+      | False => pure $ Left (MkResponseError RequestCancelled "Completion interrupted by incoming input" JNull)
+    case !(completion params) of
+      Nothing => pure $ pure $ make MkNull
+      Just cs => pure $ pure $ make cs
 
 handleRequest TextDocumentDocumentLink params = whenActiveRequest $ \conf => do
   -- TODO: still unimplemented, but send empty message to avoid errors
@@ -606,6 +615,7 @@ handleNotification TextDocumentDidChange params = whenActiveNotification $ \conf
 handleNotification TextDocumentDidClose params = whenActiveNotification $ \conf => do
   logI Channel "Received didClose notification for \{show params.textDocument.uri}"
   update LSPConf ({ openFile := Nothing
+                  , completionRetry := Nothing
                   , quickfixes := []
                   , cachedActions := empty
                   , cachedHovers := empty
